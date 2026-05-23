@@ -23,6 +23,9 @@ Last updated: 2026-05-23
 - [x] Add route-scoped environment validation helpers.
 - [x] Add saved-meal selection to feedback logging.
 - [x] Add PWA manifest, app metadata, placeholder icons, and iPhone layout polish.
+- [x] Save ingredient suggestions to Notion Ingredients without relations.
+- [x] Add Notion schema diagnostics for active databases.
+- [x] Add safe Meal Feedback -> Meals relation write support with fallback warning.
 
 ## Current Sprint
 
@@ -30,12 +33,11 @@ Last updated: 2026-05-23
 - [ ] Deploy route-scoped environment validation, feedback meal selection, and PWA foundation to Vercel.
 - [ ] Test public HTTPS URL from iPhone/mobile network after latest changes.
 - [ ] Test iPhone Safari Add to Home Screen flow.
-- [ ] Confirm Notion database schemas match current property mappings.
+- [ ] Manually create Meal Feedback `Meal` relation property in Notion and retest selected-meal feedback.
 
 ## Next Up
 
-- [ ] Add relation from Meal Feedback to Meals.
-- [ ] Save ingredient suggestions to Notion Ingredients.
+- [ ] Add relation from Ingredients to Meals.
 - [ ] Add meal detail view.
 - [ ] Add better empty/error states where needed.
 - [ ] Add optimistic refresh after saving to Notion.

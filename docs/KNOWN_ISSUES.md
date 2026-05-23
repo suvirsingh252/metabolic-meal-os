@@ -23,7 +23,8 @@ Last updated: 2026-05-23
 
 - [ ] Analyze, save, and feedback flows are functional but plain.
 - [ ] Meals page has no filtering or search yet.
-- [ ] Feedback can use a saved meal name, but is not related to a saved meal in Notion yet.
+- [ ] Meal Feedback -> Meals relation property must be created manually in Notion before relation writes are enabled.
+- [ ] Ingredients are saved as standalone records, but are not related to saved meals in Notion yet.
 - [ ] Success/error UI patterns are not fully standardized.
 
 ## Future Migrations
@@ -36,6 +37,6 @@ Last updated: 2026-05-23
 ## Temporary Implementations
 
 - [ ] Notion is the only persistence layer.
-- [ ] Ingredient suggestions are displayed but not saved.
-- [ ] Weekly Plans, Ingredients, and Meal Templates database IDs exist but are not fully used.
+- [ ] Ingredient suggestions are saved by normalized name only, without meal relations.
+- [ ] Weekly Plans and Meal Templates database IDs exist but are not fully used.
 - [ ] Deployment exists, but there is no automated production smoke test yet.

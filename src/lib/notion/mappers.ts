@@ -42,6 +42,16 @@ function richText(content: string) {
   };
 }
 
+function relation(pageId: string) {
+  return {
+    relation: [
+      {
+        id: pageId
+      }
+    ]
+  };
+}
+
 export function mapMealAnalysisToNotionProperties(
   meal: MealAnalysisResult
 ): PageProperties {
@@ -62,9 +72,12 @@ export function mapMealAnalysisToNotionProperties(
 }
 
 export function mapMealFeedbackToNotionProperties(
-  feedback: MealFeedbackRequest
+  feedback: MealFeedbackRequest,
+  options?: {
+    includeMealRelation?: boolean;
+  }
 ): PageProperties {
-  return {
+  const properties: PageProperties = {
     "Feedback Entry": title(feedback.feedbackEntry),
     "Energy After": select(feedback.energyAfter),
     "Hunger Later": select(feedback.hungerLater),
@@ -72,4 +85,10 @@ export function mapMealFeedbackToNotionProperties(
     "Would Repeat": checkbox(feedback.wouldRepeat),
     Notes: richText(feedback.notes)
   };
+
+  if (options?.includeMealRelation && feedback.selectedMealId) {
+    properties.Meal = relation(feedback.selectedMealId);
+  }
+
+  return properties;
 }

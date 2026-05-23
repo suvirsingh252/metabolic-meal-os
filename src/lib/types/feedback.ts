@@ -17,6 +17,7 @@ export type HungerLater = (typeof hungerLaterOptions)[number];
 
 export interface MealFeedbackRequest {
   feedbackEntry: string;
+  selectedMealId?: string | null;
   energyAfter: EnergyAfter;
   hungerLater: HungerLater;
   cravingsLater: boolean;
@@ -28,4 +29,5 @@ export interface MealFeedbackResult {
   success: true;
   notionPageId: string;
   notionUrl: string;
+  warning?: string;
 }

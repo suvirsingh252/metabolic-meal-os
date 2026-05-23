@@ -3,6 +3,91 @@
 ## 2026-05-23
 
 Goals:
+- Add true Notion relation support between Meal Feedback and Meals when a selected saved meal is used.
+- Do not modify Notion schema from the app.
+- Keep manual feedback and missing-relation fallback working.
+
+Important schema finding:
+- Current Meal Feedback schema does not include a `Meal` relation property.
+- Meal Feedback -> Meals relation property must be created manually in Notion before relation writes are enabled.
+
+Completed work:
+- Updated `MealFeedbackRequest` with `selectedMealId?: string | null`.
+- Updated `/feedback` to keep the selected meal page ID separately from manual entry mode.
+- Selected saved meals now submit their Notion page ID to `/api/notion/log-feedback`.
+- Manual feedback submits `selectedMealId: null` and continues to work as before.
+- Updated `/api/notion/log-feedback` to inspect the Feedback database schema before writing a relation.
+- If a compatible `Meal` relation property exists, selected-meal feedback writes a relation to the selected Meal page.
+- If the relation property is missing, feedback still saves and returns a safe warning.
+- Updated the save success UI to show non-blocking API warnings.
+- Added manual Notion setup instructions to handoff docs and updated roadmap/known issues.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Manual feedback API smoke test saved successfully with `selectedMealId: null`.
+- Selected-meal feedback API smoke test saved successfully and returned the expected missing-relation warning.
+
+Next recommended actions:
+- Manually create the Meal Feedback `Meal` relation property in Notion.
+- Retest selected-meal feedback and confirm the relation writes.
+
+## 2026-05-23 Schema Diagnostics
+
+Goals:
+- Add read-only Notion schema diagnostics for active Meals, Ingredients, and Meal Feedback databases.
+- Surface exact database property names and types before adding relations.
+
+Completed work:
+- Added `GET /api/diagnostics/notion-schemas`.
+- The route retrieves Meals, Ingredients, and Feedback schemas using scoped env helpers.
+- The response includes safe database summaries with key, ID, title, and property name/type pairs.
+- The route does not expose API keys and logs detailed failures server-side only.
+- Added a `Test Notion Schemas` button to `/settings`.
+- Settings now displays database names, IDs, property lists, and safe per-database errors.
+- No Notion schema, relation, or save behavior changes were made.
+- Updated handoff and roadmap docs.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Local `GET /api/diagnostics/notion-schemas` returned Meals, Ingredients, and Feedback property lists.
+
+Next recommended actions:
+- Use Settings schema diagnostics to inspect relation-capable properties before implementing relations.
+
+## 2026-05-23 Ingredient Persistence
+
+Goals:
+- Persist ingredient suggestions into Notion Ingredients when a meal is saved.
+- Keep ingredient persistence non-blocking and avoid adding Notion relations.
+
+Completed work:
+- Added `src/lib/ingredients` normalization utilities for trimming, malformed filtering, deduplication, lowercase matching, and light singular/plural matching.
+- Added `getNotionIngredientsEnv()` for route-scoped Ingredients configuration.
+- Added `POST /api/notion/save-ingredients`.
+- The new ingredients route retrieves the Ingredients database schema, uses its title property for ingredient names, and avoids duplicate creation by normalized title.
+- The route writes source meal name and created date only when compatible optional properties exist.
+- Updated `/analyze` save flow to trigger ingredient persistence after meal save succeeds.
+- Meal save remains successful if ingredient persistence fails.
+- Added helper UI that reports ingredient saving, success, skip, or failure after meal save.
+- Updated handoff, roadmap, and known issues docs.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Local empty-list `POST /api/notion/save-ingredients` returned 200 without creating records.
+
+Next recommended actions:
+- Test Analyze -> Save to Notion against the production Ingredients database.
+- Confirm duplicate ingredient suggestions are skipped on repeated saves.
+
+## 2026-05-23 PWA Foundation
+
+Goals:
 - Add mobile PWA foundation and iPhone polish without adding native mobile code.
 
 Completed work:

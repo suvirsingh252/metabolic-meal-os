@@ -17,13 +17,15 @@ Implemented:
 - Meals list loaded from the Notion Meals database.
 - Meal feedback logging to the Notion Meal Feedback database.
 - Saved-meal selection on feedback form, with manual entry fallback.
+- Ingredient suggestion persistence to Notion Ingredients after meal save, without relations.
+- Notion schema diagnostics for Meals, Ingredients, and Meal Feedback from Settings.
 - PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
 - Typed server-side environment configuration.
 
 Not implemented yet:
 - Authentication.
-- Meal-to-feedback relations.
-- Ingredient suggestion persistence.
+- Meal-to-feedback relation property exists in code path, but the Notion relation property is not created yet.
+- Meal-to-ingredient relations.
 - Weekly planning workflows.
 - Meal template workflows.
 - Service worker/offline PWA support.
@@ -41,6 +43,7 @@ Stack:
 Code organization:
 - `src/app`: App Router pages and API routes.
 - `src/app/manifest.ts`: web app manifest for mobile/home-screen installs.
+- `src/lib/ingredients`: ingredient normalization and deduplication helpers.
 - `src/lib/env.ts`: typed server-only environment validation with route-scoped helpers.
 - `src/lib/types`: shared app types.
 - `src/lib/notion`: Notion client, mappers, and page summary extraction.
@@ -67,6 +70,12 @@ Pages:
   - Verifies Notion API key, Meals database ID, and database access.
   - Returns safe success/failure JSON.
 
+- `GET /api/diagnostics/notion-schemas`
+  - Retrieves safe schema summaries for Meals, Ingredients, and Meal Feedback.
+  - Returns database key, ID, title, and property name/type pairs.
+  - Uses scoped env helpers and never returns API keys.
+  - Can return partial schema results with safe per-database errors.
+
 - `GET /api/notion/meals`
   - Queries the Notion Meals database's primary data source.
   - Returns simplified meal summaries.
@@ -74,13 +83,21 @@ Pages:
 - `POST /api/notion/save-meal`
   - Input: `MealAnalysisResult`
   - Saves core meal fields to Notion Meals.
-  - Does not save ingredient suggestions or relations yet.
+  - Does not change meal schema or create relations.
+
+- `POST /api/notion/save-ingredients`
+  - Input: `{ mealName: string, ingredients: string[] }`
+  - Normalizes, deduplicates, and persists ingredient suggestions to Notion Ingredients.
+  - Avoids creating duplicate ingredient pages by normalized ingredient title.
+  - Saves source meal name and created date only when compatible Ingredients properties exist.
+  - Does not relate ingredients to meals yet.
 
 - `POST /api/notion/log-feedback`
   - Input: `MealFeedbackRequest`
   - Saves meal feedback fields to Notion Meal Feedback.
-  - Saves the meal name in the feedback title only.
-  - Does not relate feedback to Meals yet.
+  - Saves the meal name in the feedback title for readability.
+  - If `selectedMealId` is present and the Feedback database has a compatible `Meal` relation property, writes the relation to the selected Meal page.
+  - If the `Meal` relation property is missing, saves feedback without relation and returns a non-blocking warning.
 
 ## Environment Variables
 
@@ -99,14 +116,17 @@ NOTION_MEAL_TEMPLATES_DATABASE_ID=
 Current route-scoped usage:
 - `/api/analyze-meal`: `OPENAI_API_KEY`
 - `/api/diagnostics/notion`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
+- `/api/diagnostics/notion-schemas`: scoped Meals, Ingredients, and Feedback env helpers
 - `/api/notion/meals`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
 - `/api/notion/save-meal`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
+- `/api/notion/save-ingredients`: `NOTION_API_KEY`, `NOTION_INGREDIENTS_DATABASE_ID`
 - `/api/notion/log-feedback`: `NOTION_API_KEY`, `NOTION_FEEDBACK_DATABASE_ID`
 
 Available env helpers:
 - `getOpenAIEnv()`
 - `getNotionMealsEnv()`
 - `getNotionFeedbackEnv()`
+- `getNotionIngredientsEnv()`
 - `getFullNotionEnv()`
 - `getFullServerEnv()`
 - `getServerEnv()` remains as a compatibility alias for full server env validation.
@@ -164,11 +184,11 @@ Reasoning:
 
 ## Immediate Next Tasks
 
-1. Deploy the route-scoped env validation, feedback meal selection, and PWA foundation changes to Vercel.
-2. Confirm `/settings`, `/api/notion/meals`, `/api/notion/log-feedback`, `/api/analyze-meal`, and `/manifest.webmanifest` still work in production.
+1. Deploy route-scoped env validation, feedback meal selection, PWA foundation, ingredient persistence, and schema diagnostics changes to Vercel.
+2. Confirm `/settings`, `/api/diagnostics/notion-schemas`, `/api/notion/meals`, `/api/notion/save-ingredients`, `/api/notion/log-feedback`, `/api/analyze-meal`, and `/manifest.webmanifest` still work in production.
 3. Rotate exposed OpenAI and Notion keys if not already completed.
 4. Test Add to Home Screen from iPhone Safari.
-5. Add relations between feedback and meals.
+5. Manually add the Meal Feedback -> Meals relation property in Notion, then retest selected-meal feedback relation writes.
 
 ## Manual Testing Checklist
 
@@ -178,13 +198,17 @@ Local:
 - Fill in server env vars with real local values.
 - Run `npm run dev -- -p 3011`.
 - Open `/settings` and test Notion connection.
+- In `/settings`, click `Test Notion Schemas` and verify Meals, Ingredients, and Feedback property lists appear.
 - Open `/analyze`, paste at least 10 characters, and verify the Analyze button enables.
 - Analyze a meal and edit returned fields.
 - Save the meal to Notion and open the returned Notion link.
+- Verify ingredient persistence status appears after meal save.
+- Open the Ingredients database and verify new normalized suggestions are created without duplicate repeats.
 - Open `/meals` and verify the saved meal appears.
 - Open `/feedback`, verify saved meals load in the Meal dropdown.
 - Select a saved meal and verify it fills Feedback Entry.
 - Edit Feedback Entry manually and submit feedback.
+- If the `Meal` relation property is missing, verify feedback still saves and displays the warning.
 - Open the returned Notion link.
 - Open `/manifest.webmanifest` and verify it returns manifest JSON.
 - From iPhone Safari, use Share -> Add to Home Screen on the Vercel URL.
@@ -244,6 +268,7 @@ Required databases:
 
 Current write/read usage:
 - Meals: save analyzed meals and list saved meals.
+- Ingredients: save normalized ingredient suggestions after meal save.
 - Meal Feedback: save post-meal feedback with a saved or manual meal name.
 - Other database IDs are configured but not actively used yet.
 
@@ -267,11 +292,30 @@ Current Meals properties used:
 
 Current Feedback properties used:
 - `Feedback Entry` title
+- `Meal` relation to Meals, optional but required for true selected-meal relation writes
 - `Energy After` select
 - `Hunger Later` select
 - `Cravings Later` checkbox
 - `Would Repeat` checkbox
 - `Notes` rich_text
+
+Manual Notion setup required for feedback relations:
+1. Open the Meal Feedback database in Notion.
+2. Add a Relation property named exactly `Meal`.
+3. Point the relation to the Meals database.
+4. Share both databases with the same Notion integration.
+5. Run `/settings` -> `Test Notion Schemas` and confirm Meal Feedback includes `Meal` with type `relation`.
+6. Selected-meal feedback will then write the relation automatically.
+
+Current schema finding:
+- As of this session, Meal Feedback did not include a `Meal` relation property.
+- Meal Feedback -> Meals relation property must be created manually in Notion before relation writes are enabled.
+
+Current Ingredients behavior:
+- Uses the database's title property for ingredient name.
+- Optional source meal property is used if named `Source Meal`, `Source Meal Name`, `Meal`, or `Meal Name` and typed as rich_text or select.
+- Optional created date property is used if named `Created`, `Created Date`, `Created At`, or `Added Date` and typed as date.
+- Duplicate detection uses trimmed, lowercase, lightly singularized ingredient names.
 
 # Mandatory Start-of-Session Procedure
 

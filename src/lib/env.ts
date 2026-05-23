@@ -17,6 +17,10 @@ export type NotionFeedbackEnv = Pick<
   ServerEnv,
   "NOTION_API_KEY" | "NOTION_FEEDBACK_DATABASE_ID"
 >;
+export type NotionIngredientsEnv = Pick<
+  ServerEnv,
+  "NOTION_API_KEY" | "NOTION_INGREDIENTS_DATABASE_ID"
+>;
 export type FullNotionEnv = Pick<
   ServerEnv,
   | "NOTION_API_KEY"
@@ -48,6 +52,11 @@ const notionFeedbackEnvKeys = [
   "NOTION_API_KEY",
   "NOTION_FEEDBACK_DATABASE_ID"
 ] as const satisfies readonly (keyof NotionFeedbackEnv)[];
+
+const notionIngredientsEnvKeys = [
+  "NOTION_API_KEY",
+  "NOTION_INGREDIENTS_DATABASE_ID"
+] as const satisfies readonly (keyof NotionIngredientsEnv)[];
 
 const fullNotionEnvKeys = [
   "NOTION_API_KEY",
@@ -99,6 +108,10 @@ export function getNotionMealsEnv(): NotionMealsEnv {
 
 export function getNotionFeedbackEnv(): NotionFeedbackEnv {
   return readServerEnv<NotionFeedbackEnv>(notionFeedbackEnvKeys);
+}
+
+export function getNotionIngredientsEnv(): NotionIngredientsEnv {
+  return readServerEnv<NotionIngredientsEnv>(notionIngredientsEnvKeys);
 }
 
 export function getFullNotionEnv(): FullNotionEnv {

@@ -54,7 +54,8 @@ function getMealLoadErrorMessage(value: unknown) {
 
 export default function FeedbackPage() {
   const [meals, setMeals] = useState<MealSummary[]>([]);
-  const [selectedMealId, setSelectedMealId] = useState(manualMealValue);
+  const [mealSelectionValue, setMealSelectionValue] = useState(manualMealValue);
+  const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
   const [isLoadingMeals, setIsLoadingMeals] = useState(true);
   const [mealLoadWarning, setMealLoadWarning] = useState<string | null>(null);
   const [feedbackEntry, setFeedbackEntry] = useState("");
@@ -100,15 +101,17 @@ export default function FeedbackPage() {
   }, [loadMeals]);
 
   function handleMealSelection(mealId: string) {
-    setSelectedMealId(mealId);
+    setMealSelectionValue(mealId);
 
     if (mealId === manualMealValue) {
+      setSelectedMealId(null);
       return;
     }
 
     const selectedMeal = meals.find((meal) => meal.id === mealId);
 
     if (selectedMeal) {
+      setSelectedMealId(selectedMeal.id);
       setFeedbackEntry(selectedMeal.mealName);
     }
   }
@@ -141,7 +144,8 @@ export default function FeedbackPage() {
           hungerLater,
           cravingsLater,
           wouldRepeat,
-          notes
+          notes,
+          selectedMealId
         })
       });
 
@@ -185,7 +189,7 @@ export default function FeedbackPage() {
                 disabled={isLoadingMeals}
                 id="mealSelection"
                 onChange={(event) => handleMealSelection(event.target.value)}
-                value={selectedMealId}
+                value={mealSelectionValue}
               >
                 <option value={manualMealValue}>
                   {isLoadingMeals ? "Loading saved meals..." : "Manual entry"}
@@ -197,8 +201,8 @@ export default function FeedbackPage() {
                 ))}
               </Select>
               <p className="text-sm text-muted-foreground">
-                This currently saves the meal name only. A Notion relation will
-                be added later.
+                Saved meal feedback will include a Notion relation when the
+                Meal Feedback database has a compatible Meal relation property.
               </p>
               {mealLoadWarning ? (
                 <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -282,6 +286,11 @@ export default function FeedbackPage() {
                 Open feedback page
                 <ExternalLink className="h-4 w-4" />
               </a>
+              {savedFeedback.warning ? (
+                <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                  {savedFeedback.warning}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </CardContent>

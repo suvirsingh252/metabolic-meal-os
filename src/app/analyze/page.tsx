@@ -57,6 +57,25 @@ interface SaveMealResponse {
   notionUrl: string;
 }
 
+interface SaveIngredientsResponse {
+  success: true;
+  createdCount: number;
+  skippedCount: number;
+  malformedCount: number;
+}
+
+type IngredientPersistenceStatus =
+  | { state: "idle" }
+  | { state: "saving" }
+  | {
+      state: "success";
+      createdCount: number;
+      skippedCount: number;
+      malformedCount: number;
+    }
+  | { state: "skipped" }
+  | { state: "failed"; message: string };
+
 export default function AnalyzePage() {
   const [recipeText, setRecipeText] = useState("");
   const [analysis, setAnalysis] = useState<MealAnalysisResult | null>(null);
@@ -64,6 +83,8 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMeal, setSavedMeal] = useState<SaveMealResponse | null>(null);
+  const [ingredientPersistence, setIngredientPersistence] =
+    useState<IngredientPersistenceStatus>({ state: "idle" });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -86,6 +107,7 @@ export default function AnalyzePage() {
     setError(null);
     setSaveError(null);
     setSavedMeal(null);
+    setIngredientPersistence({ state: "idle" });
 
     try {
       const response = await fetch("/api/analyze-meal", {
@@ -161,6 +183,7 @@ export default function AnalyzePage() {
   function clearSaveStatus() {
     setSaveError(null);
     setSavedMeal(null);
+    setIngredientPersistence({ state: "idle" });
   }
 
   function updateAnalysis(nextAnalysis: MealAnalysisResult) {
@@ -194,10 +217,59 @@ export default function AnalyzePage() {
       }
 
       setSavedMeal(data as SaveMealResponse);
+      void persistIngredientSuggestions(analysis);
     } catch {
       setSaveError("Unable to reach Notion saving service. Try again.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function persistIngredientSuggestions(meal: MealAnalysisResult) {
+    const ingredients = meal.ingredientSuggestions;
+
+    if (ingredients.length === 0) {
+      setIngredientPersistence({ state: "skipped" });
+      return;
+    }
+
+    setIngredientPersistence({ state: "saving" });
+
+    try {
+      const response = await fetch("/api/notion/save-ingredients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          mealName: meal.mealName,
+          ingredients
+        })
+      });
+
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        setIngredientPersistence({
+          state: "failed",
+          message: getErrorMessage(data)
+        });
+        return;
+      }
+
+      const result = data as SaveIngredientsResponse;
+      setIngredientPersistence({
+        state: "success",
+        createdCount: result.createdCount,
+        skippedCount: result.skippedCount,
+        malformedCount: result.malformedCount
+      });
+    } catch {
+      setIngredientPersistence({
+        state: "failed",
+        message:
+          "Meal saved, but ingredients could not be saved right now."
+      });
     }
   }
 
@@ -433,6 +505,9 @@ export default function AnalyzePage() {
                         Open Notion page
                         <ExternalLink className="h-4 w-4" />
                       </a>
+                      <IngredientPersistenceMessage
+                        status={ingredientPersistence}
+                      />
                     </div>
                   ) : null}
                 </div>
@@ -446,6 +521,52 @@ export default function AnalyzePage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function IngredientPersistenceMessage({
+  status
+}: {
+  status: IngredientPersistenceStatus;
+}) {
+  if (status.state === "idle") {
+    return null;
+  }
+
+  if (status.state === "saving") {
+    return (
+      <p className="mt-3 flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Saving ingredient suggestions...
+      </p>
+    );
+  }
+
+  if (status.state === "skipped") {
+    return (
+      <p className="mt-3 text-muted-foreground">
+        No ingredient suggestions to save.
+      </p>
+    );
+  }
+
+  if (status.state === "failed") {
+    return (
+      <p className="mt-3 text-amber-800">
+        Meal saved, but ingredient persistence did not complete. {status.message}
+      </p>
+    );
+  }
+
+  return (
+    <p className="mt-3 text-primary">
+      Ingredient suggestions saved. Created {status.createdCount}; skipped{" "}
+      {status.skippedCount} existing
+      {status.malformedCount > 0
+        ? `; ignored ${status.malformedCount} malformed`
+        : ""}
+      .
+    </p>
   );
 }
 

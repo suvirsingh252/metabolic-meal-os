@@ -39,6 +39,30 @@ function getNotionPageUrl(page: { id: string; url?: string }) {
   return page.url;
 }
 
+function hasMealRelationProperty(dataSource: unknown) {
+  if (!isRecord(dataSource) || !isRecord(dataSource.properties)) {
+    return false;
+  }
+
+  const mealProperty = dataSource.properties.Meal;
+
+  return isRecord(mealProperty) && mealProperty.type === "relation";
+}
+
+function getPrimaryDataSourceId(database: unknown) {
+  if (
+    isRecord(database) &&
+    Array.isArray(database.data_sources) &&
+    database.data_sources.length > 0 &&
+    isRecord(database.data_sources[0]) &&
+    typeof database.data_sources[0].id === "string"
+  ) {
+    return database.data_sources[0].id;
+  }
+
+  throw new Error("Meal Feedback database did not return a queryable data source.");
+}
+
 function validateFeedback(body: unknown): MealFeedbackRequest | NextResponse {
   if (!isRecord(body)) {
     return validationError("Request body must be a JSON object.");
@@ -68,8 +92,22 @@ function validateFeedback(body: unknown): MealFeedbackRequest | NextResponse {
     return validationError("notes must be a string.");
   }
 
+  if (
+    body.selectedMealId !== undefined &&
+    body.selectedMealId !== null &&
+    typeof body.selectedMealId !== "string"
+  ) {
+    return validationError("selectedMealId must be a string or null.");
+  }
+
+  const selectedMealId =
+    typeof body.selectedMealId === "string" && body.selectedMealId.trim()
+      ? body.selectedMealId.trim()
+      : null;
+
   return {
     feedbackEntry: body.feedbackEntry.trim(),
+    selectedMealId,
     energyAfter: body.energyAfter,
     hungerLater: body.hungerLater,
     cravingsLater: body.cravingsLater,
@@ -97,18 +135,38 @@ export async function POST(request: Request) {
     const { NOTION_API_KEY, NOTION_FEEDBACK_DATABASE_ID } =
       getNotionFeedbackEnv();
     const notion = getNotionClient(NOTION_API_KEY);
+    let includeMealRelation = false;
+    let warning: string | undefined;
+
+    if (feedback.selectedMealId) {
+      const database = await notion.databases.retrieve({
+        database_id: NOTION_FEEDBACK_DATABASE_ID
+      });
+      const dataSource = await notion.dataSources.retrieve({
+        data_source_id: getPrimaryDataSourceId(database)
+      });
+      includeMealRelation = hasMealRelationProperty(dataSource);
+
+      if (!includeMealRelation) {
+        warning =
+          "Meal Feedback -> Meals relation property is missing. Feedback was saved without a Meal relation.";
+      }
+    }
 
     const page = await notion.pages.create({
       parent: {
         database_id: NOTION_FEEDBACK_DATABASE_ID
       },
-      properties: mapMealFeedbackToNotionProperties(feedback)
+      properties: mapMealFeedbackToNotionProperties(feedback, {
+        includeMealRelation
+      })
     });
 
     return NextResponse.json({
       success: true,
       notionPageId: page.id,
-      notionUrl: getNotionPageUrl(page)
+      notionUrl: getNotionPageUrl(page),
+      warning
     });
   } catch (error) {
     console.error("Notion log feedback API failure", error);
