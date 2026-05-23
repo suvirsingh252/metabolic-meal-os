@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-23 (Analysis Framework v2)
+Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
 
 ## Completed
 
@@ -33,18 +33,22 @@ Last updated: 2026-05-23 (Analysis Framework v2)
 ## Current Sprint
 
 - [ ] Rotate exposed OpenAI and Notion keys if not already completed.
-- [ ] Deploy route-scoped environment validation, feedback meal selection, and PWA foundation to Vercel.
-- [ ] Test public HTTPS URL from iPhone/mobile network after latest changes.
-- [ ] Test iPhone Safari Add to Home Screen flow.
-- [ ] Manually create Meal Feedback `Meal` relation property in Notion and retest selected-meal feedback.
+- [ ] Deploy Analysis Framework v2 to Vercel and run full production smoke test.
+- [ ] Verify `/analyze` v2 sections appear on live URL after analysis.
+- [ ] Save a meal on live URL and confirm Notion `Notes` contains v2 summary.
+- [ ] Confirm `/meals` still loads after save on live URL.
+- [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
+- [ ] Test iPhone Safari Add to Home Screen flow on live URL.
 
 ## Next Up
 
+- [ ] Recipe URL analysis support: detect URL input in `/analyze`, fetch server-side, extract readable content with jsdom + @mozilla/readability, pass extracted text to existing analysis pipeline, fall back gracefully to pasted text on fetch or parse failure.
 - [ ] Add relation from Ingredients to Meals.
 - [ ] Add meal detail view.
 - [ ] Add better empty/error states where needed.
 - [ ] Add optimistic refresh after saving to Notion.
 - [ ] Add basic smoke tests for API validation.
+- [ ] Tighten save-meal validator: stop defaulting missing v2 fields to 0/empty once backward compatibility is no longer needed.
 
 ## Future Ideas
 

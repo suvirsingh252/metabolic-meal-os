@@ -1,6 +1,25 @@
 # Architectural Decisions
 
-Last updated: 2026-05-23 (Analysis Framework v2)
+Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
+
+## 2026-05-23 — Defer Recipe URL Analysis to Next Session
+
+Decision: Defer Recipe URL input support to a dedicated future session.
+
+Reasoning:
+- Recipe URL analysis requires server-side HTTP fetching, HTML parsing (jsdom), and readable content extraction (@mozilla/readability) — a meaningful vertical slice with its own failure modes.
+- The current analyze flow (paste text) is working and deployed. Adding URL support mid-session would risk introducing untested fetch/parse edge cases.
+- Deferring keeps the current session focused on Analysis Framework v2 closeout and production verification.
+
+Planned approach for next session:
+- Detect whether the `/analyze` input looks like a URL (simple heuristic: starts with `http://` or `https://`).
+- If URL: POST to a new server-side route or extend `/api/analyze-meal` to accept a `recipeUrl` field; fetch the URL server-side (no CORS exposure); parse with jsdom + @mozilla/readability to extract article text; pass extracted text through the existing analysis pipeline.
+- If fetch or parse fails: return a graceful error; let the user paste the text manually instead.
+- No changes to the OpenAI schema or Notion mapper are expected.
+
+Tradeoffs:
+- Deferred one session.
+- Server-side fetch adds a new outbound network dependency; some recipe sites block bots or require headers.
 
 ## 2026-05-23 — Analysis Framework v2
 

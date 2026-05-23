@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-05-23
+Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
 
 ## Critical
 
@@ -25,14 +25,14 @@ Last updated: 2026-05-23
 
 - [ ] Analyze, save, and feedback flows are functional but plain.
 - [ ] Meals page has no filtering or search yet.
-- [ ] Meal Feedback -> Meals relation property must be created manually in Notion before relation writes are enabled.
+- [ ] Meal Feedback -> Meals relation property may not yet be created in Notion. The app code supports it and falls back gracefully, but the Notion manual setup step must be done before relation writes are enabled. Verify in `/settings` → `Test Notion Schemas`.
 - [ ] Ingredients are saved as standalone records, but are not related to saved meals in Notion yet.
 - [ ] Success/error UI patterns are not fully standardized.
+- [ ] Analysis Framework v2 has not been smoke-tested on the live Vercel deployment. Deploy and verify before trusting production.
 
 ## Future Migrations
 
 - [ ] Add authentication before wider public sharing.
-- [ ] Add PWA manifest and mobile home-screen support.
 - [ ] Consider replacing Notion with a dedicated database if relational querying, permissions, or performance require it.
 - [ ] Consider provider abstractions for AI and storage after workflows stabilize.
 

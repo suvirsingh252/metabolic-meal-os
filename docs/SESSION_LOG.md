@@ -1,5 +1,29 @@
 # Session Log
 
+## 2026-05-23 Session Closeout
+
+Goals:
+- Update all persistent handoff docs to accurately reflect the completed Analysis Framework v2 state.
+- Document the deferred Recipe URL analysis slice.
+- No product feature changes.
+
+Completed work:
+- HANDOFF.md: updated timestamp, implemented features list, "Not implemented yet" list, "Immediate Next Tasks", "Current Blockers", Manual Testing Checklist (added v2 verification steps), feedback relation status note, Notion Notes property description for v2 summary. Removed stale deploy items that were already completed.
+- ROADMAP.md: updated timestamp, replaced stale "Current Sprint" with current production verification tasks, added Recipe URL analysis to "Next Up", added validator tightening to "Next Up".
+- KNOWN_ISSUES.md: updated timestamp, corrected feedback relation status wording, added v2 production smoke test needed, removed stale "Add PWA manifest" from Future Migrations (PWA is implemented).
+- DECISIONS.md: updated timestamp, added decision record for deferring Recipe URL analysis with planned approach.
+- SESSION_LOG.md: added this closeout entry.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+
+Next recommended actions:
+- Deploy to Vercel and smoke-test the full Analyze → Save → Meals path on the live URL.
+- Confirm Notion Notes contains v2 summary on a saved meal.
+- Next feature session: Recipe URL analysis support.
+
 ## 2026-05-23 Analysis Framework v2
 
 Goals:

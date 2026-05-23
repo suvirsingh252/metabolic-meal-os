@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-23 (Analysis Framework v2)
+Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
 
 This is the primary resume document for future Codex sessions. Keep it current.
 
@@ -25,11 +25,11 @@ Implemented:
 
 Not implemented yet:
 - Authentication.
-- Meal-to-feedback relation property exists in code path, but the Notion relation property is not created yet.
 - Meal-to-ingredient relations.
 - Weekly planning workflows.
 - Meal template workflows.
 - Service worker/offline PWA support.
+- Recipe URL input: detect a URL, fetch server-side, extract readable content, and pass to analysis. Deferred to next session.
 
 ## Current Architecture
 
@@ -84,7 +84,8 @@ Pages:
 - `POST /api/notion/save-meal`
   - Input: `MealAnalysisResult`
   - Saves core meal fields to Notion Meals.
-  - Does not change meal schema or create relations.
+  - Writes a concise Analysis Framework v2 summary into the existing `Notes` field via `buildMealNotesSummary`.
+  - Does not add new Notion properties or create relations.
 
 - `POST /api/notion/save-ingredients`
   - Input: `{ mealName: string, ingredients: string[] }`
@@ -180,16 +181,16 @@ Reasoning:
 ## Current Blockers
 
 - Rotate the OpenAI and Notion keys that were found in `.env.example` if not already completed.
-- Confirm all Notion database schemas match app property names exactly.
-- No current deployment blocker is known.
+- Analysis Framework v2 has not been smoke-tested on the live Vercel deployment yet. Deploy and verify before trusting production.
 
 ## Immediate Next Tasks
 
-1. Deploy route-scoped env validation, feedback meal selection, PWA foundation, ingredient persistence, and schema diagnostics changes to Vercel.
-2. Confirm `/settings`, `/api/diagnostics/notion-schemas`, `/api/notion/meals`, `/api/notion/save-ingredients`, `/api/notion/log-feedback`, `/api/analyze-meal`, and `/manifest.webmanifest` still work in production.
-3. Rotate exposed OpenAI and Notion keys if not already completed.
-4. Test Add to Home Screen from iPhone Safari.
-5. Manually add the Meal Feedback -> Meals relation property in Notion, then retest selected-meal feedback relation writes.
+1. Push Analysis Framework v2 to GitHub and deploy to Vercel.
+2. On the live URL: open `/analyze`, run an analysis, confirm all v2 sections appear (Quick Verdict, Scorecard, Concerns, Strategy, Shopping & Prep).
+3. Save a meal to Notion and open the Notion page — confirm `Notes` contains the v2 summary block.
+4. Open `/meals` and confirm the saved meal appears.
+5. Rotate exposed OpenAI and Notion keys if not already completed.
+6. Next feature slice: Recipe URL analysis support (detect URL, fetch server-side, extract readable content via jsdom + @mozilla/readability, fall back to pasted text on failure).
 
 ## Manual Testing Checklist
 
@@ -201,8 +202,10 @@ Local:
 - Open `/settings` and test Notion connection.
 - In `/settings`, click `Test Notion Schemas` and verify Meals, Ingredients, and Feedback property lists appear.
 - Open `/analyze`, paste at least 10 characters, and verify the Analyze button enables.
-- Analyze a meal and edit returned fields.
+- Analyze a meal and verify all Analysis Framework v2 sections appear: Quick Verdict, Scorecard (five numeric fields), Main Concerns, Minimal-Change Version, More Supportive Version, Plate Strategy, Why This Helps, Cultural Notes, Shopping Additions, Prep Notes, Meal Pairings, Cautions.
+- Edit at least one score, one text field, and one array field to confirm they are editable before save.
 - Save the meal to Notion and open the returned Notion link.
+- In Notion, confirm the `Notes` field contains: original notes, Analysis Framework v2 Summary header, Quick Verdict, Scorecard, Main Concerns, Plate Strategy, and Cautions sections.
 - Verify ingredient persistence status appears after meal save.
 - Open the Ingredients database and verify new normalized suggestions are created without duplicate repeats.
 - Open `/meals` and verify the saved meal appears.
@@ -308,9 +311,11 @@ Manual Notion setup required for feedback relations:
 5. Run `/settings` -> `Test Notion Schemas` and confirm Meal Feedback includes `Meal` with type `relation`.
 6. Selected-meal feedback will then write the relation automatically.
 
-Current schema finding:
-- As of this session, Meal Feedback did not include a `Meal` relation property.
-- Meal Feedback -> Meals relation property must be created manually in Notion before relation writes are enabled.
+Feedback relation status:
+- The app code supports writing the Meal Feedback → Meals relation when the `Meal` relation property exists in Notion.
+- If the relation property is present, selected-meal feedback writes a relation automatically.
+- If the relation property is absent, feedback still saves and returns a non-blocking warning.
+- Relation support is deployed. Verify in `/settings` → `Test Notion Schemas` that Meal Feedback includes a `Meal` property of type `relation`; if not, create it manually following the steps above.
 
 Current Ingredients behavior:
 - Uses the database's title property for ingredient name.
