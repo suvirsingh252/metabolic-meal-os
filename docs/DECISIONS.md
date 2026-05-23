@@ -1,6 +1,21 @@
 # Architectural Decisions
 
-Last updated: 2026-05-23
+Last updated: 2026-05-23 (Analysis Framework v2)
+
+## 2026-05-23 — Analysis Framework v2
+
+Decision: Store the v2 analysis summary inside the existing Notion `Notes` rich_text field rather than adding new Notion properties.
+
+Reasoning:
+- Notion schema changes require manual setup and break if property names do not match exactly.
+- The v2 fields (scores, verdict, concerns, plate strategy, cautions) are useful for human review in Notion but do not need to be queryable or filterable at this stage.
+- Combining original notes with a structured plain-text v2 summary into one field keeps the Notion Meals schema stable.
+- `buildMealNotesSummary` in `src/lib/notion/meal-notes.ts` owns this formatting, making it easy to change the layout or expand coverage later.
+
+Tradeoffs:
+- The Notes field becomes longer and contains structured text that is not individually queryable in Notion.
+- If v2 fields need to be filtered or sorted in Notion later (e.g., filter by Metabolic Score), new Notion properties will need to be added manually and the mapper updated.
+- The Notion 2000-character rich_text limit is managed with truncation; verbose outputs may lose trailing cautions.
 
 ## 2026-05-23
 

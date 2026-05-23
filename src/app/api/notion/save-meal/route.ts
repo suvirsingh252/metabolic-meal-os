@@ -112,6 +112,24 @@ function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse 
     return validationError("feedbackPrompt is required.");
   }
 
+  // v2 fields — required in type but optional in Notion save (not written to Notion yet)
+  const metabolicScore = typeof body.metabolicScore === "number" ? body.metabolicScore : 0;
+  const proteinScore = typeof body.proteinScore === "number" ? body.proteinScore : 0;
+  const fiberScore = typeof body.fiberScore === "number" ? body.fiberScore : 0;
+  const satietyScoreNumeric = typeof body.satietyScoreNumeric === "number" ? body.satietyScoreNumeric : 0;
+  const bloodSugarRiskScore = typeof body.bloodSugarRiskScore === "number" ? body.bloodSugarRiskScore : 0;
+  const quickVerdict = typeof body.quickVerdict === "string" ? body.quickVerdict : "";
+  const mainConcerns = isStringArray(body.mainConcerns) ? body.mainConcerns : [];
+  const minimalChangeVersion = typeof body.minimalChangeVersion === "string" ? body.minimalChangeVersion : "";
+  const supportiveVersion = typeof body.supportiveVersion === "string" ? body.supportiveVersion : "";
+  const plateStrategy = typeof body.plateStrategy === "string" ? body.plateStrategy : "";
+  const whyThisHelps = typeof body.whyThisHelps === "string" ? body.whyThisHelps : "";
+  const culturalNotes = typeof body.culturalNotes === "string" ? body.culturalNotes : "";
+  const shoppingAdditions = isStringArray(body.shoppingAdditions) ? body.shoppingAdditions : [];
+  const prepNotes = isStringArray(body.prepNotes) ? body.prepNotes : [];
+  const mealPairings = isStringArray(body.mealPairings) ? body.mealPairings : [];
+  const cautions = isStringArray(body.cautions) ? body.cautions : [];
+
   return {
     mealName: body.mealName.trim(),
     cuisine: body.cuisine,
@@ -126,7 +144,23 @@ function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse 
     optimizedVersion: body.optimizedVersion.trim(),
     notes: body.notes.trim(),
     ingredientSuggestions: body.ingredientSuggestions,
-    feedbackPrompt: body.feedbackPrompt.trim()
+    feedbackPrompt: body.feedbackPrompt.trim(),
+    metabolicScore,
+    proteinScore,
+    fiberScore,
+    satietyScoreNumeric,
+    bloodSugarRiskScore,
+    quickVerdict,
+    mainConcerns,
+    minimalChangeVersion,
+    supportiveVersion,
+    plateStrategy,
+    whyThisHelps,
+    culturalNotes,
+    shoppingAdditions,
+    prepNotes,
+    mealPairings,
+    cautions
   };
 }
 

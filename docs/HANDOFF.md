@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-23
+Last updated: 2026-05-23 (Analysis Framework v2)
 
 This is the primary resume document for future Codex sessions. Keep it current.
 
@@ -21,6 +21,7 @@ Implemented:
 - Notion schema diagnostics for Meals, Ingredients, and Meal Feedback from Settings.
 - PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
 - Typed server-side environment configuration.
+- Analysis Framework v2: expanded OpenAI structured output with numeric scores, minimal-change framing, cultural notes, shopping additions, prep notes, meal pairings, and cautions. All v2 fields are editable in /analyze before save. Notion Notes field stores a concise v2 summary without schema changes.
 
 Not implemented yet:
 - Authentication.
@@ -288,7 +289,7 @@ Current Meals properties used:
 - `Weeknight Friendly` checkbox
 - `Comfort Meal` checkbox
 - `Optimized Version` rich_text
-- `Notes` rich_text
+- `Notes` rich_text — now contains original notes plus a concise Analysis Framework v2 summary (quick verdict, scorecard, main concerns, plate strategy, cautions). Built by `src/lib/notion/meal-notes.ts`. No new Notion properties were added.
 
 Current Feedback properties used:
 - `Feedback Entry` title

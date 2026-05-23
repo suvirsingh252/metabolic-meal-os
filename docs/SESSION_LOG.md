@@ -1,5 +1,49 @@
 # Session Log
 
+## 2026-05-23 Analysis Framework v2
+
+Goals:
+- Expand OpenAI structured output with v2 metabolic analysis fields.
+- Display and edit all v2 fields in /analyze before save.
+- Persist a concise v2 summary into the existing Notion Notes field without schema changes.
+
+Completed work:
+
+Slice 1 — Types and API:
+- Extended `MealAnalysisResult` in `src/lib/types/meal.ts` with 16 required v2 fields: 5 numeric scores (1–10) and 11 string/array fields.
+- Updated `src/app/api/analyze-meal/route.ts` JSON schema and system prompt to produce all v2 fields with minimal-change framing, cultural awareness, and insulin-resistance-supportive scoring.
+- Updated `src/app/api/notion/save-meal/route.ts` validator to pass v2 fields through for TypeScript compatibility; v2 fields accepted leniently (defaults to 0/empty) for backward compatibility.
+
+Slice 2 — UI:
+- Updated `src/app/analyze/page.tsx` to initialize, display, and edit all v2 fields.
+- Added `EditableScoreField` type, 5 v2 array text state vars, `updateScore` and `updateArrayField` handlers.
+- Added 12 new UI sections organized into: Quick Verdict, Scorecard (5 number inputs), Concerns & Improvements, Strategy, Shopping & Prep.
+- Added `SectionHeader` and `ScoreInput` components.
+
+Slice 3 — Notion persistence:
+- Created `src/lib/notion/meal-notes.ts` with `buildMealNotesSummary()`.
+- Summary includes: original notes, quick verdict, scorecard, main concerns, plate strategy, cautions.
+- Truncates at 1997 characters to respect the Notion 2000-character rich_text block limit.
+- Updated `src/lib/notion/mappers.ts` to write `buildMealNotesSummary(meal)` to the Notion `Notes` property.
+- No new Notion properties added. Existing schema unchanged.
+- Updated HANDOFF, ROADMAP, DECISIONS, and KNOWN_ISSUES docs.
+
+Verification:
+- `npm run typecheck` passed (all slices).
+- `npm run lint` passed (all slices).
+- `npm run build` passed (all slices).
+- `POST /api/analyze-meal` curl test returned full v2 shape.
+- v2 field identifiers confirmed in compiled JS bundle.
+
+Known issues introduced:
+- save-meal validator leniency (documented in KNOWN_ISSUES).
+- Notes field 2000-char truncation (documented in KNOWN_ISSUES).
+
+Next recommended actions:
+- Deploy to Vercel and confirm /analyze v2 fields appear after a real analysis.
+- Save one analyzed meal and confirm Notion Notes contains the v2 summary.
+- Confirm /meals still loads after save.
+
 ## 2026-05-23
 
 Goals:

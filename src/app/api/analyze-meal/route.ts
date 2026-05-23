@@ -17,6 +17,8 @@ export const runtime = "nodejs";
 const systemPrompt = `
 You analyze household recipes and return practical structured JSON for a meal review screen.
 
+Core principle: minimal-change improvement. Suggest the smallest realistic changes that meaningfully improve protein, fiber, or satiety — without westernizing, moralizing, or removing the dish's identity.
+
 Guidelines:
 - Support insulin-sensitivity-friendly eating patterns.
 - Support possible PCOS-friendly dietary patterns.
@@ -27,6 +29,28 @@ Guidelines:
 - Avoid moralizing food. Use neutral, practical language.
 - Produce family-friendly outputs that are realistic for household cooking.
 - Keep substitutions culturally respectful and avoid stripping the identity of the dish.
+- Never call foods "bad". Frame everything as "could support" or "worth watching".
+- Avoid calorie or macro obsession. Focus on protein, fiber, satiety, and blood sugar stability.
+
+Scoring (all scores 1–10):
+- metabolicScore: overall metabolic friendliness for insulin-resistance-supportive eating.
+- proteinScore: protein adequacy for the meal type and serving size.
+- fiberScore: fiber content from vegetables, legumes, whole grains.
+- satietyScoreNumeric: how filling and satisfying the meal is likely to be.
+- bloodSugarRiskScore: estimated blood sugar spike risk (10 = very high risk, 1 = very low risk).
+
+Text fields:
+- quickVerdict: 1–2 sentence plain-language summary. What works, what could be nudged.
+- mainConcerns: up to 3 short concern strings. Neutral, not moralistic.
+- minimalChangeVersion: the smallest practical improvement. Keep the dish recognizable. 1–3 sentences.
+- supportiveVersion: a more intentional version that adds protein, fiber, or lowers glycemic load. Still realistic. 2–4 sentences.
+- plateStrategy: how to plate or portion this meal for better satiety. 1–2 sentences.
+- whyThisHelps: brief explanation of why the suggested changes support blood sugar and satiety. 1–2 sentences. No medical claims.
+- culturalNotes: only include if the meal has strong cultural identity. Acknowledge it. Keep it respectful and brief. Empty string if not applicable.
+- shoppingAdditions: 2–5 short ingredient strings to add next shopping trip that would support this meal pattern.
+- prepNotes: 1–3 short practical prep tips (timing, batch cooking, shortcuts).
+- mealPairings: 2–3 simple food or drink pairings that would complement this meal metabolically.
+- cautions: 0–2 short notes about things worth watching (e.g. portion size, high sodium, added sugar). Empty array if none.
 `.trim();
 
 const mealAnalysisJsonSchema = {
@@ -90,6 +114,75 @@ const mealAnalysisJsonSchema = {
       type: "string",
       description:
         "One short question to ask the household before saving this meal."
+    },
+    metabolicScore: {
+      type: "number",
+      description: "Overall metabolic friendliness score 1–10 for insulin-resistance-supportive eating."
+    },
+    proteinScore: {
+      type: "number",
+      description: "Protein adequacy score 1–10 for the meal type and serving size."
+    },
+    fiberScore: {
+      type: "number",
+      description: "Fiber content score 1–10 from vegetables, legumes, and whole grains."
+    },
+    satietyScoreNumeric: {
+      type: "number",
+      description: "Satiety score 1–10 for how filling and satisfying the meal is likely to be."
+    },
+    bloodSugarRiskScore: {
+      type: "number",
+      description: "Blood sugar spike risk score 1–10 where 10 is very high risk and 1 is very low risk."
+    },
+    quickVerdict: {
+      type: "string",
+      description: "1–2 sentence plain-language summary of what works and what could be nudged."
+    },
+    mainConcerns: {
+      type: "array",
+      items: { type: "string" },
+      description: "Up to 3 short neutral concern strings. Not moralistic."
+    },
+    minimalChangeVersion: {
+      type: "string",
+      description: "The smallest practical improvement that keeps the dish recognizable. 1–3 sentences."
+    },
+    supportiveVersion: {
+      type: "string",
+      description: "A more intentional version adding protein, fiber, or lowering glycemic load. Still realistic. 2–4 sentences."
+    },
+    plateStrategy: {
+      type: "string",
+      description: "How to plate or portion this meal for better satiety. 1–2 sentences."
+    },
+    whyThisHelps: {
+      type: "string",
+      description: "Brief explanation of why suggested changes support blood sugar and satiety. No medical claims. 1–2 sentences."
+    },
+    culturalNotes: {
+      type: "string",
+      description: "Acknowledge cultural identity if present. Respectful and brief. Empty string if not applicable."
+    },
+    shoppingAdditions: {
+      type: "array",
+      items: { type: "string" },
+      description: "2–5 short ingredient strings to add next shopping trip."
+    },
+    prepNotes: {
+      type: "array",
+      items: { type: "string" },
+      description: "1–3 short practical prep tips."
+    },
+    mealPairings: {
+      type: "array",
+      items: { type: "string" },
+      description: "2–3 simple food or drink pairings that complement this meal metabolically."
+    },
+    cautions: {
+      type: "array",
+      items: { type: "string" },
+      description: "0–2 short notes about things worth watching. Empty array if none."
     }
   },
   required: [
@@ -106,7 +199,23 @@ const mealAnalysisJsonSchema = {
     "optimizedVersion",
     "notes",
     "ingredientSuggestions",
-    "feedbackPrompt"
+    "feedbackPrompt",
+    "metabolicScore",
+    "proteinScore",
+    "fiberScore",
+    "satietyScoreNumeric",
+    "bloodSugarRiskScore",
+    "quickVerdict",
+    "mainConcerns",
+    "minimalChangeVersion",
+    "supportiveVersion",
+    "plateStrategy",
+    "whyThisHelps",
+    "culturalNotes",
+    "shoppingAdditions",
+    "prepNotes",
+    "mealPairings",
+    "cautions"
   ]
 } as const;
 

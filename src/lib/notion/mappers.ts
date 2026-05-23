@@ -1,6 +1,7 @@
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
 import type { MealFeedbackRequest } from "@/src/lib/types/feedback";
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
+import { buildMealNotesSummary } from "@/src/lib/notion/meal-notes";
 
 type PageProperties = CreatePageParameters["properties"];
 
@@ -67,7 +68,7 @@ export function mapMealAnalysisToNotionProperties(
     "Weeknight Friendly": checkbox(meal.weeknightFriendly),
     "Comfort Meal": checkbox(meal.comfortMeal),
     "Optimized Version": richText(meal.optimizedVersion),
-    Notes: richText(meal.notes)
+    Notes: richText(buildMealNotesSummary(meal))
   };
 }
 

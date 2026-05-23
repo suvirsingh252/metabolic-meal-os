@@ -31,7 +31,20 @@ type EditableTextField =
   | "mealName"
   | "optimizedVersion"
   | "notes"
-  | "feedbackPrompt";
+  | "feedbackPrompt"
+  | "quickVerdict"
+  | "minimalChangeVersion"
+  | "supportiveVersion"
+  | "plateStrategy"
+  | "whyThisHelps"
+  | "culturalNotes";
+
+type EditableScoreField =
+  | "metabolicScore"
+  | "proteinScore"
+  | "fiberScore"
+  | "satietyScoreNumeric"
+  | "bloodSugarRiskScore";
 
 type EditableBooleanField =
   | "familyApproved"
@@ -80,6 +93,11 @@ export default function AnalyzePage() {
   const [recipeText, setRecipeText] = useState("");
   const [analysis, setAnalysis] = useState<MealAnalysisResult | null>(null);
   const [ingredientText, setIngredientText] = useState("");
+  const [mainConcernsText, setMainConcernsText] = useState("");
+  const [shoppingAdditionsText, setShoppingAdditionsText] = useState("");
+  const [prepNotesText, setPrepNotesText] = useState("");
+  const [mealPairingsText, setMealPairingsText] = useState("");
+  const [cautionsText, setCautionsText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMeal, setSavedMeal] = useState<SaveMealResponse | null>(null);
@@ -128,6 +146,11 @@ export default function AnalyzePage() {
       const result = data as MealAnalysisResult;
       setAnalysis(result);
       setIngredientText(result.ingredientSuggestions.join("\n"));
+      setMainConcernsText(result.mainConcerns.join("\n"));
+      setShoppingAdditionsText(result.shoppingAdditions.join("\n"));
+      setPrepNotesText(result.prepNotes.join("\n"));
+      setMealPairingsText(result.mealPairings.join("\n"));
+      setCautionsText(result.cautions.join("\n"));
     } catch {
       setError("Unable to reach the analysis service. Try again.");
     } finally {
@@ -175,6 +198,30 @@ export default function AnalyzePage() {
               .split("\n")
               .map((item) => item.trim())
               .filter(Boolean)
+          }
+        : current
+    );
+  }
+
+  function updateScore(field: EditableScoreField, value: number) {
+    clearSaveStatus();
+    setAnalysis((current) =>
+      current ? { ...current, [field]: Math.min(10, Math.max(1, value)) } : current
+    );
+  }
+
+  function updateArrayField(
+    textSetter: (text: string) => void,
+    field: "mainConcerns" | "shoppingAdditions" | "prepNotes" | "mealPairings" | "cautions",
+    value: string
+  ) {
+    clearSaveStatus();
+    textSetter(value);
+    setAnalysis((current) =>
+      current
+        ? {
+            ...current,
+            [field]: value.split("\n").map((s) => s.trim()).filter(Boolean)
           }
         : current
     );
@@ -444,6 +491,148 @@ export default function AnalyzePage() {
                   />
                 </div>
 
+                {/* ── Analysis Framework v2 ── */}
+
+                <SectionHeader label="Quick verdict" />
+                <TextareaInput
+                  id="quickVerdict"
+                  label="Quick verdict"
+                  onChange={(value) => updateTextField("quickVerdict", value)}
+                  rows={3}
+                  value={analysis.quickVerdict}
+                />
+
+                <SectionHeader label="Scorecard (1–10)" />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <ScoreInput
+                    id="metabolicScore"
+                    label="Metabolic"
+                    onChange={(v) => updateScore("metabolicScore", v)}
+                    value={analysis.metabolicScore}
+                  />
+                  <ScoreInput
+                    id="proteinScore"
+                    label="Protein"
+                    onChange={(v) => updateScore("proteinScore", v)}
+                    value={analysis.proteinScore}
+                  />
+                  <ScoreInput
+                    id="fiberScore"
+                    label="Fiber"
+                    onChange={(v) => updateScore("fiberScore", v)}
+                    value={analysis.fiberScore}
+                  />
+                  <ScoreInput
+                    id="satietyScoreNumeric"
+                    label="Satiety"
+                    onChange={(v) => updateScore("satietyScoreNumeric", v)}
+                    value={analysis.satietyScoreNumeric}
+                  />
+                  <ScoreInput
+                    id="bloodSugarRiskScore"
+                    label="Blood sugar risk"
+                    onChange={(v) => updateScore("bloodSugarRiskScore", v)}
+                    value={analysis.bloodSugarRiskScore}
+                  />
+                </div>
+
+                <SectionHeader label="Concerns & improvements" />
+                <TextareaInput
+                  id="mainConcerns"
+                  label="Main concerns (one per line)"
+                  onChange={(value) =>
+                    updateArrayField(setMainConcernsText, "mainConcerns", value)
+                  }
+                  rows={4}
+                  value={mainConcernsText}
+                />
+                <TextareaInput
+                  id="minimalChangeVersion"
+                  label="Minimal-change version"
+                  onChange={(value) =>
+                    updateTextField("minimalChangeVersion", value)
+                  }
+                  rows={4}
+                  value={analysis.minimalChangeVersion}
+                />
+                <TextareaInput
+                  id="supportiveVersion"
+                  label="More supportive version"
+                  onChange={(value) =>
+                    updateTextField("supportiveVersion", value)
+                  }
+                  rows={5}
+                  value={analysis.supportiveVersion}
+                />
+
+                <SectionHeader label="Strategy" />
+                <TextareaInput
+                  id="plateStrategy"
+                  label="Plate strategy"
+                  onChange={(value) => updateTextField("plateStrategy", value)}
+                  rows={3}
+                  value={analysis.plateStrategy}
+                />
+                <TextareaInput
+                  id="whyThisHelps"
+                  label="Why this helps"
+                  onChange={(value) => updateTextField("whyThisHelps", value)}
+                  rows={3}
+                  value={analysis.whyThisHelps}
+                />
+                <TextareaInput
+                  id="culturalNotes"
+                  label="Cultural notes"
+                  onChange={(value) => updateTextField("culturalNotes", value)}
+                  rows={3}
+                  value={analysis.culturalNotes}
+                />
+
+                <SectionHeader label="Shopping & prep" />
+                <TextareaInput
+                  id="shoppingAdditions"
+                  label="Shopping additions (one per line)"
+                  onChange={(value) =>
+                    updateArrayField(
+                      setShoppingAdditionsText,
+                      "shoppingAdditions",
+                      value
+                    )
+                  }
+                  rows={4}
+                  value={shoppingAdditionsText}
+                />
+                <TextareaInput
+                  id="prepNotes"
+                  label="Prep notes (one per line)"
+                  onChange={(value) =>
+                    updateArrayField(setPrepNotesText, "prepNotes", value)
+                  }
+                  rows={4}
+                  value={prepNotesText}
+                />
+                <TextareaInput
+                  id="mealPairings"
+                  label="Meal pairings (one per line)"
+                  onChange={(value) =>
+                    updateArrayField(setMealPairingsText, "mealPairings", value)
+                  }
+                  rows={4}
+                  value={mealPairingsText}
+                />
+                <TextareaInput
+                  id="cautions"
+                  label="Cautions (one per line)"
+                  onChange={(value) =>
+                    updateArrayField(setCautionsText, "cautions", value)
+                  }
+                  rows={3}
+                  value={cautionsText}
+                />
+
+                {/* ── Original fields ── */}
+
+                <SectionHeader label="Optimized version" />
                 <TextareaInput
                   id="optimizedVersion"
                   label="Optimized version"
@@ -667,5 +856,45 @@ function BooleanInput({ id, label, checked, onChange }: BooleanInputProps) {
       />
       {label}
     </label>
+  );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="border-t pt-2">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+interface ScoreInputProps {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}
+
+function ScoreInput({ id, label, value, onChange }: ScoreInputProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>
+        {label}{" "}
+        <span className="font-normal text-muted-foreground">{value}/10</span>
+      </Label>
+      <Input
+        id={id}
+        max={10}
+        min={1}
+        onChange={(event) => {
+          const num = parseInt(event.target.value, 10);
+          if (!isNaN(num)) onChange(Math.min(10, Math.max(1, num)));
+        }}
+        step={1}
+        type="number"
+        value={value}
+      />
+    </div>
   );
 }

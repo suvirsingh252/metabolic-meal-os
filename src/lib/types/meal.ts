@@ -54,4 +54,23 @@ export interface MealAnalysisResult {
   notes: string;
   ingredientSuggestions: string[];
   feedbackPrompt: string;
+
+  // Analysis Framework v2
+  metabolicScore: number;
+  proteinScore: number;
+  fiberScore: number;
+  satietyScoreNumeric: number;
+  bloodSugarRiskScore: number;
+
+  quickVerdict: string;
+  mainConcerns: string[];
+  minimalChangeVersion: string;
+  supportiveVersion: string;
+  plateStrategy: string;
+  whyThisHelps: string;
+  culturalNotes: string;
+  shoppingAdditions: string[];
+  prepNotes: string[];
+  mealPairings: string[];
+  cautions: string[];
 }

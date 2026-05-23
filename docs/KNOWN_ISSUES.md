@@ -18,6 +18,8 @@ Last updated: 2026-05-23
 - [ ] Notion `getNotionPageUrl` helper is duplicated across API routes.
 - [ ] No automated tests yet.
 - [ ] No deployment smoke test script yet.
+- [ ] `/api/notion/save-meal` validator accepts Analysis Framework v2 fields leniently: numeric scores default to `0` and string/array fields default to empty if absent. Tighten once backward compatibility is no longer a concern.
+- [ ] `buildMealNotesSummary` truncates Notion Notes at 1997 characters to stay within the API 2000-character rich_text limit. Extremely verbose outputs will be silently truncated.
 
 ## UX Problems
 

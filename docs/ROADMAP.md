@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-23
+Last updated: 2026-05-23 (Analysis Framework v2)
 
 ## Completed
 
@@ -26,6 +26,9 @@ Last updated: 2026-05-23
 - [x] Save ingredient suggestions to Notion Ingredients without relations.
 - [x] Add Notion schema diagnostics for active databases.
 - [x] Add safe Meal Feedback -> Meals relation write support with fallback warning.
+- [x] Analysis Framework v2: expanded OpenAI schema with numeric scores, minimal-change framing, cultural notes, shopping additions, prep notes, meal pairings, and cautions.
+- [x] Display and edit all v2 fields in /analyze before save.
+- [x] Persist concise v2 summary (verdict, scorecard, concerns, plate strategy, cautions) into Notion Notes without schema changes.
 
 ## Current Sprint
 
@@ -63,3 +66,5 @@ Last updated: 2026-05-23
 - [ ] Need reusable success alert/card patterns.
 - [ ] Need automated tests for route validators.
 - [ ] Need deployment smoke test script.
+- [ ] save-meal route validator accepts v2 fields leniently (defaults scores to 0, strings to empty) for backward compatibility. Should be tightened once old saves are no longer a concern.
+- [ ] Notion Notes field has a 2000-character hard limit; buildMealNotesSummary truncates at 1997 chars with ellipsis as a safety measure.
