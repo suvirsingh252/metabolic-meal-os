@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerEnv } from "@/src/lib/env";
+import { getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import { mapMealAnalysisToNotionProperties } from "@/src/lib/notion/mappers";
 import {
@@ -146,8 +146,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { NOTION_MEALS_DATABASE_ID } = getServerEnv();
-    const notion = getNotionClient();
+    const { NOTION_API_KEY, NOTION_MEALS_DATABASE_ID } = getNotionMealsEnv();
+    const notion = getNotionClient(NOTION_API_KEY);
 
     const page = await notion.pages.create({
       parent: {

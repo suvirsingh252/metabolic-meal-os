@@ -16,6 +16,8 @@ Implemented:
 - Notion diagnostics from Settings.
 - Meals list loaded from the Notion Meals database.
 - Meal feedback logging to the Notion Meal Feedback database.
+- Saved-meal selection on feedback form, with manual entry fallback.
+- PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
 - Typed server-side environment configuration.
 
 Not implemented yet:
@@ -24,8 +26,7 @@ Not implemented yet:
 - Ingredient suggestion persistence.
 - Weekly planning workflows.
 - Meal template workflows.
-- PWA manifest/service worker.
-- Vercel deployment has not been confirmed from this repo.
+- Service worker/offline PWA support.
 
 ## Current Architecture
 
@@ -39,10 +40,12 @@ Stack:
 
 Code organization:
 - `src/app`: App Router pages and API routes.
-- `src/lib/env.ts`: typed server-only environment validation.
+- `src/app/manifest.ts`: web app manifest for mobile/home-screen installs.
+- `src/lib/env.ts`: typed server-only environment validation with route-scoped helpers.
 - `src/lib/types`: shared app types.
 - `src/lib/notion`: Notion client, mappers, and page summary extraction.
 - `components`: reusable UI and layout components.
+- `public/icons`: original placeholder PWA icon assets.
 
 ## Current Routes
 
@@ -50,7 +53,7 @@ Pages:
 - `/`: dashboard overview.
 - `/analyze`: paste recipe text, call analysis API, edit result, save to Notion.
 - `/meals`: fetch and display saved meals from Notion.
-- `/feedback`: log post-meal feedback to Notion.
+- `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback to Notion.
 - `/settings`: Notion diagnostics and server environment status.
 
 ## Current API Endpoints
@@ -76,6 +79,7 @@ Pages:
 - `POST /api/notion/log-feedback`
   - Input: `MealFeedbackRequest`
   - Saves meal feedback fields to Notion Meal Feedback.
+  - Saves the meal name in the feedback title only.
   - Does not relate feedback to Meals yet.
 
 ## Environment Variables
@@ -92,6 +96,21 @@ NOTION_WEEKLY_PLANS_DATABASE_ID=
 NOTION_MEAL_TEMPLATES_DATABASE_ID=
 ```
 
+Current route-scoped usage:
+- `/api/analyze-meal`: `OPENAI_API_KEY`
+- `/api/diagnostics/notion`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
+- `/api/notion/meals`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
+- `/api/notion/save-meal`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
+- `/api/notion/log-feedback`: `NOTION_API_KEY`, `NOTION_FEEDBACK_DATABASE_ID`
+
+Available env helpers:
+- `getOpenAIEnv()`
+- `getNotionMealsEnv()`
+- `getNotionFeedbackEnv()`
+- `getFullNotionEnv()`
+- `getFullServerEnv()`
+- `getServerEnv()` remains as a compatibility alias for full server env validation.
+
 Rules:
 - Never use `NEXT_PUBLIC_` for OpenAI or Notion secrets.
 - Never commit `.env.local`.
@@ -103,13 +122,15 @@ Rules:
 Current status:
 - Local build passes.
 - No `vercel.json` is currently necessary.
-- App is intended to deploy as a standard Next.js app on Vercel.
-- Remote phone testing should use the Vercel public HTTPS deployment URL.
+- GitHub repo exists and is pushed.
+- Vercel deployment exists and has succeeded.
+- Public HTTPS deployment is live.
+- Production Notion diagnostics works after Vercel env vars were completed.
 
 Deployment risks:
 - Serverless API routes depend on correct Vercel env vars.
 - Notion integration must be shared with every Notion database used by the app.
-- OpenAI and Notion keys that were accidentally placed in `.env.example` must be rotated before public GitHub/Vercel use.
+- OpenAI and Notion keys that were accidentally placed in `.env.example` should be rotated if not already completed.
 
 ## Mobile/PWA Strategy
 
@@ -119,8 +140,11 @@ Current strategy:
 - Mobile-friendly responsive UI.
 - Progressive Web App enhancement.
 - iPhone home-screen support.
+- Basic manifest and original placeholder SVG/PNG icons.
+- Safe-area padding and larger mobile form/tap targets.
 
 Deferred:
+- Service worker/offline mode.
 - React Native.
 - Expo.
 - Native iOS.
@@ -134,20 +158,17 @@ Reasoning:
 
 ## Current Blockers
 
-- Rotate the OpenAI and Notion keys that were found in `.env.example` during this session.
-- Confirm Vercel deployment and remote mobile testing.
+- Rotate the OpenAI and Notion keys that were found in `.env.example` if not already completed.
 - Confirm all Notion database schemas match app property names exactly.
-- `getServerEnv()` currently validates all configured env vars, even endpoints that only need one subset. This is strict and useful, but can make partial environment setup fail broadly.
+- No current deployment blocker is known.
 
 ## Immediate Next Tasks
 
-1. Rotate exposed OpenAI and Notion keys.
-2. Push project to GitHub after confirming no secrets remain.
-3. Import GitHub repo into Vercel.
-4. Configure Vercel environment variables.
-5. Deploy and test `/settings`, `/analyze`, `/meals`, and `/feedback` from a phone on public HTTPS.
-6. Add PWA manifest and iPhone home-screen metadata.
-7. Add relations between feedback and meals.
+1. Deploy the route-scoped env validation, feedback meal selection, and PWA foundation changes to Vercel.
+2. Confirm `/settings`, `/api/notion/meals`, `/api/notion/log-feedback`, `/api/analyze-meal`, and `/manifest.webmanifest` still work in production.
+3. Rotate exposed OpenAI and Notion keys if not already completed.
+4. Test Add to Home Screen from iPhone Safari.
+5. Add relations between feedback and meals.
 
 ## Manual Testing Checklist
 
@@ -161,7 +182,12 @@ Local:
 - Analyze a meal and edit returned fields.
 - Save the meal to Notion and open the returned Notion link.
 - Open `/meals` and verify the saved meal appears.
-- Open `/feedback`, submit a feedback entry, and open the returned Notion link.
+- Open `/feedback`, verify saved meals load in the Meal dropdown.
+- Select a saved meal and verify it fills Feedback Entry.
+- Edit Feedback Entry manually and submit feedback.
+- Open the returned Notion link.
+- Open `/manifest.webmanifest` and verify it returns manifest JSON.
+- From iPhone Safari, use Share -> Add to Home Screen on the Vercel URL.
 
 Verification commands:
 
@@ -218,7 +244,7 @@ Required databases:
 
 Current write/read usage:
 - Meals: save analyzed meals and list saved meals.
-- Meal Feedback: save post-meal feedback.
+- Meal Feedback: save post-meal feedback with a saved or manual meal name.
 - Other database IDs are configured but not actively used yet.
 
 Required sharing:
@@ -312,9 +338,9 @@ LAN testing:
 - Do not hardcode localhost in app code.
 
 Vercel deployment:
-- Push to GitHub.
-- Import into Vercel.
-- Add server-side environment variables.
+- GitHub repo is already connected.
+- Vercel deployment is already live.
+- Add or update server-side environment variables in Vercel Project Settings.
 - Deploy with default Next.js settings.
 
 GitHub workflow:

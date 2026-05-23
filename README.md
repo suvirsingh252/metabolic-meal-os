@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-No API keys are required for this scaffold. OpenAI and Notion integrations are intentionally left for the next implementation phase and should stay server-side when added.
+The app uses server-side OpenAI and Notion integrations. Keep all provider secrets in `.env.local` locally and in Vercel Project Settings for production.
 
 ## Environment
 
@@ -75,6 +75,32 @@ Deployment checklist:
 - All Notion database IDs configured.
 - Meals and Feedback databases shared with the Notion integration.
 - `/settings` Notion diagnostics passes on the Vercel URL.
+
+## iPhone Testing And Home Screen
+
+Use the Vercel public HTTPS URL for the most realistic iPhone test. Safari requires HTTPS for the app-like install flow, and this avoids local network and firewall issues.
+
+To add the app to an iPhone home screen:
+
+1. Open the Vercel deployment URL in Safari.
+2. Tap the Share button.
+3. Choose `Add to Home Screen`.
+4. Keep the suggested name, `Meal OS`, or rename it.
+5. Launch the app from the new home screen icon.
+
+LAN testing can be useful for quick local checks while developing:
+
+1. Start the dev server with a reachable port, for example `npm run dev -- -p 3011`.
+2. Find the Network URL printed by Next.js, such as `http://192.168.x.x:3011`.
+3. Open that URL from an iPhone on the same Wi-Fi network.
+
+LAN testing is not a substitute for the Vercel test because it uses plain HTTP, can be blocked by device/network settings, and does not fully match the public mobile deployment path.
+
+PWA notes:
+
+- The app includes a web app manifest at `/manifest.webmanifest`.
+- Current icons are simple original placeholder SVG and generated PNG assets in `public/icons`.
+- There is no service worker or offline mode yet.
 
 ## Analyze Meal API
 

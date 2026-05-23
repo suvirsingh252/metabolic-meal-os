@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerEnv } from "@/src/lib/env";
+import { getNotionFeedbackEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import { mapMealFeedbackToNotionProperties } from "@/src/lib/notion/mappers";
 import {
@@ -94,8 +94,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { NOTION_FEEDBACK_DATABASE_ID } = getServerEnv();
-    const notion = getNotionClient();
+    const { NOTION_API_KEY, NOTION_FEEDBACK_DATABASE_ID } =
+      getNotionFeedbackEnv();
+    const notion = getNotionClient(NOTION_API_KEY);
 
     const page = await notion.pages.create({
       parent: {

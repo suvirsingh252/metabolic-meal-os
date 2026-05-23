@@ -16,15 +16,20 @@ Last updated: 2026-05-23
 - [x] Load saved meals from Notion.
 - [x] Log meal feedback to Notion.
 - [x] Add persistent handoff documentation.
+- [x] Push project to GitHub.
+- [x] Deploy project to Vercel.
+- [x] Configure production Vercel environment variables.
+- [x] Verify production Notion diagnostics.
+- [x] Add route-scoped environment validation helpers.
+- [x] Add saved-meal selection to feedback logging.
+- [x] Add PWA manifest, app metadata, placeholder icons, and iPhone layout polish.
 
 ## Current Sprint
 
-- [ ] Rotate exposed OpenAI and Notion keys.
-- [ ] Push project to GitHub after confirming no secrets remain.
-- [ ] Import project into Vercel.
-- [ ] Configure Vercel environment variables.
-- [ ] Test public HTTPS URL from iPhone/mobile network.
-- [ ] Add PWA manifest and iPhone home-screen metadata.
+- [ ] Rotate exposed OpenAI and Notion keys if not already completed.
+- [ ] Deploy route-scoped environment validation, feedback meal selection, and PWA foundation to Vercel.
+- [ ] Test public HTTPS URL from iPhone/mobile network after latest changes.
+- [ ] Test iPhone Safari Add to Home Screen flow.
 - [ ] Confirm Notion database schemas match current property mappings.
 
 ## Next Up
@@ -50,10 +55,9 @@ Last updated: 2026-05-23
 
 ## Technical Debt
 
-- [ ] Rotate leaked keys and document completion.
-- [ ] `getServerEnv()` validates all variables even when a route only needs a subset.
+- [ ] Rotate leaked keys and document completion if not already completed.
 - [ ] Duplicate validation helpers exist across API routes.
 - [ ] Duplicate enum select/boolean input components exist in client pages.
 - [ ] Need reusable success alert/card patterns.
 - [ ] Need automated tests for route validators.
-- [ ] Need final Vercel deployment verification.
+- [ ] Need deployment smoke test script.

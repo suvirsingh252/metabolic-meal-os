@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerEnv } from "@/src/lib/env";
+import { getNotionMealsEnv } from "@/src/lib/env";
 import { mapNotionPageToMealSummary } from "@/src/lib/notion/meal-summary";
 import { getNotionClient } from "@/src/lib/notion/client";
 
@@ -22,8 +22,8 @@ function getPrimaryDataSourceId(database: unknown) {
 
 export async function GET() {
   try {
-    const { NOTION_MEALS_DATABASE_ID } = getServerEnv();
-    const notion = getNotionClient();
+    const { NOTION_API_KEY, NOTION_MEALS_DATABASE_ID } = getNotionMealsEnv();
+    const notion = getNotionClient(NOTION_API_KEY);
     const database = await notion.databases.retrieve({
       database_id: NOTION_MEALS_DATABASE_ID
     });

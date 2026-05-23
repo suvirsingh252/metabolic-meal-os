@@ -72,16 +72,31 @@ Tradeoffs:
 
 ## 2026-05-23
 
-Decision: Add server-side environment validation.
+Decision: Add PWA foundation without native mobile or offline service worker.
+
+Reasoning:
+- Makes the Vercel-hosted web app easier to test and launch from iPhone.
+- Keeps the MVP on one Next.js codebase.
+- Adds manifest, app metadata, safe-area handling, and mobile control sizing before deeper mobile investment.
+
+Tradeoffs:
+- Home-screen launch is app-like, but still a web app.
+- Offline support, push notifications, and native integrations remain deferred.
+- Placeholder icons should be replaced with polished production assets later.
+
+## 2026-05-23
+
+Decision: Add route-scoped server-side environment validation.
 
 Reasoning:
 - Fails loudly when required server config is missing.
 - Keeps secrets out of client components.
 - Gives API routes a typed configuration surface.
+- Lets each route require only the provider keys and database IDs it actually uses.
 
 Tradeoffs:
-- Current `getServerEnv()` requires all env vars, even for routes that only need a subset.
-- Partial setup is less forgiving during early integration.
+- More helper functions exist in `src/lib/env.ts`.
+- Broad workflows can still use `getFullServerEnv()` or `getFullNotionEnv()` when they truly need complete configuration.
 
 ## 2026-05-23
 

@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-import { serverEnv } from "@/src/lib/env";
+import { getOpenAIEnv } from "@/src/lib/env";
 import {
   bloodSugarImpacts,
   cuisines,
@@ -162,7 +162,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const openai = new OpenAI({ apiKey: serverEnv.OPENAI_API_KEY });
+    const { OPENAI_API_KEY } = getOpenAIEnv();
+    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
     const response = await openai.responses.create({
       model: "gpt-4.1-mini",

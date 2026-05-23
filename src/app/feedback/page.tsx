@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { ExternalLink, Loader2, MessageSquare, Save } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
@@ -18,6 +18,13 @@ import {
   type HungerLater,
   type MealFeedbackResult
 } from "@/src/lib/types/feedback";
+import type { MealSummary } from "@/src/lib/notion/meal-summary";
+
+const manualMealValue = "__manual__";
+
+interface MealsResponse {
+  meals: MealSummary[];
+}
 
 function getErrorMessage(value: unknown) {
   if (
@@ -32,7 +39,24 @@ function getErrorMessage(value: unknown) {
   return "Unable to save meal feedback right now.";
 }
 
+function getMealLoadErrorMessage(value: unknown) {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "error" in value &&
+    typeof value.error === "string"
+  ) {
+    return value.error;
+  }
+
+  return "Saved meals could not be loaded. Manual feedback entry still works.";
+}
+
 export default function FeedbackPage() {
+  const [meals, setMeals] = useState<MealSummary[]>([]);
+  const [selectedMealId, setSelectedMealId] = useState(manualMealValue);
+  const [isLoadingMeals, setIsLoadingMeals] = useState(true);
+  const [mealLoadWarning, setMealLoadWarning] = useState<string | null>(null);
   const [feedbackEntry, setFeedbackEntry] = useState("");
   const [energyAfter, setEnergyAfter] = useState<EnergyAfter>("Neutral");
   const [hungerLater, setHungerLater] = useState<HungerLater>("Satisfied");
@@ -43,6 +67,51 @@ export default function FeedbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [savedFeedback, setSavedFeedback] =
     useState<MealFeedbackResult | null>(null);
+
+  const loadMeals = useCallback(async () => {
+    setIsLoadingMeals(true);
+    setMealLoadWarning(null);
+
+    try {
+      const response = await fetch("/api/notion/meals");
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        setMealLoadWarning(getMealLoadErrorMessage(data));
+        return;
+      }
+
+      setMeals((data as MealsResponse).meals);
+    } catch {
+      setMealLoadWarning(
+        "Saved meals could not be loaded. Manual feedback entry still works."
+      );
+    } finally {
+      setIsLoadingMeals(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadMeals();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadMeals]);
+
+  function handleMealSelection(mealId: string) {
+    setSelectedMealId(mealId);
+
+    if (mealId === manualMealValue) {
+      return;
+    }
+
+    const selectedMeal = meals.find((meal) => meal.id === mealId);
+
+    if (selectedMeal) {
+      setFeedbackEntry(selectedMeal.mealName);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,6 +179,34 @@ export default function FeedbackPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="mealSelection">Meal</Label>
+              <Select
+                disabled={isLoadingMeals}
+                id="mealSelection"
+                onChange={(event) => handleMealSelection(event.target.value)}
+                value={selectedMealId}
+              >
+                <option value={manualMealValue}>
+                  {isLoadingMeals ? "Loading saved meals..." : "Manual entry"}
+                </option>
+                {meals.map((meal) => (
+                  <option key={meal.id} value={meal.id}>
+                    {meal.mealName}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                This currently saves the meal name only. A Notion relation will
+                be added later.
+              </p>
+              {mealLoadWarning ? (
+                <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  {mealLoadWarning}
+                </p>
+              ) : null}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="feedbackEntry">Feedback entry</Label>
               <Input

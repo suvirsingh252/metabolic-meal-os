@@ -70,9 +70,7 @@ export default function AnalyzePage() {
   const trimmedRecipeTextLength = recipeText.trim().length;
   const isAnalyzeDisabled = isLoading || trimmedRecipeTextLength < 10;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function submitAnalysis() {
     if (isLoading) {
       return;
     }
@@ -113,6 +111,11 @@ export default function AnalyzePage() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void submitAnalysis();
   }
 
   function updateTextField(field: EditableTextField, value: string) {
@@ -220,9 +223,15 @@ export default function AnalyzePage() {
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="recipeText">Recipe or meal idea</Label>
-                <Textarea
+                <textarea
+                  className="min-h-24 w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   id="recipeText"
-                  onChange={(event) => setRecipeText(event.target.value)}
+                  onInput={(event) => {
+                    setRecipeText(event.currentTarget.value);
+                  }}
+                  onChange={(event) => {
+                    setRecipeText(event.currentTarget.value);
+                  }}
                   placeholder="Paste ingredients, instructions, servings, constraints, or a rough meal idea here."
                   rows={16}
                   value={recipeText}
@@ -231,15 +240,37 @@ export default function AnalyzePage() {
                   Enter at least 10 characters. {trimmedRecipeTextLength}{" "}
                   characters
                 </p>
+                <div className="rounded-md border bg-background p-3 text-xs text-muted-foreground">
+                  <p>recipeText.length: {recipeText.length}</p>
+                  <p>recipeText.trim().length: {trimmedRecipeTextLength}</p>
+                  <p>isLoading: {String(isLoading)}</p>
+                  <p>isAnalyzeDisabled: {String(isAnalyzeDisabled)}</p>
+                  <p className="whitespace-pre-wrap break-words">
+                    recipeText: {recipeText}
+                  </p>
+                </div>
               </div>
-              <Button disabled={isAnalyzeDisabled} type="submit">
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Wand2 className="h-4 w-4" />
-                )}
-                {isLoading ? "Analyzing..." : "Analyze recipe"}
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  disabled={isAnalyzeDisabled}
+                  type="submit"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4" />
+                  )}
+                  {isLoading ? "Analyzing..." : "Analyze recipe"}
+                </button>
+                <button
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => void submitAnalysis()}
+                  type="button"
+                >
+                  Force Analyze
+                </button>
+              </div>
             </form>
           </CardContent>
         </Card>

@@ -4,7 +4,7 @@ Last updated: 2026-05-23
 
 ## Critical
 
-- [ ] Real-looking OpenAI and Notion secrets were found in `.env.example` during documentation setup and were scrubbed. Rotate those keys before pushing to GitHub or deploying.
+- [ ] Real-looking OpenAI and Notion secrets were found in `.env.example` during documentation setup and were scrubbed. Rotate those keys if not already completed.
 
 ## Bugs
 
@@ -13,7 +13,6 @@ Last updated: 2026-05-23
 
 ## Technical Debt
 
-- [ ] `getServerEnv()` validates all env vars globally. Consider route-specific env helpers if partial deployments become painful.
 - [ ] API validators duplicate helpers such as `isRecord`, `isEnumValue`, and `validationError`.
 - [ ] Client pages duplicate local `EnumSelect` and `BooleanInput` helpers.
 - [ ] Notion `getNotionPageUrl` helper is duplicated across API routes.
@@ -24,7 +23,7 @@ Last updated: 2026-05-23
 
 - [ ] Analyze, save, and feedback flows are functional but plain.
 - [ ] Meals page has no filtering or search yet.
-- [ ] Feedback is not related to a saved meal yet.
+- [ ] Feedback can use a saved meal name, but is not related to a saved meal in Notion yet.
 - [ ] Success/error UI patterns are not fully standardized.
 
 ## Future Migrations
@@ -39,4 +38,4 @@ Last updated: 2026-05-23
 - [ ] Notion is the only persistence layer.
 - [ ] Ingredient suggestions are displayed but not saved.
 - [ ] Weekly Plans, Ingredients, and Meal Templates database IDs exist but are not fully used.
-- [ ] Deployment documentation exists, but actual Vercel deployment remains to be verified.
+- [ ] Deployment exists, but there is no automated production smoke test yet.
