@@ -6,10 +6,88 @@ import type {
 } from "@/src/lib/integrations/food-data-central/types";
 
 const brandedDataType = "Branded";
-const preferredDataTypes = new Set([
-  "Foundation",
-  "SR Legacy",
-  "Survey (FNDDS)"
+const dataTypeRank: Record<string, number> = {
+  Foundation: 5,
+  "SR Legacy": 4,
+  "Survey (FNDDS)": 3,
+  Experimental: 2,
+  Branded: 0
+};
+
+const plainStaplePreparedWords = new Set([
+  "babyfood",
+  "baked",
+  "bbq",
+  "beverage",
+  "breakfast",
+  "candy",
+  "canned",
+  "cereal",
+  "chips",
+  "chocolate",
+  "cooked",
+  "curry",
+  "dessert",
+  "dinner",
+  "dish",
+  "drink",
+  "flavored",
+  "frozen",
+  "garlic",
+  "honey",
+  "instant",
+  "meal",
+  "mix",
+  "palak",
+  "prepared",
+  "ready",
+  "restaurant",
+  "roasted",
+  "salted",
+  "sauce",
+  "seasoned",
+  "snack",
+  "soup",
+  "strawberry",
+  "sweetened",
+  "vanilla",
+  "with"
+]);
+
+const brandSpecificSignals = new Set([
+  "brand",
+  "costco",
+  "kirkland",
+  "president",
+  "choice",
+  "great",
+  "value",
+  "trader",
+  "joe",
+  "astro",
+  "natrel",
+  "silk",
+  "liberte",
+  "nanak",
+  "gits",
+  "mdh"
+]);
+
+const stapleTokens = new Set([
+  "atta",
+  "basmati",
+  "bean",
+  "beans",
+  "chickpea",
+  "chickpeas",
+  "flour",
+  "lentil",
+  "lentils",
+  "paneer",
+  "rice",
+  "wheat",
+  "yogurt",
+  "yoghurt"
 ]);
 
 const nutrientAliases = {
@@ -33,15 +111,19 @@ export function mapFoodDataCentralSearchResult(
     return null;
   }
 
+  const confidence = calculateConfidence(query, bestMatch);
+  const matching = buildMatchingDetails(query, bestMatch, foods, confidence);
+
   return {
     ingredient: query,
     source: "usda-food-data-central",
     sourceName: "USDA FoodData Central",
-    confidence: calculateConfidence(query, bestMatch),
+    confidence,
     matchedDescription: bestMatch.description,
     fdcId: bestMatch.fdcId,
+    matching,
     nutrients: mapNutrients(bestMatch.foodNutrients ?? []),
-    notes: buildNotes(query, bestMatch)
+    notes: buildNotes(query, bestMatch, matching)
   };
 }
 
@@ -70,13 +152,45 @@ function scoreFoodMatch(
   const overlap = calculateTokenOverlap(queryTokens, descriptionTokens);
   const description = normalizeText(food.description);
   const normalizedQuery = normalizeText(query);
-  const dataTypeBonus = preferredDataTypes.has(food.dataType ?? "") ? 0.5 : 0;
-  const brandedPenalty = food.dataType === brandedDataType ? 0.55 : 0;
-  const exactBonus = description === normalizedQuery ? 0.8 : 0;
-  const containsBonus = description.includes(normalizedQuery) ? 0.25 : 0;
+  const isBranded = food.dataType === brandedDataType;
+  const queryLooksSpecific = queryAppearsBrandedOrSpecific(queryTokens);
+  const dataTypeBonus = (dataTypeRank[food.dataType ?? ""] ?? 1) * 0.65;
+  const brandedPenalty = isBranded && !queryLooksSpecific ? 7 : 0;
+  const exactBonus = description === normalizedQuery ? 5 : 0;
+  const containsBonus = description.includes(normalizedQuery) ? 1.75 : 0;
+  const allTokensBonus = queryTokens.every((token) =>
+    descriptionTokens.includes(token)
+  )
+    ? 1.25
+    : 0;
+  const missingQueryTokenPenalty =
+    queryTokens.filter((token) => !descriptionTokens.includes(token)).length *
+    1.4;
+  const shortDescriptionBonus =
+    descriptionTokens.length <= queryTokens.length + 4 ? 0.9 : 0;
+  const preparedPenalty = getPreparedProductPenalty(queryTokens, descriptionTokens);
+  const experimentalPenalty =
+    food.dataType === "Experimental" && overlap < 0.75 ? 2.5 : 0;
+  const extraTokenPenalty = Math.min(
+    Math.max(descriptionTokens.length - queryTokens.length - 3, 0) * 0.08,
+    1.2
+  );
   const orderPenalty = index * 0.01;
 
-  return overlap + dataTypeBonus + exactBonus + containsBonus - brandedPenalty - orderPenalty;
+  return (
+    overlap * 4 +
+    dataTypeBonus +
+    exactBonus +
+    containsBonus +
+    allTokensBonus +
+    shortDescriptionBonus -
+    brandedPenalty -
+    preparedPenalty -
+    missingQueryTokenPenalty -
+    experimentalPenalty -
+    extraTokenPenalty -
+    orderPenalty
+  );
 }
 
 function calculateConfidence(
@@ -89,6 +203,7 @@ function calculateConfidence(
   const normalizedQuery = normalizeText(query);
   const normalizedDescription = normalizeText(food.description);
   const isBranded = food.dataType === brandedDataType;
+  const queryLooksSpecific = queryAppearsBrandedOrSpecific(queryTokens);
 
   if (
     !isBranded &&
@@ -98,7 +213,10 @@ function calculateConfidence(
     return "high";
   }
 
-  if (overlap >= 0.5 || normalizedDescription.includes(normalizedQuery)) {
+  if (
+    (overlap >= 0.5 || normalizedDescription.includes(normalizedQuery)) &&
+    (!isBranded || queryLooksSpecific)
+  ) {
     return "medium";
   }
 
@@ -162,7 +280,92 @@ function findNutrientValue(
     : undefined;
 }
 
-function buildNotes(query: string, food: FoodDataCentralSearchFood) {
+function buildMatchingDetails(
+  query: string,
+  selectedFood: FoodDataCentralSearchFood,
+  foods: FoodDataCentralSearchFood[],
+  confidence: FoodDataCentralConfidence
+) {
+  const selectedIsBranded = selectedFood.dataType === brandedDataType;
+  const genericCandidate = foods.find((food) =>
+    isSuitableGenericCandidate(query, selectedFood, food)
+  );
+  const genericMatchPreferred = !selectedIsBranded && foods.some(
+    (food) => food.dataType === brandedDataType
+  );
+  const brandedFallback = selectedIsBranded && !genericCandidate;
+
+  return {
+    dataType: selectedFood.dataType,
+    genericMatchPreferred,
+    brandedFallback,
+    confidenceReason: getConfidenceReason(
+      query,
+      selectedFood,
+      confidence,
+      brandedFallback
+    )
+  };
+}
+
+function isSuitableGenericCandidate(
+  query: string,
+  selectedFood: FoodDataCentralSearchFood,
+  food: FoodDataCentralSearchFood
+) {
+  if (food.fdcId === selectedFood.fdcId || food.dataType === brandedDataType) {
+    return false;
+  }
+
+  const queryTokens = tokenize(query);
+  const descriptionTokens = tokenize(food.description);
+  const normalizedQuery = normalizeText(query);
+  const normalizedDescription = normalizeText(food.description);
+  const overlap = calculateTokenOverlap(queryTokens, descriptionTokens);
+
+  return (
+    normalizedDescription.includes(normalizedQuery) ||
+    queryTokens.every((token) => descriptionTokens.includes(token)) ||
+    overlap >= 0.85
+  );
+}
+
+function getConfidenceReason(
+  query: string,
+  food: FoodDataCentralSearchFood,
+  confidence: FoodDataCentralConfidence,
+  brandedFallback: boolean
+) {
+  const queryTokens = tokenize(query);
+  const descriptionTokens = tokenize(food.description);
+  const overlap = calculateTokenOverlap(queryTokens, descriptionTokens);
+  const normalizedQuery = normalizeText(query);
+  const normalizedDescription = normalizeText(food.description);
+
+  if (brandedFallback) {
+    return "Only branded or product-specific matches were suitable for this query.";
+  }
+
+  if (food.dataType && food.dataType !== brandedDataType) {
+    return `Selected ${food.dataType} because generic USDA data is preferred for plain household ingredients.`;
+  }
+
+  if (normalizedDescription === normalizedQuery) {
+    return "Selected because the description exactly matches the query.";
+  }
+
+  if (normalizedDescription.includes(normalizedQuery) || overlap >= 0.75) {
+    return `Selected because token overlap supports ${confidence} confidence.`;
+  }
+
+  return "Selected as the best available FoodData Central search result; review before relying on it.";
+}
+
+function buildNotes(
+  query: string,
+  food: FoodDataCentralSearchFood,
+  matching: IngredientNutrientSnapshot["matching"]
+) {
   const notes = [
     "Nutrient values are from USDA FoodData Central search results and are usually per 100 g unless source data specifies otherwise.",
     "Use as a diagnostic nutrient snapshot only; do not treat as recipe-level nutrition without serving-size review."
@@ -170,6 +373,22 @@ function buildNotes(query: string, food: FoodDataCentralSearchFood) {
 
   if (food.dataType) {
     notes.push(`Matched FoodData Central data type: ${food.dataType}.`);
+  }
+
+  if (matching?.genericMatchPreferred) {
+    notes.push(
+      "Generic USDA food data was preferred over branded/product-specific results where possible."
+    );
+  }
+
+  if (matching?.brandedFallback) {
+    notes.push(
+      "No suitable generic USDA match was found, so a branded/product-specific result was used as a fallback."
+    );
+  }
+
+  if (matching?.confidenceReason) {
+    notes.push(`Confidence reason: ${matching.confidenceReason}`);
   }
 
   if (food.dataType === brandedDataType) {
@@ -183,6 +402,40 @@ function buildNotes(query: string, food: FoodDataCentralSearchFood) {
   }
 
   return notes;
+}
+
+function getPreparedProductPenalty(
+  queryTokens: string[],
+  descriptionTokens: string[]
+) {
+  if (!isPlainStapleQuery(queryTokens)) {
+    return 0;
+  }
+
+  const preparedWordCount = descriptionTokens.filter((token) =>
+    plainStaplePreparedWords.has(token)
+  ).length;
+
+  return preparedWordCount * 2.5;
+}
+
+function isPlainStapleQuery(queryTokens: string[]) {
+  return (
+    queryTokens.length <= 4 &&
+    queryTokens.some((token) => stapleTokens.has(token)) &&
+    !queryAppearsBrandedOrSpecific(queryTokens)
+  );
+}
+
+function queryAppearsBrandedOrSpecific(queryTokens: string[]) {
+  if (queryTokens.some((token) => brandSpecificSignals.has(token))) {
+    return true;
+  }
+
+  return (
+    queryTokens.length >= 4 &&
+    queryTokens.some((token) => plainStaplePreparedWords.has(token))
+  );
 }
 
 function calculateTokenOverlap(queryTokens: string[], descriptionTokens: string[]) {
@@ -199,7 +452,20 @@ function calculateTokenOverlap(queryTokens: string[], descriptionTokens: string[
 function tokenize(value: string) {
   return normalizeText(value)
     .split(" ")
+    .map(normalizeToken)
     .filter((token) => token.length > 1);
+}
+
+function normalizeToken(token: string) {
+  if (token === "atta") {
+    return "wheat";
+  }
+
+  if (token === "yoghurt") {
+    return "yogurt";
+  }
+
+  return token;
 }
 
 function normalizeText(value: string) {

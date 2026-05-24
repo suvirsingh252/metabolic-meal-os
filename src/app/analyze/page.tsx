@@ -819,6 +819,14 @@ function SourceSummary({ analysis }: { analysis: MealAnalysisResult }) {
         {analysis.parserVersion ? (
           <p>Parser: {analysis.parserVersion}</p>
         ) : null}
+        {analysis.knownIngredientContextUsed ? (
+          <p>
+            Known ingredient context used
+            {analysis.knownIngredientContextNames?.length
+              ? `: ${analysis.knownIngredientContextNames.join(", ")}`
+              : ""}
+          </p>
+        ) : null}
         {analysis.sourceUrl ? (
           <a
             className="inline-flex items-center gap-2 text-primary underline-offset-4 hover:underline"

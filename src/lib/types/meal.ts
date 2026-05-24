@@ -41,6 +41,20 @@ export interface MealGuidanceBasis {
   relevance: string;
 }
 
+export interface MealKnownIngredientContext {
+  ingredientName: string;
+  proteinSource?: boolean;
+  fiberSource?: boolean;
+  staple?: boolean;
+  householdFavorite?: boolean;
+  nutrientConfidence?: string | null;
+  fdcDescription?: string | null;
+  proteinG?: number | null;
+  fiberG?: number | null;
+  carbohydratesG?: number | null;
+  energyKcal?: number | null;
+}
+
 export interface MealAnalysisRequest {
   recipeText: string;
   sourceType?: "manual" | "url" | "ai" | "family";
@@ -96,4 +110,8 @@ export interface MealAnalysisResult {
   importedAt?: string | null;
   lastParsedAt?: string | null;
   parserVersion?: string | null;
+
+  // Runtime analysis metadata. Optional and not required for Notion persistence.
+  knownIngredientContextUsed?: boolean;
+  knownIngredientContextNames?: string[];
 }

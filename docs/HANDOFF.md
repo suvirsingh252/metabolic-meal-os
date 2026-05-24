@@ -1,12 +1,30 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-24 (Evidence-Aware Analysis v3)
+Last updated: 2026-05-24 (FoodData Central Matching Quality)
 
 This is the primary resume document for future Codex sessions. Keep it current.
 
 ## Current Project Status
 
 Metabolic Meal OS is a production-oriented MVP Next.js app for household meal optimization.
+
+Production verified:
+- Public Vercel deployment exists and is live.
+- Previously exposed OpenAI and Notion keys have been rotated.
+- Evidence-Aware Analysis v3 is deployed and functioning in production.
+- Recipe URL analysis works in production.
+- `/analyze` save flow persists ingredient suggestions from the editable ingredient textarea.
+- `/api/notion/save-ingredients` works in production, including duplicate prevention.
+- Ingredients database nutrient properties exist.
+- USDA lookup works in production.
+- USDA enrichment works when a valid Ingredient page ID is provided.
+- V2 and V3 Notes summaries persist correctly into Notion.
+- Meals load correctly from production.
+- Feedback save works.
+- PWA manifest/mobile shell exists.
+- Canada-centred defaults are implemented.
+- Known Ingredient context indicator exists in `/analyze`.
+- Read-only production smoke-test automation exists and passes against the live Vercel URL.
 
 Implemented:
 - Responsive dashboard shell and route navigation.
@@ -17,7 +35,7 @@ Implemented:
 - Meals list loaded from the Notion Meals database.
 - Meal feedback logging to the Notion Meal Feedback database.
 - Saved-meal selection on feedback form, with manual entry fallback.
-- Ingredient suggestion persistence to Notion Ingredients after meal save, without relations.
+- Ingredient suggestion persistence to Notion Ingredients after meal save, without relations. The production `/analyze` flow now saves from the editable ingredient textarea and duplicate detection works.
 - Notion schema diagnostics for Meals, Ingredients, and Meal Feedback from Settings.
 - PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
 - Typed server-side environment configuration.
@@ -29,9 +47,13 @@ Implemented:
 - Recipe URL analysis support: `/analyze` accepts a recipe URL in the existing input, `/api/analyze-meal` fetches and parses it server-side through the recipe-parser adapter, prefers recipe JSON-LD when present, falls back to cleaned page text, and returns source metadata with the analysis.
 - Household recipe feedback, AI analysis, pantry item, operational tag, and localization types are present for future workflows.
 - Evidence-aware foundation: static approved source registry and safe health-guidance principles for diabetes-aware, PCOS-aware, and Canada's Food Guide-aligned future analysis.
-- Evidence-Aware Analysis v3: runtime meal analysis now uses the approved source registry and health-guidance principles to produce evidence notes, confidence notes, a safety disclaimer, and source/principle-linked guidance basis. V3 fields are editable in `/analyze` and summarized into Notion Notes without schema changes.
+- Evidence-Aware Analysis v3: runtime meal analysis now uses the approved source registry and health-guidance principles to produce evidence notes, confidence notes, a safety disclaimer, and source/principle-linked guidance basis. V3 fields are production-active, editable in `/analyze`, and summarized into Notion Notes without schema changes.
+- Ingredient-aware analysis context: `/api/analyze-meal` now does a best-effort read of matching known Ingredients from Notion before the OpenAI call and adds a compact "Known household ingredient context" block when matches exist. This can include household flags, nutrient confidence, FDC description, and ingredient-level protein/fiber/carbohydrate/energy hints already stored in Notion.
 - USDA FoodData Central ingredient lookup foundation: server-side `/api/ingredients/lookup` route, scoped `FDC_API_KEY`, normalized nutrient snapshot mapper, and Settings diagnostics panel.
 - Explicit USDA -> Notion ingredient enrichment endpoint: `/api/ingredients/enrich` can lookup only or lookup and update an Ingredient page when compatible Notion properties already exist.
+- FoodData Central matching quality improvements: lookup now fetches preferred generic USDA data types more robustly, ranks Foundation/SR Legacy/Survey ahead of Experimental and Branded where suitable, penalizes prepared/flavored/plain-staple mismatches, adds limited query expansion for paneer and atta, and returns optional match metadata explaining the selected data type and fallback reason.
+- Ingredient picker/enrichment UX: Settings loads existing Notion Ingredients, lets the user select an Ingredient by name, and enriches the selected page without manual Notion page ID copy/paste. Manual lookup-only mode remains available when no Ingredient is selected.
+- Production smoke-test script: `npm run smoke:prod` runs `scripts/smoke-test.ts` against `SMOKE_BASE_URL` and verifies read-only production health checks without OpenAI calls or Notion writes.
 
 Not implemented yet:
 - Authentication.
@@ -44,7 +66,7 @@ Not implemented yet:
 - Live Open Food Facts, nutrition, grocery price, flyer, or weather API integrations.
 - Persistence for structured ingredients, pantry items, household preferences, or separate AI analysis records beyond current safe Notion meal-source writes.
 - Automatic nutrition enrichment of analysis or Notion ingredient records from FoodData Central.
-- Automatic runtime enrichment during meal analysis or ingredient suggestion persistence.
+- Automatic USDA lookup/enrichment during meal analysis or ingredient suggestion persistence.
 
 ## Current Architecture
 
@@ -72,6 +94,8 @@ Code organization:
 - `src/lib/health-guidance/*`: safe guidance principles and global health safety rules.
 - `src/lib/household/preferences.ts`: default household preference access.
 - `src/lib/notion`: Notion client, mappers, and page summary extraction.
+- `src/lib/notion/ingredient-context.ts`: best-effort read-only helper for matching known Ingredients and formatting lightweight household ingredient context for analysis prompts.
+- `src/lib/notion/ingredient-summary.ts`: maps Notion Ingredient pages into simplified summaries for Settings picker/enrichment UX.
 - `components`: reusable UI and layout components.
 - `public/icons`: original placeholder PWA icon assets.
 
@@ -100,6 +124,8 @@ Pages:
   - Returns `MealAnalysisResult`.
   - Evidence-Aware Analysis v3 fields include `evidenceNotes`, `confidenceNotes`, `safetyDisclaimer`, and `guidanceBasis`.
   - V3 prompt context is generated from `globalHealthSafetyRules`, `healthGuidancePrinciples`, and approved source IDs. It does not call USDA or other nutrition APIs at runtime.
+  - Before calling OpenAI, performs a best-effort Notion Ingredients lookup against the prepared recipe text. Matching known Ingredients are included as lightweight household context only; failures are logged and analysis continues without that context.
+  - Response metadata may include `knownIngredientContextUsed` and `knownIngredientContextNames` so `/analyze` can show a small indicator.
   - Accepts optional source metadata and returns source defaults for current manual paste flows.
   - If `recipeText` starts with `http://` or `https://`, treats it as a recipe URL, fetches it server-side, parses JSON-LD recipe data when available, falls back to cleaned page text, and then analyzes the extracted text.
   - Blocks obvious local/private URL hosts and returns a user-facing fallback error when pages cannot be fetched or parsed.
@@ -109,6 +135,7 @@ Pages:
   - Validates ingredient length from 2 to 100 characters.
   - Uses `FDC_API_KEY` via `getFoodDataCentralEnv()`.
   - Calls USDA FoodData Central server-side and returns a normalized nutrient snapshot.
+  - Prefers generic/common data types when suitable and can return optional `matching` metadata with selected data type, generic/branded fallback flags, and confidence reason.
   - Does not enrich analysis output, Notion ingredients, or Notion schema.
 
 - `POST /api/ingredients/enrich`
@@ -117,6 +144,11 @@ Pages:
   - If `ingredientPageId` is omitted, returns lookup plus skipped fields.
   - If `ingredientPageId` is present, inspects the Ingredients database schema and updates only compatible properties that already exist.
   - Never creates Notion schema properties.
+
+- `GET /api/notion/ingredients`
+  - Queries the Notion Ingredients database's primary data source.
+  - Returns simplified Ingredient summaries for Settings picker/enrichment UX: page ID, name, URL, category, household flags, nutrient confidence, and FDC description.
+  - Does not write to Notion.
 
 - `GET /api/diagnostics/notion`
   - Verifies Notion API key, Meals database ID, and database access.
@@ -174,10 +206,16 @@ Current route-scoped usage:
 - `/api/ingredients/lookup`: `FDC_API_KEY`
 - `/api/diagnostics/notion`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
 - `/api/diagnostics/notion-schemas`: scoped Meals, Ingredients, and Feedback env helpers
+- `/api/notion/ingredients`: `NOTION_API_KEY`, `NOTION_INGREDIENTS_DATABASE_ID`
 - `/api/notion/meals`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
 - `/api/notion/save-meal`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
 - `/api/notion/save-ingredients`: `NOTION_API_KEY`, `NOTION_INGREDIENTS_DATABASE_ID`
 - `/api/notion/log-feedback`: `NOTION_API_KEY`, `NOTION_FEEDBACK_DATABASE_ID`
+
+Smoke test:
+- `SMOKE_BASE_URL`: required only for `npm run smoke:prod`.
+- Example: `SMOKE_BASE_URL=https://your-vercel-url npm run smoke:prod`.
+- The script performs read-only checks for pages, manifest, Notion diagnostics, schema diagnostics, and USDA paneer lookup. It does not call OpenAI and does not create Notion records.
 
 Available env helpers:
 - `getOpenAIEnv()`
@@ -208,7 +246,7 @@ Current status:
 Deployment risks:
 - Serverless API routes depend on correct Vercel env vars.
 - Notion integration must be shared with every Notion database used by the app.
-- OpenAI and Notion keys that were accidentally placed in `.env.example` should be rotated if not already completed.
+- If secrets are ever exposed again, rotate them before continuing production work.
 
 ## Mobile/PWA Strategy
 
@@ -236,28 +274,24 @@ Reasoning:
 
 ## Current Blockers
 
-- Rotate the OpenAI and Notion keys that were found in `.env.example` if not already completed.
-- Analysis Framework v2 and Recipe URL analysis passed production API smoke tests, but browser-rendered review UI still needs a human/UI pass on the live deployment.
+- No authentication yet; do not broaden public sharing before auth exists.
 - Optional source tracking fields require matching Notion Meals properties before they persist in Notion. The app detects compatible fields but does not create schema.
 - Recipe URL parsing is intentionally basic and dependency-free. Some recipe sites may block server-side fetches or hide recipe content behind scripts.
-- Evidence-Aware Analysis v3 is implemented locally and validated through local API/save smoke tests. Deploy and production-smoke-test before trusting the live URL.
-- FoodData Central lookup is diagnostic only. It is not wired into analysis prompts or automatic ingredient persistence.
-- DEMO_KEY testing can hit USDA rate limits; use a real `FDC_API_KEY` for reliable diagnostics.
-- Ingredient nutrient properties are present in the active Ingredients data source and USDA lookup/enrich lookup-only works in production.
-- A local fix for ingredient persistence is implemented: `/api/notion/save-ingredients` now reads schema from the active Ingredients data source rather than the database object. Deploy and retest on Vercel before considering the production blocker closed.
-- The active Meal Feedback data source configured by `NOTION_FEEDBACK_DATABASE_ID` does not currently expose a relation property to Meals. Selected-meal feedback saves with a warning until the active Feedback data source gets a relation to the configured Meals database.
+- Evidence-Aware Analysis v3 works in production; continue reviewing real-meal output for safe language drift.
+- FoodData Central lookup is not called during meal analysis or automatic ingredient persistence. Analysis can read already-saved Ingredient context from Notion as lightweight background.
+- FoodData Central matching is improved but still heuristic. Some culturally specific or variety-specific staples may still fall back to branded/product-specific records when no suitable generic result is returned.
+- Ingredient enrichment remains explicit/manual from Settings; it is not automatic during analysis or ingredient persistence.
+- Ingredient suggestions are saved as standalone records; there is no Ingredient -> Meal relation yet.
+- Structured ingredient persistence is not implemented yet.
 
 ## Immediate Next Tasks
 
-1. Deploy the ingredient persistence/relation-diagnostics fix and Evidence-Aware Analysis v3, then rerun production smoke checks for analysis, save, ingredient creation, duplicate handling, selected-meal feedback, and Notion Notes.
-2. If desired, add optional source properties to the Notion Meals database: Source Type, Source URL, Source Name, Imported At, Last Parsed At, Parser Version.
-3. Confirm manual meal saves still work with and without those optional Notion properties.
-4. Rotate exposed OpenAI and Notion keys if not already completed.
-5. Add a relation property on the active Meal Feedback data source/database configured by `NOTION_FEEDBACK_DATABASE_ID`, pointing to the Meals database configured by `NOTION_MEALS_DATABASE_ID`; rerun `/settings` schema diagnostics to confirm it appears.
-6. Add structured ingredient persistence behind the current string-compatible ingredient flow.
-7. Review Evidence-Aware Analysis v3 output quality on real household meals and tighten prompt/schema language if it drifts into medical claims.
-8. Future ingredient slice: review whether FoodData Central snapshots should attach to normalized ingredients, still without overwriting canonical household data.
-9. Proceed to Evidence-Aware Analysis v3 only after the blocker smoke tests pass or the remaining Notion relation mismatch is explicitly accepted.
+1. Review FoodData Central matching quality on a larger household ingredient set and add targeted query expansions only where needed.
+2. Review Evidence-Aware Analysis v3 plus known Ingredient context output quality on real household meals and tighten prompt/schema language if it drifts into medical claims or over-precise nutrition claims.
+3. Add Ingredient -> Meal relation work after confirming the desired Notion relation model.
+4. Add structured ingredient persistence behind the current string-compatible ingredient flow.
+5. Add meal detail view.
+6. Harden Recipe URL analysis after real-site testing.
 
 ## Manual Testing Checklist
 
@@ -294,6 +328,7 @@ Verification commands:
 npm run typecheck
 npm run lint
 npm run build
+SMOKE_BASE_URL=https://your-vercel-url npm run smoke:prod
 ```
 
 ## How To Start Local Dev

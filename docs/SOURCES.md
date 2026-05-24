@@ -107,15 +107,19 @@ Current behavior:
 - Accepts `{ "ingredient": string }`.
 - Validates ingredient length from 2 to 100 characters.
 - Searches USDA FoodData Central.
-- Prefers common-food datasets when a reasonable match is available.
+- Fetches preferred generic/common datasets first: Foundation, SR Legacy, and Survey (FNDDS), with Experimental queried separately and treated cautiously.
 - Falls back to broader results, including branded foods, when needed.
+- Ranks suitable generic/common records ahead of branded records for plain staples.
+- Penalizes prepared/flavored product descriptions for plain staple queries.
+- Uses limited query expansion for known household terms such as `paneer` -> `cheese paneer` and `atta` -> `whole wheat`.
 - Returns a normalized nutrient snapshot with source ID, confidence, matched description, FDC ID, selected nutrients, and notes.
+- May include optional `matching` metadata with selected data type, generic/branded fallback flags, and confidence reason.
 
 Current limitations:
 
 - Values are diagnostic snapshots, usually per 100 g, not recipe-level nutrition.
 - Match confidence is heuristic.
-- Branded matches are limited confidence unless that exact product is intended.
+- Branded matches are limited confidence unless that exact product is intended or no suitable generic match was returned.
 - DEMO_KEY testing can hit USDA rate limits; use a real key for reliable diagnostics.
 
 ## USDA Ingredient Enrichment To Notion
@@ -137,6 +141,7 @@ Behavior:
 
 - Without `ingredientPageId`: performs USDA lookup only and reports all Notion fields as skipped.
 - With `ingredientPageId`: performs USDA lookup, inspects the Ingredients database schema, updates compatible properties that already exist, and skips missing or incompatible properties.
+- Settings now provides an Ingredient picker backed by `GET /api/notion/ingredients`, so normal enrichment no longer requires copying a Notion page ID manually.
 - Does not create Notion properties.
 - Does not run during meal analysis or ingredient saving.
 
@@ -154,7 +159,7 @@ Expected optional Ingredients properties:
 - `Energy (kcal)`
 - `Last Nutrient Lookup`
 
-Schema inspection on 2026-05-24 showed the current Ingredients database only has:
+The active Ingredients database has the household classification fields:
 
 - `Category`
 - `Fiber Source`
@@ -164,4 +169,4 @@ Schema inspection on 2026-05-24 showed the current Ingredients database only has
 - `Protein Source`
 - `Staple`
 
-Therefore all nutrient enrichment properties are currently skipped until added manually in Notion.
+Production schema diagnostics on 2026-05-24 confirmed the nutrient properties above exist. Enrichment still skips any missing or incompatible field safely if a future schema changes.

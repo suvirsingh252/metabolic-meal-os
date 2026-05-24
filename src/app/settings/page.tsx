@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   KeyRound,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { getDefaultHouseholdPreferences } from "@/src/lib/household/preferences";
 
 interface NotionDiagnosticsSuccess {
@@ -86,6 +87,23 @@ interface IngredientEnrichmentResult {
   }>;
 }
 
+interface IngredientSummary {
+  id: string;
+  name: string;
+  url: string;
+  category?: string | null;
+  proteinSource?: boolean;
+  fiberSource?: boolean;
+  staple?: boolean;
+  householdFavorite?: boolean;
+  nutrientConfidence?: string | null;
+  fdcDescription?: string | null;
+}
+
+interface IngredientsListResponse {
+  ingredients: IngredientSummary[];
+}
+
 function getErrorMessage(value: unknown) {
   if (
     typeof value === "object" &&
@@ -116,7 +134,11 @@ export default function SettingsPage() {
     string | null
   >(null);
   const [enrichIngredient, setEnrichIngredient] = useState("chickpeas");
-  const [enrichIngredientPageId, setEnrichIngredientPageId] = useState("");
+  const [selectedIngredientId, setSelectedIngredientId] = useState("");
+  const [ingredientSearch, setIngredientSearch] = useState("");
+  const [ingredients, setIngredients] = useState<IngredientSummary[]>([]);
+  const [isLoadingIngredients, setIsLoadingIngredients] = useState(false);
+  const [ingredientsError, setIngredientsError] = useState<string | null>(null);
   const [isEnrichingIngredient, setIsEnrichingIngredient] = useState(false);
   const [ingredientEnrichmentResult, setIngredientEnrichmentResult] =
     useState<IngredientEnrichmentResult | null>(null);
@@ -124,6 +146,27 @@ export default function SettingsPage() {
     string | null
   >(null);
   const householdPreferences = getDefaultHouseholdPreferences();
+  const selectedIngredient =
+    ingredients.find((ingredient) => ingredient.id === selectedIngredientId) ??
+    null;
+  const filteredIngredients = useMemo(() => {
+    const search = ingredientSearch.trim().toLowerCase();
+
+    if (!search) {
+      return ingredients;
+    }
+
+    return ingredients.filter((ingredient) =>
+      [
+        ingredient.name,
+        ingredient.category,
+        ingredient.nutrientConfidence,
+        ingredient.fdcDescription
+      ]
+        .filter(Boolean)
+        .some((value) => value?.toLowerCase().includes(search))
+    );
+  }, [ingredientSearch, ingredients]);
 
   async function testNotionConnection() {
     if (isTestingNotion) {
@@ -224,13 +267,61 @@ export default function SettingsPage() {
     }
   }
 
+  const loadIngredients = useCallback(async () => {
+    setIsLoadingIngredients(true);
+    setIngredientsError(null);
+
+    try {
+      const response = await fetch("/api/notion/ingredients");
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        setIngredientsError(getErrorMessage(data));
+        return;
+      }
+
+      const result = data as IngredientsListResponse;
+      setIngredients(result.ingredients);
+    } catch {
+      setIngredientsError("Unable to load Ingredients from Notion. Try again.");
+    } finally {
+      setIsLoadingIngredients(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadIngredients();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadIngredients]);
+
+  function selectIngredient(ingredientId: string) {
+    setSelectedIngredientId(ingredientId);
+    setIngredientEnrichmentError(null);
+    setIngredientEnrichmentResult(null);
+
+    const ingredient = ingredients.find((item) => item.id === ingredientId);
+
+    if (ingredient) {
+      setEnrichIngredient(ingredient.name);
+    }
+  }
+
+  function updateEnrichIngredientName(value: string) {
+    setEnrichIngredient(value);
+    setSelectedIngredientId("");
+    setIngredientEnrichmentError(null);
+    setIngredientEnrichmentResult(null);
+  }
+
   async function testIngredientEnrichment() {
     if (isEnrichingIngredient) {
       return;
     }
 
     const ingredientName = enrichIngredient.trim();
-    const ingredientPageId = enrichIngredientPageId.trim();
 
     if (ingredientName.length < 2) {
       setIngredientEnrichmentError("Ingredient name must be at least 2 characters.");
@@ -250,7 +341,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           ingredientName,
-          ingredientPageId: ingredientPageId || null
+          ingredientPageId: selectedIngredient?.id ?? null
         })
       });
       const data: unknown = await response.json();
@@ -436,29 +527,57 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <div className="space-y-2">
               <Label htmlFor="enrichIngredient">Ingredient name</Label>
               <Input
                 id="enrichIngredient"
                 maxLength={100}
-                onChange={(event) => setEnrichIngredient(event.target.value)}
+                onChange={(event) =>
+                  updateEnrichIngredientName(event.target.value)
+                }
                 placeholder="e.g. chickpeas"
                 value={enrichIngredient}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="enrichIngredientPageId">
-                Ingredient page ID optional
-              </Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="ingredientSearch">Existing Ingredient</Label>
+                <button
+                  className="text-xs font-medium text-primary underline-offset-4 hover:underline disabled:pointer-events-none disabled:opacity-50"
+                  disabled={isLoadingIngredients}
+                  onClick={() => void loadIngredients()}
+                  type="button"
+                >
+                  Refresh
+                </button>
+              </div>
               <Input
-                id="enrichIngredientPageId"
-                onChange={(event) =>
-                  setEnrichIngredientPageId(event.target.value)
-                }
-                placeholder="Paste a Notion Ingredient page ID to update"
-                value={enrichIngredientPageId}
+                id="ingredientSearch"
+                onChange={(event) => setIngredientSearch(event.target.value)}
+                placeholder="Search existing Ingredients"
+                value={ingredientSearch}
               />
+              <Select
+                aria-label="Select existing Ingredient"
+                disabled={isLoadingIngredients || ingredients.length === 0}
+                onChange={(event) => selectIngredient(event.target.value)}
+                value={selectedIngredientId}
+              >
+                <option value="">
+                  {isLoadingIngredients
+                    ? "Loading Ingredients..."
+                    : "Lookup only - no Notion update"}
+                </option>
+                {filteredIngredients.map((ingredient) => (
+                  <option key={ingredient.id} value={ingredient.id}>
+                    {ingredient.name}
+                    {ingredient.nutrientConfidence
+                      ? ` · ${ingredient.nutrientConfidence} confidence`
+                      : ""}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div className="flex items-end">
               <Button
@@ -476,6 +595,24 @@ export default function SettingsPage() {
               </Button>
             </div>
           </div>
+
+          {ingredientsError ? (
+            <Alert>
+              <span className="inline-flex items-center gap-2">
+                <XCircle className="h-4 w-4" />
+                {ingredientsError}
+              </span>
+            </Alert>
+          ) : null}
+
+          {selectedIngredient ? (
+            <SelectedIngredientCard ingredient={selectedIngredient} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No existing Ingredient selected. Enrich will run lookup-only and
+              will not update Notion.
+            </p>
+          )}
 
           {ingredientEnrichmentError ? (
             <Alert>
@@ -589,6 +726,64 @@ function IngredientEnrichmentResultCard({
       </div>
 
       <IngredientLookupResultCard result={result.lookup} />
+    </div>
+  );
+}
+
+function SelectedIngredientCard({
+  ingredient
+}: {
+  ingredient: IngredientSummary;
+}) {
+  const traits = [
+    ingredient.category ? `Category: ${ingredient.category}` : null,
+    ingredient.proteinSource ? "Protein source" : null,
+    ingredient.fiberSource ? "Fiber source" : null,
+    ingredient.staple ? "Staple" : null,
+    ingredient.householdFavorite ? "Household favorite" : null,
+    ingredient.nutrientConfidence
+      ? `Nutrient confidence: ${ingredient.nutrientConfidence}`
+      : null
+  ].filter(Boolean);
+
+  return (
+    <div className="rounded-md border bg-background p-4 text-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="font-medium">Selected Ingredient: {ingredient.name}</p>
+          <p className="mt-1 text-muted-foreground">
+            Enrich will update this Notion Ingredient if compatible nutrient
+            properties exist.
+          </p>
+        </div>
+        <a
+          className="text-primary underline-offset-4 hover:underline"
+          href={ingredient.url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Open in Notion
+        </a>
+      </div>
+
+      {traits.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {traits.map((trait) => (
+            <span
+              className="rounded-md border bg-card px-2 py-1 text-xs text-muted-foreground"
+              key={trait}
+            >
+              {trait}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {ingredient.fdcDescription ? (
+        <p className="mt-3 text-muted-foreground">
+          FDC: {ingredient.fdcDescription}
+        </p>
+      ) : null}
     </div>
   );
 }

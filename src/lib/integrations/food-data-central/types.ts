@@ -31,6 +31,12 @@ export interface IngredientNutrientSnapshot {
   confidence: FoodDataCentralConfidence;
   matchedDescription: string;
   fdcId: number;
+  matching?: {
+    dataType?: string;
+    genericMatchPreferred: boolean;
+    brandedFallback: boolean;
+    confidenceReason: string;
+  };
   nutrients: {
     proteinG?: number;
     fiberG?: number;

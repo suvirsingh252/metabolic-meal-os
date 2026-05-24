@@ -27,6 +27,7 @@ import {
   globalHealthSafetyRules,
   healthGuidancePrinciples
 } from "@/src/lib/health-guidance";
+import { getKnownIngredientContext } from "@/src/lib/notion/ingredient-context";
 import { approvedSources } from "@/src/lib/sources/source-registry";
 
 export const runtime = "nodejs";
@@ -92,6 +93,8 @@ Guidelines:
 - Use the evidence-aware guidance context below to produce source-linked, non-medical food-pattern support.
 - Cite only sourceId and principleId values that appear in the context.
 - Do not use USDA nutrient lookup, calorie counting, macro tracking, medical targets, or automated nutrition enrichment in this analysis.
+- If known household ingredient context is provided, use it as lightweight background for protein/fiber guidance, blood-sugar impact reasoning, cultural preservation, and minimal-change suggestions.
+- Treat known household ingredient nutrient values as approximate ingredient-level context only. Do not calculate meal calories or exact meal macros.
 
 Scoring (all scores 1–10):
 - metabolicScore: overall metabolic friendliness for insulin-resistance-supportive eating.
@@ -406,6 +409,9 @@ export async function POST(request: Request) {
 
   try {
     const preparedRecipe = await prepareRecipeForAnalysis(validatedRequest);
+    const ingredientContext = await safeGetKnownIngredientContext(
+      preparedRecipe.analysisText
+    );
     const { OPENAI_API_KEY } = getOpenAIEnv();
     const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
@@ -418,7 +424,10 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `Analyze this recipe or meal text and return structured JSON only:\n\n${preparedRecipe.analysisText}`
+          content: formatAnalysisUserPrompt(
+            preparedRecipe.analysisText,
+            ingredientContext.promptContext
+          )
         }
       ],
       text: {
@@ -440,7 +449,11 @@ export async function POST(request: Request) {
       sourceName: preparedRecipe.sourceName,
       importedAt: preparedRecipe.importedAt,
       lastParsedAt: preparedRecipe.lastParsedAt,
-      parserVersion: preparedRecipe.parserVersion
+      parserVersion: preparedRecipe.parserVersion,
+      knownIngredientContextUsed: ingredientContext.ingredients.length > 0,
+      knownIngredientContextNames: ingredientContext.ingredients.map(
+        (ingredient) => ingredient.ingredientName
+      )
     });
   } catch (error) {
     if (error instanceof RecipeParserError) {
@@ -453,6 +466,32 @@ export async function POST(request: Request) {
       { error: "Unable to analyze meal right now." },
       { status: 500 }
     );
+  }
+}
+
+function formatAnalysisUserPrompt(
+  analysisText: string,
+  ingredientPromptContext: string
+) {
+  const contextBlock = ingredientPromptContext
+    ? `\n\n${ingredientPromptContext}`
+    : "";
+
+  return `Analyze this recipe or meal text and return structured JSON only:\n\n${analysisText}${contextBlock}`;
+}
+
+async function safeGetKnownIngredientContext(analysisText: string) {
+  try {
+    return await getKnownIngredientContext({
+      text: analysisText
+    });
+  } catch (error) {
+    console.warn("Known ingredient context unavailable", error);
+
+    return {
+      ingredients: [],
+      promptContext: ""
+    };
   }
 }
 

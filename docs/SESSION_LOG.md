@@ -1,5 +1,248 @@
 # Session Log
 
+## 2026-05-24 Session Closeout — FDC Matching Quality
+
+Closeout scope:
+- No new product features added.
+- Rechecked documentation for FoodData Central matching quality, branded fallback behavior, explicit/manual enrichment, no runtime USDA enrichment during meal analysis, no exact calorie/macro tracking, and no medical-claim expansion.
+- Current docs already reflected the completed matching work and known basmati rice branded fallback.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- `SMOKE_BASE_URL=https://metabolic-meal-lf3ys2msu-suvir-singh-s-projects.vercel.app npm run smoke:prod` passed 9/9.
+
+Recommended next slice:
+- Review evidence-aware guidance plus known Ingredient context on real household meals. Confirm improved ingredient data makes analysis more useful without becoming over-precise, medicalized, or too numeric.
+
+## 2026-05-24 FoodData Central Matching Quality
+
+Mandatory documentation hygiene:
+- Read `HANDOFF`, `ROADMAP`, `KNOWN_ISSUES`, `DECISIONS`, and `SESSION_LOG` before coding.
+- Current docs correctly identified FoodData Central matching quality as the next trust issue.
+- No stale deployment/key-rotation blockers were found in current-state docs.
+
+Goal:
+- Improve USDA FoodData Central match selection so common household ingredients prefer suitable generic records over branded records when possible.
+- Keep API compatibility by adding only optional response fields.
+- Do not change Notion schema, meal analysis integration, auth, or automatic enrichment behavior.
+
+Files changed:
+- `src/lib/integrations/food-data-central/client.ts`
+- `src/lib/integrations/food-data-central/mappers.ts`
+- `src/lib/integrations/food-data-central/types.ts`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/DECISIONS.md`
+- `docs/SESSION_LOG.md`
+- `docs/SOURCES.md`
+
+Completed work:
+- Preferred USDA data types are now fetched more robustly by querying Foundation, SR Legacy, and Survey (FNDDS) independently and merging the results.
+- Experimental data is fetched separately and penalized unless it is a useful textual match.
+- Ranking now strongly prefers suitable generic/common records over branded records.
+- Branded records are kept as safe fallback when no suitable generic/common result is returned.
+- Text matching now:
+  - normalizes query and descriptions
+  - prefers exact/near-exact token matches
+  - penalizes missing query tokens
+  - penalizes prepared/flavored products for plain staple queries
+  - uses limited household-specific query expansion for `paneer` and `atta`
+- `IngredientNutrientSnapshot` now includes optional `matching` metadata:
+  - selected data type
+  - whether generic match was preferred
+  - whether branded fallback was used
+  - confidence reason
+- Existing lookup/enrichment response shape remains backward compatible.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- `SMOKE_BASE_URL=https://metabolic-meal-lf3ys2msu-suvir-singh-s-projects.vercel.app npm run smoke:prod` passed 9/9.
+- Local lookup tests:
+  - `paneer` -> `Cheese, paneer`, Survey (FNDDS), high confidence
+  - `chickpeas` -> `Chickpeas, (garbanzo beans, bengal gram), dry`, Foundation, medium confidence
+  - `basmati rice` -> `BASMATI RICE`, Branded, low confidence, branded fallback noted
+  - `lentils` -> `Lentils, dry`, Foundation, high confidence
+  - `yogurt` -> `Yogurt, plain, nonfat`, Foundation, high confidence
+  - `atta flour` -> `Flour, whole wheat, unenriched`, Foundation, high confidence
+  - `whole wheat flour` -> `Flour, whole wheat, unenriched`, Foundation, high confidence
+- Local enrichment through `/api/ingredients/enrich` for Paneer returned `200 OK`, used the generic Survey match, and updated compatible Notion nutrient fields.
+
+Known limitations:
+- FoodData Central matching remains heuristic.
+- `basmati rice` still falls back to a branded record because no suitable generic basmati match was returned by USDA search.
+- Future quality work should test more household staples and add targeted query expansions only when they improve trust.
+
+Recommended next slice:
+- Review evidence-aware guidance plus known Ingredient context on real household meals, or add Ingredient -> Meal relation work if persistence structure is the priority.
+
+## 2026-05-24 Ingredient Picker Enrichment UX
+
+Mandatory documentation hygiene:
+- Read `HANDOFF`, `ROADMAP`, `KNOWN_ISSUES`, `DECISIONS`, and `SESSION_LOG` before coding.
+- Found stale key-rotation items still listed as open.
+- Updated docs first to mark key rotation complete and remove it from blockers/current sprint/technical debt.
+
+Goal:
+- Allow enrichment of an existing Notion Ingredient from Settings without manually copying or pasting a Notion page ID.
+- Preserve lookup-only mode when no Ingredient is selected.
+- Do not change Notion schema, add automatic enrichment, add Ingredient -> Meal relations, or add auth.
+
+Files changed:
+- `src/app/api/notion/ingredients/route.ts`
+- `src/lib/notion/ingredient-summary.ts`
+- `src/app/settings/page.tsx`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/DECISIONS.md`
+- `docs/SESSION_LOG.md`
+- `docs/SOURCES.md`
+
+Completed work:
+- Added `GET /api/notion/ingredients`.
+- The route uses `NOTION_API_KEY` and `NOTION_INGREDIENTS_DATABASE_ID` through `getNotionIngredientsEnv()`.
+- It queries the active Ingredients data source and returns simplified Ingredient summaries: ID, name, URL, category, protein/fiber/staple/household favorite flags, nutrient confidence, and FDC description.
+- Added `src/lib/notion/ingredient-summary.ts` to map Notion Ingredient pages into the simplified response shape.
+- Updated Settings `Enrich Ingredient Test`:
+  - loads existing Ingredients from `/api/notion/ingredients`
+  - adds a search input and select dropdown
+  - selecting an Ingredient fills the ingredient name and stores the page ID internally
+  - no page ID input is shown
+  - manual ingredient name still works for lookup-only mode when no Ingredient is selected
+  - enrichment still uses existing `/api/ingredients/enrich`
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- `SMOKE_BASE_URL=https://metabolic-meal-lf3ys2msu-suvir-singh-s-projects.vercel.app npm run smoke:prod` passed 9/9.
+- Local `GET /api/notion/ingredients` returned existing Ingredients including Paneer.
+- Local direct enrichment of Paneer using its selected Ingredient ID returned `200 OK` and updated compatible nutrient fields.
+- Browser-tested Settings picker:
+  - selected Paneer from the dropdown
+  - enriched Paneer without manual page ID entry
+  - confirmed lookup-and-update result appears
+  - cleared selection and confirmed lookup-only mode still works
+
+Known limitations:
+- Ingredient picker does not create new Ingredients.
+- FoodData Central matching is still heuristic and may choose branded matches.
+- Enrichment remains explicit/manual and does not run during meal analysis or ingredient persistence.
+
+Recommended next slice:
+- Improve FoodData Central matching quality for common household ingredients and reduce branded-match surprises.
+
+## 2026-05-24 Production Smoke-Test Automation
+
+Mandatory documentation hygiene:
+- Read `HANDOFF`, `ROADMAP`, `KNOWN_ISSUES`, `DECISIONS`, and `SESSION_LOG` before coding.
+- Found stale items that still listed verified production work as pending or needing deployment/retest.
+- Updated current-state docs first so v3, recipe URL analysis, ingredient persistence, USDA lookup/enrichment, duplicate prevention, Notion Notes summaries, Meals loading, Feedback save, PWA shell, Canada defaults, and known Ingredient context are treated as verified production capabilities.
+
+Goal:
+- Add safe production smoke-test automation before more product work.
+- Verify production availability without OpenAI calls, Notion writes, or excessive API calls.
+
+Files changed:
+- `scripts/smoke-test.ts`
+- `package.json`
+- `package-lock.json`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/DECISIONS.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Added `tsx` as a dev dependency.
+- Added `npm run smoke:prod`.
+- Added `scripts/smoke-test.ts`.
+- Script requires `SMOKE_BASE_URL`.
+- Script checks:
+  - `GET /`
+  - `GET /settings`
+  - `GET /analyze`
+  - `GET /meals`
+  - `GET /feedback`
+  - `GET /manifest.webmanifest`
+  - `GET /api/diagnostics/notion`
+  - `GET /api/diagnostics/notion-schemas`
+  - `POST /api/ingredients/lookup` with `paneer`
+- Script prints clear pass/fail results and exits non-zero on failure.
+- Script validates core JSON response shape for manifest, Notion diagnostics, schema diagnostics, and USDA lookup.
+- Script remains read-only: no OpenAI calls and no Notion record creation.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Initial production smoke run returned 8/9 because manifest parsing only accepted `application/json`.
+- Updated parser to also accept `+json` and JSON-looking bodies.
+- `SMOKE_BASE_URL=https://metabolic-meal-lf3ys2msu-suvir-singh-s-projects.vercel.app npm run smoke:prod` passed 9/9:
+  - Home page
+  - Settings page
+  - Analyze page
+  - Meals page
+  - Feedback page
+  - PWA manifest
+  - Notion diagnostics
+  - Notion schema diagnostics
+  - USDA paneer lookup
+
+Known limitations:
+- Smoke automation does not cover OpenAI analysis or Notion write flows yet.
+- Future write-flow smoke tests need disposable records and cleanup policy.
+
+Recommended next slice:
+- Ingredient picker/enrichment UX so users can enrich existing Ingredient pages without manually copying page IDs.
+
+## 2026-05-24 Ingredient-Aware Analysis Context
+
+Goal:
+- Add lightweight known Ingredient context from Notion into meal analysis.
+- Improve protein/fiber guidance, blood-sugar impact reasoning, cultural preservation, and minimal-change suggestions.
+- Do not add calorie tracking, macro tracking, runtime USDA enrichment, or new medical claims.
+
+Files changed:
+- `src/lib/notion/ingredient-context.ts`
+- `src/app/api/analyze-meal/route.ts`
+- `src/lib/types/meal.ts`
+- `src/app/analyze/page.tsx`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Added `getKnownIngredientContext()` helper for read-only Notion Ingredients lookup.
+- The helper retrieves the active Ingredients data source, detects the title property, scans existing Ingredient pages, and matches known ingredient names against prepared recipe text.
+- Matching context can include Ingredient name, `Protein Source`, `Fiber Source`, `Staple`, `Household Favorite`, `Nutrient Confidence`, `FDC Description`, and existing ingredient-level protein/fiber/carbohydrates/energy fields.
+- Updated `/api/analyze-meal` to retrieve context before the OpenAI call and append it as `Known household ingredient context`.
+- Ingredient context failures are non-blocking; analysis continues without context if Notion lookup fails.
+- Added response metadata: `knownIngredientContextUsed` and `knownIngredientContextNames`.
+- Added a small `/analyze` source summary indicator when known Ingredient context was used.
+
+Safety boundaries:
+- Context is approximate ingredient-level background only.
+- The model is instructed not to calculate meal calories or exact meal macros.
+- No diagnosis, treatment/cure/prevention claims, medication/supplement/fertility advice, or individualized medical guidance was added.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Local `POST /api/analyze-meal` with paneer bhurji returned `200 OK`, `knownIngredientContextUsed: true`, and `knownIngredientContextNames: ["Paneer"]`.
+- The paneer analysis referenced the known paneer context in confidence notes without calculating meal calories or exact macros.
+- Local `POST /api/notion/save-meal` with the ingredient-aware response shape returned `200 OK` and created a Notion Meal page.
+
+Next validation:
+- Deploy and repeat the paneer smoke test in production.
+
 ## 2026-05-24 Analyze Ingredient Persistence Payload Fix
 
 Goal:

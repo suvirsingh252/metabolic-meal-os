@@ -1,6 +1,48 @@
 # Architectural Decisions
 
-Last updated: 2026-05-24 (Evidence-Aware Analysis v3)
+Last updated: 2026-05-24 (FoodData Central Matching Quality)
+
+## 2026-05-24 — FoodData Central Matching Prefers Suitable Generic Records
+
+Decision: Improve USDA FoodData Central match selection to prefer suitable generic/common records before branded records, while preserving safe branded fallback when no suitable generic match is returned.
+
+Reasoning:
+- Household staples like paneer, chickpeas, lentils, yogurt, rice, and flours should not silently enrich from branded products when a generic USDA record is available.
+- Foundation, SR Legacy, and Survey/FNDDS records are usually better defaults for household ingredient pages than branded records.
+- Match uncertainty should be visible through notes and optional metadata rather than hidden behind a single confidence value.
+
+Tradeoffs:
+- Matching remains heuristic and depends on USDA search results.
+- Culturally specific or variety-specific foods may still require targeted query expansion.
+- Branded records remain necessary fallback data for foods with no suitable generic/common result.
+
+## 2026-05-24 — Ingredient Enrichment Uses Explicit Picker
+
+Decision: Add a read-only `GET /api/notion/ingredients` route and Settings picker so USDA enrichment can update an existing Notion Ingredient without manual page ID copy/paste.
+
+Reasoning:
+- Page IDs are acceptable for diagnostics but are not a durable household UX.
+- Enrichment should remain explicit and user-triggered before it influences analysis or household data.
+- Reusing existing Ingredients preserves Notion as the reviewable source of household ingredient truth.
+
+Tradeoffs:
+- The picker loads existing Ingredient pages but does not create new Ingredients.
+- Matching quality still depends on USDA FoodData Central search results.
+- Enrichment remains a Settings/admin workflow rather than an automatic analysis step.
+
+## 2026-05-24 — Production Smoke Tests Are Read-Only First
+
+Decision: Add `scripts/smoke-test.ts` and `npm run smoke:prod` as a read-only production health check driven by `SMOKE_BASE_URL`.
+
+Reasoning:
+- Manual production checks are becoming fragile as the app adds Notion, USDA, recipe parsing, and evidence-aware analysis capabilities.
+- The first automation layer should verify availability and configuration health without creating data, calling OpenAI, or consuming unnecessary model/API budget.
+- A small TypeScript script keeps the workflow easy to run locally and from future CI.
+
+Tradeoffs:
+- This smoke test does not verify OpenAI analysis quality or Notion write flows.
+- Write-flow smoke tests still require a deliberate strategy for disposable test records and cleanup.
+- USDA lookup remains an external dependency and can fail if FoodData Central is unavailable or rate-limited.
 
 ## 2026-05-24 — Evidence-Aware Analysis v3 Uses Static Guidance At Runtime
 
