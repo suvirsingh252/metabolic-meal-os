@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
-import { mapMealAnalysisToNotionProperties } from "@/src/lib/notion/mappers";
+import {
+  mapMealAnalysisToNotionProperties,
+  type MealSourcePropertySchema
+} from "@/src/lib/notion/mappers";
 import {
   bloodSugarImpacts,
   cuisines,
@@ -17,6 +20,11 @@ import {
   type ProteinLevel,
   type SatietyLevel
 } from "@/src/lib/types/meal";
+import {
+  defaultManualRecipeSource,
+  recipeSourceTypes,
+  type RecipeSourceType
+} from "@/src/lib/types/recipe";
 
 export const runtime = "nodejs";
 
@@ -49,6 +57,115 @@ function getNotionPageUrl(page: { id: string; url?: string }) {
   }
 
   return page.url;
+}
+
+function getPropertyType(property: unknown) {
+  if (isRecord(property) && typeof property.type === "string") {
+    return property.type;
+  }
+
+  return null;
+}
+
+function getProperties(database: unknown) {
+  if (isRecord(database) && isRecord(database.properties)) {
+    return database.properties;
+  }
+
+  return {};
+}
+
+function findProperty(
+  properties: Record<string, unknown>,
+  names: string[],
+  allowedTypes: string[]
+) {
+  return names
+    .map((name) => [name, properties[name]] as const)
+    .find(([, property]) => {
+      const type = getPropertyType(property);
+      return Boolean(type && allowedTypes.includes(type));
+    });
+}
+
+function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchema {
+  const properties = getProperties(database);
+  const schema: MealSourcePropertySchema = {};
+
+  const sourceType = findProperty(
+    properties,
+    ["Source Type", "sourceType"],
+    ["select", "rich_text"]
+  );
+  const sourceUrl = findProperty(
+    properties,
+    ["Source URL", "Source Url", "sourceUrl"],
+    ["url", "rich_text"]
+  );
+  const sourceName = findProperty(
+    properties,
+    ["Source Name", "sourceName"],
+    ["select", "rich_text"]
+  );
+  const importedAt = findProperty(
+    properties,
+    ["Imported At", "Imported", "importedAt"],
+    ["date"]
+  );
+  const lastParsedAt = findProperty(
+    properties,
+    ["Last Parsed At", "Parsed At", "lastParsedAt"],
+    ["date"]
+  );
+  const parserVersion = findProperty(
+    properties,
+    ["Parser Version", "parserVersion"],
+    ["select", "rich_text"]
+  );
+
+  if (sourceType) {
+    schema.sourceType = {
+      name: sourceType[0],
+      type: getPropertyType(sourceType[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (sourceUrl) {
+    schema.sourceUrl = {
+      name: sourceUrl[0],
+      type: getPropertyType(sourceUrl[1]) as "url" | "rich_text"
+    };
+  }
+
+  if (sourceName) {
+    schema.sourceName = {
+      name: sourceName[0],
+      type: getPropertyType(sourceName[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (importedAt) {
+    schema.importedAt = {
+      name: importedAt[0],
+      type: "date"
+    };
+  }
+
+  if (lastParsedAt) {
+    schema.lastParsedAt = {
+      name: lastParsedAt[0],
+      type: "date"
+    };
+  }
+
+  if (parserVersion) {
+    schema.parserVersion = {
+      name: parserVersion[0],
+      type: getPropertyType(parserVersion[1]) as "select" | "rich_text"
+    };
+  }
+
+  return schema;
 }
 
 function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse {
@@ -129,6 +246,29 @@ function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse 
   const prepNotes = isStringArray(body.prepNotes) ? body.prepNotes : [];
   const mealPairings = isStringArray(body.mealPairings) ? body.mealPairings : [];
   const cautions = isStringArray(body.cautions) ? body.cautions : [];
+  const sourceType =
+    isEnumValue<RecipeSourceType>(body.sourceType, recipeSourceTypes)
+      ? body.sourceType
+      : defaultManualRecipeSource.sourceType;
+  const sourceUrl = typeof body.sourceUrl === "string" && body.sourceUrl.trim()
+    ? body.sourceUrl.trim()
+    : null;
+  const sourceName =
+    typeof body.sourceName === "string" && body.sourceName.trim()
+      ? body.sourceName.trim()
+      : null;
+  const importedAt =
+    typeof body.importedAt === "string" && body.importedAt.trim()
+      ? body.importedAt.trim()
+      : new Date().toISOString();
+  const lastParsedAt =
+    typeof body.lastParsedAt === "string" && body.lastParsedAt.trim()
+      ? body.lastParsedAt.trim()
+      : null;
+  const parserVersion =
+    typeof body.parserVersion === "string" && body.parserVersion.trim()
+      ? body.parserVersion.trim()
+      : defaultManualRecipeSource.parserVersion;
 
   return {
     mealName: body.mealName.trim(),
@@ -160,7 +300,13 @@ function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse 
     shoppingAdditions,
     prepNotes,
     mealPairings,
-    cautions
+    cautions,
+    sourceType,
+    sourceUrl,
+    sourceName,
+    importedAt,
+    lastParsedAt,
+    parserVersion
   };
 }
 
@@ -182,12 +328,16 @@ export async function POST(request: Request) {
   try {
     const { NOTION_API_KEY, NOTION_MEALS_DATABASE_ID } = getNotionMealsEnv();
     const notion = getNotionClient(NOTION_API_KEY);
+    const database = await notion.databases.retrieve({
+      database_id: NOTION_MEALS_DATABASE_ID
+    });
+    const sourceSchema = getMealSourcePropertySchema(database);
 
     const page = await notion.pages.create({
       parent: {
         database_id: NOTION_MEALS_DATABASE_ID
       },
-      properties: mapMealAnalysisToNotionProperties(meal)
+      properties: mapMealAnalysisToNotionProperties(meal, sourceSchema)
     });
 
     return NextResponse.json({

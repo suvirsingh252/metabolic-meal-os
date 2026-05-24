@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
+Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 
 This is the primary resume document for future Codex sessions. Keep it current.
 
@@ -22,6 +22,15 @@ Implemented:
 - PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
 - Typed server-side environment configuration.
 - Analysis Framework v2: expanded OpenAI structured output with numeric scores, minimal-change framing, cultural notes, shopping additions, prep notes, meal pairings, and cautions. All v2 fields are editable in /analyze before save. Notion Notes field stores a concise v2 summary without schema changes.
+- Canada-centred foundation types: household defaults are CA/NS/Halifax, mixed units, CAD, Celsius, and preferred stores.
+- Recipe source metadata foundation: `sourceType`, `sourceUrl`, `sourceName`, `importedAt`, `lastParsedAt`, and `parserVersion`.
+- Structured ingredient foundation: `RecipeIngredient` supports raw text, parsed name, quantity, unit, preparation, optional flag, and category while preserving string ingredient compatibility.
+- Adapter directories exist for future Open Food Facts, nutrition, recipe parser, grocery prices, and weather integrations.
+- Recipe URL analysis support: `/analyze` accepts a recipe URL in the existing input, `/api/analyze-meal` fetches and parses it server-side through the recipe-parser adapter, prefers recipe JSON-LD when present, falls back to cleaned page text, and returns source metadata with the analysis.
+- Household recipe feedback, AI analysis, pantry item, operational tag, and localization types are present for future workflows.
+- Evidence-aware foundation: static approved source registry and safe health-guidance principles for diabetes-aware, PCOS-aware, and Canada's Food Guide-aligned future analysis.
+- USDA FoodData Central ingredient lookup foundation: server-side `/api/ingredients/lookup` route, scoped `FDC_API_KEY`, normalized nutrient snapshot mapper, and Settings diagnostics panel.
+- Explicit USDA -> Notion ingredient enrichment endpoint: `/api/ingredients/enrich` can lookup only or lookup and update an Ingredient page when compatible Notion properties already exist.
 
 Not implemented yet:
 - Authentication.
@@ -29,7 +38,13 @@ Not implemented yet:
 - Weekly planning workflows.
 - Meal template workflows.
 - Service worker/offline PWA support.
-- Recipe URL input: detect a URL, fetch server-side, extract readable content, and pass to analysis. Deferred to next session.
+- Full settings persistence UI.
+- Full pantry management.
+- Live Open Food Facts, nutrition, grocery price, flyer, or weather API integrations.
+- Persistence for structured ingredients, pantry items, household preferences, or separate AI analysis records beyond current safe Notion meal-source writes.
+- Runtime use of source registry or health-guidance principles in analysis prompts/output. The foundation exists but is not wired into OpenAI behavior yet.
+- Automatic nutrition enrichment of analysis or Notion ingredient records from FoodData Central.
+- Automatic runtime enrichment during meal analysis or ingredient suggestion persistence.
 
 ## Current Architecture
 
@@ -47,9 +62,25 @@ Code organization:
 - `src/lib/ingredients`: ingredient normalization and deduplication helpers.
 - `src/lib/env.ts`: typed server-only environment validation with route-scoped helpers.
 - `src/lib/types`: shared app types.
+- `src/lib/types/recipe.ts`: recipe source metadata, structured ingredient shape, and operational tags.
+- `src/lib/types/localization.ts`: Canada-first household preference types and defaults.
+- `src/lib/types/ai-analysis.ts`: separate AI-generated analysis record shape.
+- `src/lib/types/pantry.ts`: lightweight pantry item foundation.
+- `src/lib/integrations/*`: future API adapter boundaries. `recipe-parser` has a basic URL parser; the other adapters are currently stubs only.
+- `src/lib/integrations/food-data-central/*`: server-side USDA FoodData Central client, types, and nutrient snapshot mapper.
+- `src/lib/sources/source-registry.ts`: typed approved source records with allowed/prohibited uses and confidence levels.
+- `src/lib/health-guidance/*`: safe guidance principles and global health safety rules.
+- `src/lib/household/preferences.ts`: default household preference access.
 - `src/lib/notion`: Notion client, mappers, and page summary extraction.
 - `components`: reusable UI and layout components.
 - `public/icons`: original placeholder PWA icon assets.
+
+Architecture rule:
+- Keep trusted canonical recipe fields separate from AI-generated analysis or enrichment. AI nutrition/substitution/grocery notes should land in `RecipeAiAnalysis`-style records until reviewed or deliberately promoted.
+- Future external services must enter through `src/lib/integrations/*` adapters, not directly from pages/components.
+- Canada-centred assumptions are first-class defaults, not scattered literals.
+- Future health-related analysis must use source IDs and safe-language principles from `src/lib/sources` and `src/lib/health-guidance`.
+- The app must not diagnose diabetes or PCOS, claim treatment/cure/prevention, replace clinician/dietitian advice, or provide medication/supplement/fertility guidance.
 
 ## Current Routes
 
@@ -59,6 +90,7 @@ Pages:
 - `/meals`: fetch and display saved meals from Notion.
 - `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback to Notion.
 - `/settings`: Notion diagnostics and server environment status.
+- `/settings`: also includes a diagnostic Ingredient Lookup Test panel backed by the server-side USDA lookup route.
 
 ## Current API Endpoints
 
@@ -66,6 +98,23 @@ Pages:
   - Input: `{ recipeText: string }`
   - Uses OpenAI structured JSON output.
   - Returns `MealAnalysisResult`.
+  - Accepts optional source metadata and returns source defaults for current manual paste flows.
+  - If `recipeText` starts with `http://` or `https://`, treats it as a recipe URL, fetches it server-side, parses JSON-LD recipe data when available, falls back to cleaned page text, and then analyzes the extracted text.
+  - Blocks obvious local/private URL hosts and returns a user-facing fallback error when pages cannot be fetched or parsed.
+
+- `POST /api/ingredients/lookup`
+  - Input: `{ ingredient: string }`
+  - Validates ingredient length from 2 to 100 characters.
+  - Uses `FDC_API_KEY` via `getFoodDataCentralEnv()`.
+  - Calls USDA FoodData Central server-side and returns a normalized nutrient snapshot.
+  - Does not enrich analysis output, Notion ingredients, or Notion schema.
+
+- `POST /api/ingredients/enrich`
+  - Input: `{ ingredientName: string, ingredientPageId?: string | null }`
+  - Uses `FDC_API_KEY` server-side for USDA lookup.
+  - If `ingredientPageId` is omitted, returns lookup plus skipped fields.
+  - If `ingredientPageId` is present, inspects the Ingredients database schema and updates only compatible properties that already exist.
+  - Never creates Notion schema properties.
 
 - `GET /api/diagnostics/notion`
   - Verifies Notion API key, Meals database ID, and database access.
@@ -85,7 +134,9 @@ Pages:
   - Input: `MealAnalysisResult`
   - Saves core meal fields to Notion Meals.
   - Writes a concise Analysis Framework v2 summary into the existing `Notes` field via `buildMealNotesSummary`.
-  - Does not add new Notion properties or create relations.
+  - Defaults current saves to `sourceType: manual`, `importedAt: now`, and `parserVersion: manual-v1`.
+  - Writes optional source tracking fields only if compatible Notion Meals properties already exist.
+  - Does not create Notion properties or relations.
 
 - `POST /api/notion/save-ingredients`
   - Input: `{ mealName: string, ingredients: string[] }`
@@ -107,6 +158,7 @@ Required server-side variables:
 
 ```bash
 OPENAI_API_KEY=
+FDC_API_KEY=
 NOTION_API_KEY=
 NOTION_MEALS_DATABASE_ID=
 NOTION_INGREDIENTS_DATABASE_ID=
@@ -117,6 +169,7 @@ NOTION_MEAL_TEMPLATES_DATABASE_ID=
 
 Current route-scoped usage:
 - `/api/analyze-meal`: `OPENAI_API_KEY`
+- `/api/ingredients/lookup`: `FDC_API_KEY`
 - `/api/diagnostics/notion`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
 - `/api/diagnostics/notion-schemas`: scoped Meals, Ingredients, and Feedback env helpers
 - `/api/notion/meals`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
@@ -126,6 +179,7 @@ Current route-scoped usage:
 
 Available env helpers:
 - `getOpenAIEnv()`
+- `getFoodDataCentralEnv()`
 - `getNotionMealsEnv()`
 - `getNotionFeedbackEnv()`
 - `getNotionIngredientsEnv()`
@@ -181,16 +235,26 @@ Reasoning:
 ## Current Blockers
 
 - Rotate the OpenAI and Notion keys that were found in `.env.example` if not already completed.
-- Analysis Framework v2 has not been smoke-tested on the live Vercel deployment yet. Deploy and verify before trusting production.
+- Analysis Framework v2 and Recipe URL analysis have not been smoke-tested on the live Vercel deployment yet. Deploy and verify before trusting production.
+- Optional source tracking fields require matching Notion Meals properties before they persist in Notion. The app detects compatible fields but does not create schema.
+- Recipe URL parsing is intentionally basic and dependency-free. Some recipe sites may block server-side fetches or hide recipe content behind scripts.
+- Health guidance and source registry are static foundations only; analysis output has not yet been changed to cite or apply them.
+- FoodData Central lookup is diagnostic only. It is not wired into analysis prompts, ingredient persistence, or Notion enrichment.
+- DEMO_KEY testing can hit USDA rate limits; use a real `FDC_API_KEY` for reliable diagnostics.
+- Current Ingredients database is missing all nutrient enrichment properties: `FDC ID`, `FDC Description`, `Nutrient Source`, `Nutrient Confidence`, `Protein (g)`, `Fiber (g)`, `Carbohydrates (g)`, `Sugars (g)`, `Sodium (mg)`, `Energy (kcal)`, and `Last Nutrient Lookup`.
+- With the current schema, `/api/ingredients/enrich` will return lookup results but skip Notion updates.
 
 ## Immediate Next Tasks
 
-1. Push Analysis Framework v2 to GitHub and deploy to Vercel.
-2. On the live URL: open `/analyze`, run an analysis, confirm all v2 sections appear (Quick Verdict, Scorecard, Concerns, Strategy, Shopping & Prep).
-3. Save a meal to Notion and open the Notion page — confirm `Notes` contains the v2 summary block.
-4. Open `/meals` and confirm the saved meal appears.
-5. Rotate exposed OpenAI and Notion keys if not already completed.
-6. Next feature slice: Recipe URL analysis support (detect URL, fetch server-side, extract readable content via jsdom + @mozilla/readability, fall back to pasted text on failure).
+1. Deploy the foundation changes and run the existing Analyze -> Save -> Meals -> Feedback smoke test.
+2. If desired, add optional source properties to the Notion Meals database: Source Type, Source URL, Source Name, Imported At, Last Parsed At, Parser Version.
+3. Confirm manual meal saves still work with and without those optional Notion properties.
+4. Rotate exposed OpenAI and Notion keys if not already completed.
+5. Test Recipe URL analysis on representative recipe sites and document blocked/problematic domains.
+6. Add structured ingredient persistence behind the current string-compatible ingredient flow.
+7. Future prompt/schema slice: incorporate source IDs and health-guidance principles into analysis generation without expanding medical claims.
+8. Future ingredient slice: review whether FoodData Central snapshots should attach to normalized ingredients, still without overwriting canonical household data.
+9. Manually add optional nutrient properties to the Ingredients database before expecting enrichment updates to persist in Notion.
 
 ## Manual Testing Checklist
 
@@ -202,10 +266,13 @@ Local:
 - Open `/settings` and test Notion connection.
 - In `/settings`, click `Test Notion Schemas` and verify Meals, Ingredients, and Feedback property lists appear.
 - Open `/analyze`, paste at least 10 characters, and verify the Analyze button enables.
+- Paste a public recipe URL into `/analyze`; verify an analysis is produced and the Review Result shows source type `url`, source name/URL, and parser version `recipe-parser-basic-v1`.
 - Analyze a meal and verify all Analysis Framework v2 sections appear: Quick Verdict, Scorecard (five numeric fields), Main Concerns, Minimal-Change Version, More Supportive Version, Plate Strategy, Why This Helps, Cultural Notes, Shopping Additions, Prep Notes, Meal Pairings, Cautions.
 - Edit at least one score, one text field, and one array field to confirm they are editable before save.
 - Save the meal to Notion and open the returned Notion link.
 - In Notion, confirm the `Notes` field contains: original notes, Analysis Framework v2 Summary header, Quick Verdict, Scorecard, Main Concerns, Plate Strategy, and Cautions sections.
+- If optional source properties exist in Meals, confirm Source Type is `manual`, Imported At is populated, and Parser Version is `manual-v1`.
+- If optional source properties do not exist, confirm meal save still succeeds.
 - Verify ingredient persistence status appears after meal save.
 - Open the Ingredients database and verify new normalized suggestions are created without duplicate repeats.
 - Open `/meals` and verify the saved meal appears.

@@ -325,7 +325,7 @@ export default function AnalyzePage() {
       <PageHeader
         eyebrow="Recipe intake"
         title="Analyze a recipe"
-        description="Paste a recipe or meal idea, then review and edit the structured result before saving."
+        description="Paste a recipe URL, recipe text, or meal idea, then review and edit the structured result before saving."
       />
 
       {error ? <Alert>{error}</Alert> : null}
@@ -351,7 +351,7 @@ export default function AnalyzePage() {
                   onChange={(event) => {
                     setRecipeText(event.currentTarget.value);
                   }}
-                  placeholder="Paste ingredients, instructions, servings, constraints, or a rough meal idea here."
+                  placeholder="Paste a recipe URL, ingredients, instructions, servings, constraints, or a rough meal idea here."
                   rows={16}
                   value={recipeText}
                 />
@@ -359,15 +359,6 @@ export default function AnalyzePage() {
                   Enter at least 10 characters. {trimmedRecipeTextLength}{" "}
                   characters
                 </p>
-                <div className="rounded-md border bg-background p-3 text-xs text-muted-foreground">
-                  <p>recipeText.length: {recipeText.length}</p>
-                  <p>recipeText.trim().length: {trimmedRecipeTextLength}</p>
-                  <p>isLoading: {String(isLoading)}</p>
-                  <p>isAnalyzeDisabled: {String(isAnalyzeDisabled)}</p>
-                  <p className="whitespace-pre-wrap break-words">
-                    recipeText: {recipeText}
-                  </p>
-                </div>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
@@ -382,13 +373,6 @@ export default function AnalyzePage() {
                   )}
                   {isLoading ? "Analyzing..." : "Analyze recipe"}
                 </button>
-                <button
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => void submitAnalysis()}
-                  type="button"
-                >
-                  Force Analyze
-                </button>
               </div>
             </form>
           </CardContent>
@@ -401,6 +385,8 @@ export default function AnalyzePage() {
           <CardContent>
             {analysis ? (
               <div className="space-y-6">
+                <SourceSummary analysis={analysis} />
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <TextInput
                     id="mealName"
@@ -708,6 +694,36 @@ export default function AnalyzePage() {
             )}
           </CardContent>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+function SourceSummary({ analysis }: { analysis: MealAnalysisResult }) {
+  if (!analysis.sourceType) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-md border bg-background p-4 text-sm">
+      <p className="font-medium">Recipe source</p>
+      <div className="mt-2 space-y-1 text-muted-foreground">
+        <p>Type: {analysis.sourceType}</p>
+        {analysis.sourceName ? <p>Source: {analysis.sourceName}</p> : null}
+        {analysis.parserVersion ? (
+          <p>Parser: {analysis.parserVersion}</p>
+        ) : null}
+        {analysis.sourceUrl ? (
+          <a
+            className="inline-flex items-center gap-2 text-primary underline-offset-4 hover:underline"
+            href={analysis.sourceUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Open source
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        ) : null}
       </div>
     </div>
   );

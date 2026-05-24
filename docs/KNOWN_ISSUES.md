@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
+Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 
 ## Critical
 
@@ -20,6 +20,13 @@ Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
 - [ ] No deployment smoke test script yet.
 - [ ] `/api/notion/save-meal` validator accepts Analysis Framework v2 fields leniently: numeric scores default to `0` and string/array fields default to empty if absent. Tighten once backward compatibility is no longer a concern.
 - [ ] `buildMealNotesSummary` truncates Notion Notes at 1997 characters to stay within the API 2000-character rich_text limit. Extremely verbose outputs will be silently truncated.
+- [ ] `save-meal` performs a Meals database schema read before page creation so optional source fields can be detected. If Notion permissions are ever narrowed, this route needs a smoke test.
+- [ ] Integration adapter interfaces are placeholders and may need revision when real API constraints are known. Recipe parser is the first active adapter.
+- [ ] Recipe URL parser uses dependency-free JSON-LD and cleaned-text extraction. It is not as robust as a full Readability parser.
+- [ ] Source registry and health-guidance principles are not yet wired into prompts, UI, or saved analysis records.
+- [ ] FoodData Central matching is heuristic. Some lookups may return branded foods or adjacent common foods; review `matchedDescription` and `confidence`.
+- [ ] USDA `DEMO_KEY` can hit rate limits during repeated diagnostics. Configure a real `FDC_API_KEY` locally and in Vercel before relying on lookup tests.
+- [ ] Current Ingredients database is missing all optional nutrient enrichment properties, so `/api/ingredients/enrich` skips every Notion update field until the properties are added manually.
 
 ## UX Problems
 
@@ -28,7 +35,9 @@ Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
 - [ ] Meal Feedback -> Meals relation property may not yet be created in Notion. The app code supports it and falls back gracefully, but the Notion manual setup step must be done before relation writes are enabled. Verify in `/settings` → `Test Notion Schemas`.
 - [ ] Ingredients are saved as standalone records, but are not related to saved meals in Notion yet.
 - [ ] Success/error UI patterns are not fully standardized.
-- [ ] Analysis Framework v2 has not been smoke-tested on the live Vercel deployment. Deploy and verify before trusting production.
+- [ ] Analysis Framework v2 and Recipe URL analysis have not been smoke-tested on the live Vercel deployment. Deploy and verify before trusting production.
+- [ ] Household defaults are read-only and hard-coded to CA/NS/Halifax for now. There is no settings persistence UI yet.
+- [ ] Recipe source fields only persist to Notion if compatible optional Meals properties exist. Missing properties are ignored by design.
 
 ## Future Migrations
 
@@ -40,5 +49,12 @@ Last updated: 2026-05-23 (session closeout — Analysis Framework v2 complete)
 
 - [ ] Notion is the only persistence layer.
 - [ ] Ingredient suggestions are saved by normalized name only, without meal relations.
+- [ ] Structured ingredients are type/helper-ready. Recipe JSON-LD ingredients are represented as `RecipeIngredient.rawText`, but quantity/unit parsing is not implemented.
+- [ ] Pantry support is type-only; there is no pantry UI, storage, or grocery-list deduction.
+- [ ] AI-generated analysis/enrichment has a separate type foundation, but is not persisted as a separate record yet.
+- [ ] Evidence-aware source citations are static only; there is no runtime citation/explanation layer yet.
+- [ ] FoodData Central nutrient snapshots are diagnostic only and are not persisted to Notion ingredients yet.
+- [ ] Ingredient enrichment is explicit/manual only from Settings or direct API calls; it does not run during meal analysis or ingredient suggestion persistence.
+- [ ] Canada grocery, nutrition, Open Food Facts, and weather integrations are adapter stubs only. Recipe parser has a basic active implementation.
 - [ ] Weekly Plans and Meal Templates database IDs exist but are not fully used.
 - [ ] Deployment exists, but there is no automated production smoke test yet.

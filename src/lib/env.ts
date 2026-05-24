@@ -1,5 +1,6 @@
 export interface ServerEnv {
   OPENAI_API_KEY: string;
+  FDC_API_KEY: string;
   NOTION_API_KEY: string;
   NOTION_MEALS_DATABASE_ID: string;
   NOTION_INGREDIENTS_DATABASE_ID: string;
@@ -9,6 +10,7 @@ export interface ServerEnv {
 }
 
 export type OpenAIEnv = Pick<ServerEnv, "OPENAI_API_KEY">;
+export type FoodDataCentralEnv = Pick<ServerEnv, "FDC_API_KEY">;
 export type NotionMealsEnv = Pick<
   ServerEnv,
   "NOTION_API_KEY" | "NOTION_MEALS_DATABASE_ID"
@@ -33,6 +35,7 @@ export type FullNotionEnv = Pick<
 
 const requiredServerEnvKeys = [
   "OPENAI_API_KEY",
+  "FDC_API_KEY",
   "NOTION_API_KEY",
   "NOTION_MEALS_DATABASE_ID",
   "NOTION_INGREDIENTS_DATABASE_ID",
@@ -42,6 +45,10 @@ const requiredServerEnvKeys = [
 ] as const satisfies readonly (keyof ServerEnv)[];
 
 const openAIEnvKeys = ["OPENAI_API_KEY"] as const satisfies readonly (keyof OpenAIEnv)[];
+
+const foodDataCentralEnvKeys = [
+  "FDC_API_KEY"
+] as const satisfies readonly (keyof FoodDataCentralEnv)[];
 
 const notionMealsEnvKeys = [
   "NOTION_API_KEY",
@@ -100,6 +107,10 @@ function readServerEnv<TEnv extends Partial<ServerEnv>>(
 
 export function getOpenAIEnv(): OpenAIEnv {
   return readServerEnv<OpenAIEnv>(openAIEnvKeys);
+}
+
+export function getFoodDataCentralEnv(): FoodDataCentralEnv {
+  return readServerEnv<FoodDataCentralEnv>(foodDataCentralEnvKeys);
 }
 
 export function getNotionMealsEnv(): NotionMealsEnv {

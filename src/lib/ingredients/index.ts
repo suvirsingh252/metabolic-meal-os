@@ -1,6 +1,9 @@
+import type { RecipeIngredient } from "@/src/lib/types/recipe";
+
 export interface NormalizedIngredient {
   name: string;
   key: string;
+  rawText?: string;
 }
 
 export interface NormalizedIngredientList {
@@ -68,7 +71,31 @@ function normalizeIngredientWord(word: string) {
   return word;
 }
 
+function isRecipeIngredient(value: unknown): value is RecipeIngredient {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "rawText" in value &&
+    typeof value.rawText === "string"
+  );
+}
+
 export function normalizeIngredient(value: unknown): NormalizedIngredient | null {
+  if (isRecipeIngredient(value)) {
+    const name = cleanIngredientName(value.name || value.rawText);
+    const key = normalizeIngredientKey(name);
+
+    if (!name || !key) {
+      return null;
+    }
+
+    return {
+      name,
+      key,
+      rawText: value.rawText
+    };
+  }
+
   if (typeof value !== "string") {
     return null;
   }

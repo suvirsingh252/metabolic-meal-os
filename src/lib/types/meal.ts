@@ -37,6 +37,9 @@ export type EffortLevel = (typeof effortLevels)[number];
 
 export interface MealAnalysisRequest {
   recipeText: string;
+  sourceType?: "manual" | "url" | "ai" | "family";
+  sourceUrl?: string | null;
+  sourceName?: string | null;
 }
 
 export interface MealAnalysisResult {
@@ -73,4 +76,12 @@ export interface MealAnalysisResult {
   prepNotes: string[];
   mealPairings: string[];
   cautions: string[];
+
+  // Recipe source tracking foundation. Optional for backward compatibility.
+  sourceType?: "manual" | "url" | "ai" | "family";
+  sourceUrl?: string | null;
+  sourceName?: string | null;
+  importedAt?: string | null;
+  lastParsedAt?: string | null;
+  parserVersion?: string | null;
 }

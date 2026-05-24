@@ -1,5 +1,377 @@
 # Session Log
 
+## 2026-05-24 Ingredient Nutrient Enrichment USDA To Notion
+
+Goals:
+- Allow explicit Ingredient records in Notion to store lightweight USDA FoodData Central nutrient metadata.
+- Inspect the existing Ingredients database schema first.
+- Do not auto-create Notion schema from code.
+- Do not change analysis prompts, Notion schema, auth, or runtime enrichment during meal analysis.
+
+Schema inspection:
+- Used `GET /api/diagnostics/notion-schemas`.
+- Current Ingredients database properties:
+  - `Category` select
+  - `Fiber Source` checkbox
+  - `Household Favorite` checkbox
+  - `Ingredient` title
+  - `Notes` rich_text
+  - `Protein Source` checkbox
+  - `Staple` checkbox
+- Missing requested nutrient properties:
+  - `FDC ID`
+  - `FDC Description`
+  - `Nutrient Source`
+  - `Nutrient Confidence`
+  - `Protein (g)`
+  - `Fiber (g)`
+  - `Carbohydrates (g)`
+  - `Sugars (g)`
+  - `Sodium (mg)`
+  - `Energy (kcal)`
+  - `Last Nutrient Lookup`
+
+Files changed:
+- `src/app/api/ingredients/enrich/route.ts`
+- `src/app/settings/page.tsx`
+- `docs/SOURCES.md`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/DECISIONS.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Added `POST /api/ingredients/enrich`.
+- Input: `{ ingredientName: string, ingredientPageId?: string | null }`.
+- Performs USDA lookup through existing FoodData Central integration.
+- If no `ingredientPageId` is provided, returns lookup-only response and reports all Notion fields skipped.
+- If `ingredientPageId` is provided, retrieves Ingredients database schema and updates only compatible existing properties.
+- Skips missing/incompatible fields gracefully with per-field reasons.
+- Added Settings `Enrich Ingredient Test` panel with ingredient name and optional Ingredient page ID inputs.
+- Enrichment is explicit only; it is not called by meal analysis or ingredient suggestion persistence.
+
+Commands run:
+- `GET /api/diagnostics/notion-schemas` via local dev server.
+- `npm run typecheck`
+- `FDC_API_KEY=DEMO_KEY npm run dev -- -p 3011`
+- `curl -i -X POST http://localhost:3011/api/ingredients/enrich ...` for `chickpeas`, `paneer`, and `basmati rice`.
+- `npm run lint`
+- `npm run build`
+
+Validation results:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Build warning observed again: Node experimental Type Stripping warning from Next/build environment. Build completed successfully.
+- Build output includes `/api/ingredients/enrich`.
+- Enrichment endpoint tests with `DEMO_KEY` returned safe `502` responses because USDA returned `429` rate limits. This is expected with repeated DEMO_KEY diagnostics; use a real `FDC_API_KEY` to verify successful lookup/update behavior.
+
+Decisions made:
+- Do not create Notion nutrient properties automatically.
+- Do not persist nutrient snapshots unless a page ID is explicitly provided and compatible properties already exist.
+- Keep enrichment out of meal analysis and ingredient saving for now.
+- Use direct page ID in Settings as a diagnostic tool, not a family-facing workflow.
+
+Next recommended actions:
+- Add the optional nutrient properties manually to the Ingredients database if persistence is desired.
+- Configure a real `FDC_API_KEY` locally and in Vercel.
+- Retest `/api/ingredients/enrich` with `chickpeas`, `paneer`, and `basmati rice`.
+- Consider a future Ingredients list/detail UI so page IDs do not need to be pasted manually.
+
+## 2026-05-24 USDA FoodData Central Ingredient Lookup Foundation
+
+Goals:
+- Add a narrow server-side USDA FoodData Central ingredient lookup endpoint.
+- Keep `FDC_API_KEY` route-scoped through `getFoodDataCentralEnv()`.
+- Add a Settings diagnostics/testing panel.
+- Do not change analysis prompts, Notion ingredients, Notion schema, or auth.
+
+Files changed:
+- `.env.example`
+- `src/lib/env.ts`
+- `src/lib/sources/source-registry.ts`
+- `src/lib/integrations/food-data-central/types.ts`
+- `src/lib/integrations/food-data-central/client.ts`
+- `src/lib/integrations/food-data-central/mappers.ts`
+- `src/lib/integrations/food-data-central/index.ts`
+- `src/app/api/ingredients/lookup/route.ts`
+- `src/app/settings/page.tsx`
+- `docs/SOURCES.md`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/DECISIONS.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Added `FDC_API_KEY` to server env typing and `.env.example`.
+- Added `getFoodDataCentralEnv()` so only `/api/ingredients/lookup` requires the USDA key.
+- Added FoodData Central client with timeout, safe server-side fetch, common-food-first search, and broader fallback.
+- Added FoodData Central mapper that returns the normalized nutrient snapshot shape requested by the task.
+- Added confidence heuristic and notes for branded/uncertain matches.
+- Added `POST /api/ingredients/lookup` with validation: required ingredient, min 2 chars, max 100 chars.
+- Added Settings `Ingredient Lookup Test` panel that calls the server route and displays nutrient snapshot fields.
+- Kept analysis prompts, Notion schemas, Notion ingredient enrichment, and auth unchanged.
+
+Commands run:
+- `sed -n ...` inspections of env/settings/API/integration files.
+- `rg --files -g '.env*' -g '!node_modules'`
+- `rg "getFullServerEnv|getServerEnv|serverEnv" -n`
+- `node -e ...` to check whether local `FDC_API_KEY` is present without printing its value.
+- `FDC_API_KEY=DEMO_KEY npm run dev -- -p 3011`
+- `curl -i -X POST http://localhost:3011/api/ingredients/lookup ...` for `chickpeas`, `basmati rice`, and `paneer`.
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+
+Validation results:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Build warning observed again: Node experimental Type Stripping warning from Next/build environment. Build completed successfully.
+- Initial endpoint tests using USDA `DEMO_KEY` returned `200 OK` for:
+  - `chickpeas`
+  - `basmati rice`
+  - `paneer`
+- Repeated endpoint tests later hit USDA `429` rate limiting from `DEMO_KEY`, returning the app's safe `502` response. Configure a real `FDC_API_KEY` for reliable diagnostics.
+
+Decisions made:
+- Keep FoodData Central lookup diagnostic-only for now.
+- Prefer common USDA datasets when they produce a reasonable match, but allow broader/branded fallback.
+- Mark branded or uncertain matches with limited confidence and review notes.
+- Do not persist nutrient snapshots yet.
+
+Known limitations:
+- Matching is heuristic and should be reviewed via `matchedDescription`, `fdcId`, and `confidence`.
+- Nutrient values are diagnostic snapshots, usually per 100 g, not recipe-level nutrition.
+- DEMO_KEY is not reliable for repeated testing.
+
+Next recommended actions:
+- Add a real `FDC_API_KEY` locally and in deployment env vars.
+- Smoke-test Settings lookup with common household ingredients.
+- Decide later whether/how nutrient snapshots should attach to normalized ingredients without changing Notion schema prematurely.
+
+## 2026-05-24 Verifiable Source and Health-Guidance Foundation
+
+Goals:
+- Create a typed approved source registry.
+- Create safe health-guidance principle modules for diabetes-aware, PCOS-aware, and Canada's Food Guide-aligned future analysis.
+- Do not call external APIs, change Notion schema, change analysis output, or add auth.
+- Document the evidence-aware architecture.
+
+Files changed:
+- `src/lib/sources/source-registry.ts`
+- `src/lib/health-guidance/types.ts`
+- `src/lib/health-guidance/diabetes.ts`
+- `src/lib/health-guidance/pcos.ts`
+- `src/lib/health-guidance/canada-food-guide.ts`
+- `src/lib/health-guidance/index.ts`
+- `docs/SOURCES.md`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/DECISIONS.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Added approved source records for USDA FoodData Central, Health Canada / Canadian Nutrient File, Diabetes Canada, 2023 International Evidence-Based PCOS Guideline, Canada's Food Guide, and Open Food Facts.
+- Source records include ID, name, source type, jurisdiction, URL, confidence, allowed uses, prohibited uses, and last-reviewed date.
+- Added global health safety rules: no diagnosis, no treatment/cure/prevention claims, no replacement of clinician/dietitian advice, and general food-pattern support only.
+- Added diabetes-aware principles with safe language and prohibited claims.
+- Added PCOS-aware principles with safe language, weight-stigma avoidance, and prohibited clinical/fertility claims.
+- Added Canada's Food Guide principles for balanced plate guidance and neutral highly processed food language.
+- Added `docs/SOURCES.md` to explain the source registry, health-guidance principles, safety rules, and future architecture.
+- Updated handoff docs to clarify this is a static foundation and is not wired into runtime analysis yet.
+
+Commands run:
+- Web verification for official source URLs.
+- `mkdir -p src/lib/sources src/lib/health-guidance`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+
+Validation results:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Build warning observed again: Node experimental Type Stripping warning from Next/build environment. Build completed successfully.
+
+Decisions made:
+- Add evidence-aware primitives before changing prompts, output schemas, UI, or persistence.
+- Treat Open Food Facts as lower-confidence crowdsourced data.
+- Keep health guidance source-linked through source IDs rather than free-text source names.
+- Keep medical safety constraints explicit in code, not only in prompts.
+
+Intentionally not changed:
+- No external API calls.
+- No Notion schema changes.
+- No analysis output changes.
+- No auth changes.
+- No runtime behavior changes.
+
+Next recommended actions:
+- Plan a dedicated prompt/schema slice that uses source IDs and health-guidance principles without expanding medical claims.
+- Add tests around source IDs if/when this foundation is used at runtime.
+- Review source dates periodically and update `lastReviewed`.
+
+## 2026-05-24 Recipe URL Analysis Support
+
+Goals:
+- Read current handoff docs and summarize the app state before editing.
+- Start Recipe URL analysis support through the existing `src/lib/integrations/recipe-parser` boundary.
+- Preserve manual paste analysis, editable review, meal saving, ingredient persistence, and feedback workflows.
+
+Current state summary:
+- MVP is a Next.js App Router app with OpenAI structured meal analysis and Notion persistence.
+- `/analyze` previously accepted pasted recipe text or meal ideas only.
+- Canada-first defaults, source metadata, structured ingredient types, and integration adapter folders were already added.
+- URL import was the documented next slice.
+
+Files changed:
+- `src/lib/types/recipe.ts`
+- `src/lib/integrations/recipe-parser/index.ts`
+- `src/app/api/analyze-meal/route.ts`
+- `src/app/analyze/page.tsx`
+- `docs/HANDOFF.md`
+- `docs/DECISIONS.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Activated the recipe-parser adapter with a basic server-side URL parser.
+- Added URL validation for `http`/`https` only and blocked obvious local/private hostnames.
+- Added guarded server-side fetch with timeout, content-type check, and page-size limits.
+- Added schema.org Recipe JSON-LD extraction for recipe name, ingredients, instructions, and description.
+- Added cleaned HTML text fallback when JSON-LD is unavailable.
+- Updated `/api/analyze-meal` to detect URL inputs in `recipeText`, parse the URL, and pass extracted recipe text into the existing OpenAI analysis flow.
+- Returned source metadata (`sourceType: url`, source URL/name, parsed timestamp, parser version) with analysis results.
+- Updated `/analyze` copy to accept recipe URLs and show a Recipe Source summary after analysis.
+- Removed the visible debug text panel and Force Analyze button from `/analyze`.
+
+Commands run:
+- `sed -n ...` inspections of handoff docs, roadmap, decisions, known issues, analyze page, analyze API route, recipe parser stub, and package metadata.
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+- `lsof -ti :3011`
+- `npm run dev -- -p 3011`
+- `curl -I http://localhost:3011/analyze`
+
+Validation results:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Build warning observed again: Node experimental Type Stripping warning from Next/build environment. Build completed successfully.
+- Local dev server started on `http://localhost:3011`.
+- `curl -I http://localhost:3011/analyze` returned `200 OK`.
+
+Decisions made:
+- Use a dependency-free parser first instead of adding jsdom + @mozilla/readability in this slice.
+- Keep `/api/analyze-meal` as the single analysis endpoint.
+- Keep URL parser logic out of React components and route-local string parsing.
+- Return clear 400-level parser errors that tell the user to paste recipe text when fetch/parse fails.
+
+Known limitations:
+- Cleaned HTML fallback is basic and less accurate than Readability.
+- Some recipe sites may block server-side fetching or render content client-side.
+- SSRF protection blocks obvious local/private hostnames but does not yet perform DNS resolution checks.
+- No automated tests were added.
+
+Next recommended actions:
+- Deploy and smoke-test URL analysis with representative public recipe URLs.
+- If real-site coverage is weak, add jsdom + @mozilla/readability behind the same adapter.
+- Add structured ingredient persistence after URL parsing stabilizes.
+
+## 2026-05-24 Canada-Centred Foundation
+
+Goals:
+- Review current MVP data model and codebase before editing.
+- Prepare the foundation for a Canada-centred AI household meal operating system without rebuilding the app or adding live integrations.
+- Preserve current recipe analysis, meal saving, ingredient persistence, meals list, and feedback workflows.
+- Update the handoff package before ending the session.
+
+Codebase assessment:
+- Current app is a compact Next.js App Router MVP with OpenAI analysis and Notion persistence.
+- Core data model lives in `src/lib/types`, Notion mapping lives in `src/lib/notion`, ingredient normalization lives in `src/lib/ingredients`, and persistence is handled by API routes.
+- Notion schema is intentionally stable; prior sessions avoided new required properties and relation writes are schema-aware.
+- Best minimal slice was a typed foundation plus backwards-compatible helper changes, not a full schema/UI migration.
+
+Files changed:
+- `src/lib/types/meal.ts`
+- `src/lib/types/recipe.ts`
+- `src/lib/types/localization.ts`
+- `src/lib/types/pantry.ts`
+- `src/lib/types/ai-analysis.ts`
+- `src/lib/types/feedback.ts`
+- `src/lib/ingredients/index.ts`
+- `src/lib/household/preferences.ts`
+- `src/lib/integrations/shared.ts`
+- `src/lib/integrations/open-food-facts/index.ts`
+- `src/lib/integrations/nutrition/index.ts`
+- `src/lib/integrations/recipe-parser/index.ts`
+- `src/lib/integrations/grocery-prices/index.ts`
+- `src/lib/integrations/weather/index.ts`
+- `src/app/api/analyze-meal/route.ts`
+- `src/app/api/notion/save-meal/route.ts`
+- `src/app/settings/page.tsx`
+- `src/lib/notion/mappers.ts`
+- `docs/HANDOFF.md`
+- `docs/DECISIONS.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Added recipe source metadata fields and defaults for current manual/paste-based analysis.
+- Updated `/api/analyze-meal` to accept optional source metadata and return source defaults.
+- Updated `/api/notion/save-meal` to default source metadata and write optional source fields only when compatible Notion Meals properties already exist.
+- Added structured `RecipeIngredient` support and updated ingredient normalization to accept either strings or structured ingredients.
+- Added Canada-first household preference defaults and displayed them read-only in Settings.
+- Added integration adapter stub folders for Open Food Facts, nutrition, recipe parser, grocery prices, and weather.
+- Added type foundations for separate AI analysis records, household recipe feedback, operational recipe tags, and pantry items.
+- Updated handoff docs with architecture notes, decisions, roadmap, known issues, and next slice.
+
+Commands run:
+- `pwd && rg --files -g '!*node_modules*' -g '!*.png' -g '!*.jpg' -g '!*.jpeg' -g '!*.gif'`
+- `git status --short`
+- `ls`
+- Multiple `sed -n ...` inspections of core types, routes, pages, and docs.
+- `mkdir -p src/lib/integrations/open-food-facts src/lib/integrations/nutrition src/lib/integrations/recipe-parser src/lib/integrations/grocery-prices src/lib/integrations/weather src/lib/household`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+
+Validation results:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- Build warning observed: Node experimental Type Stripping warning from Next/build environment. Build still completed successfully.
+
+Decisions made:
+- Canada-first defaults are typed and read-only for now; no settings persistence UI yet.
+- Future external APIs must go through adapter folders.
+- AI enrichment remains separate from trusted canonical recipe fields.
+- Structured ingredients were introduced through a compatible type/helper layer, not a destructive migration.
+- Source tracking writes are optional and schema-aware so missing Notion properties do not break meal saving.
+- Household recipe feedback is a future personalization layer; current feedback UI was preserved.
+
+Intentionally not changed:
+- No live Open Food Facts, nutrition, grocery pricing, flyer, weather, or parser integrations.
+- No full pantry management.
+- No full recipe URL import.
+- No Notion schema creation from app code.
+- No rewrite of current Analyze, Meals, or Feedback pages.
+
+Open questions:
+- Should optional Notion Meals properties be added manually now for source tracking, or wait until URL import is implemented?
+- Which Canadian stores should seed `preferredStores` for Halifax/NS once settings persistence exists?
+- Should structured ingredients be persisted in Notion first, or should recipe URL import come first and produce structured ingredient drafts?
+
+Next recommended slice:
+- Implement Recipe URL analysis through `src/lib/integrations/recipe-parser`, using server-side fetch/readability extraction, graceful fallback, and the source metadata already added here.
+
 ## 2026-05-23 Session Closeout
 
 Goals:

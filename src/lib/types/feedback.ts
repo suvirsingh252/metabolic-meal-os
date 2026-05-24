@@ -31,3 +31,18 @@ export interface MealFeedbackResult {
   notionUrl: string;
   warning?: string;
 }
+
+export type DifficultyActual = "Easier Than Expected" | "As Expected" | "Harder Than Expected";
+export type CleanupLevel = "Low" | "Moderate" | "High";
+
+export interface HouseholdRecipeFeedback {
+  recipeId?: string | null;
+  rating?: number | null;
+  wouldMakeAgain: boolean;
+  difficultyActual?: DifficultyActual | null;
+  cleanupLevel?: CleanupLevel | null;
+  tooSpicy?: boolean;
+  tooHeavy?: boolean;
+  notes?: string;
+  modifications?: string[];
+}

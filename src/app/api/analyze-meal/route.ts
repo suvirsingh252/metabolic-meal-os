@@ -2,6 +2,12 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { getOpenAIEnv } from "@/src/lib/env";
 import {
+  basicRecipeParserAdapter,
+  formatParsedRecipeForAnalysis,
+  isProbablyUrl,
+  RecipeParserError
+} from "@/src/lib/integrations/recipe-parser";
+import {
   bloodSugarImpacts,
   cuisines,
   effortLevels,
@@ -11,6 +17,12 @@ import {
   type MealAnalysisRequest,
   type MealAnalysisResult
 } from "@/src/lib/types/meal";
+import {
+  defaultManualRecipeSource,
+  manualParserVersion,
+  recipeSourceTypes,
+  type RecipeSourceType
+} from "@/src/lib/types/recipe";
 
 export const runtime = "nodejs";
 
@@ -249,7 +261,26 @@ function validateRequestBody(body: unknown): MealAnalysisRequest | NextResponse 
     );
   }
 
-  return { recipeText: trimmedRecipeText };
+  const sourceType: RecipeSourceType =
+    typeof body.sourceType === "string" &&
+    recipeSourceTypes.includes(body.sourceType as RecipeSourceType)
+      ? (body.sourceType as RecipeSourceType)
+      : defaultManualRecipeSource.sourceType;
+  const sourceUrl =
+    typeof body.sourceUrl === "string" && body.sourceUrl.trim()
+      ? body.sourceUrl.trim()
+      : null;
+  const sourceName =
+    typeof body.sourceName === "string" && body.sourceName.trim()
+      ? body.sourceName.trim()
+      : null;
+
+  return {
+    recipeText: trimmedRecipeText,
+    sourceType,
+    sourceUrl,
+    sourceName
+  };
 }
 
 export async function POST(request: Request) {
@@ -271,6 +302,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const preparedRecipe = await prepareRecipeForAnalysis(validatedRequest);
     const { OPENAI_API_KEY } = getOpenAIEnv();
     const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
@@ -283,7 +315,7 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `Analyze this recipe or meal text and return structured JSON only:\n\n${validatedRequest.recipeText}`
+          content: `Analyze this recipe or meal text and return structured JSON only:\n\n${preparedRecipe.analysisText}`
         }
       ],
       text: {
@@ -298,8 +330,20 @@ export async function POST(request: Request) {
 
     const result = JSON.parse(response.output_text) as MealAnalysisResult;
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      sourceType: preparedRecipe.sourceType,
+      sourceUrl: preparedRecipe.sourceUrl,
+      sourceName: preparedRecipe.sourceName,
+      importedAt: preparedRecipe.importedAt,
+      lastParsedAt: preparedRecipe.lastParsedAt,
+      parserVersion: preparedRecipe.parserVersion
+    });
   } catch (error) {
+    if (error instanceof RecipeParserError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     console.error("Meal analysis API failure", error);
 
     return NextResponse.json(
@@ -307,4 +351,32 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+async function prepareRecipeForAnalysis(request: MealAnalysisRequest) {
+  if (isProbablyUrl(request.recipeText)) {
+    const parsedRecipe = await basicRecipeParserAdapter.parseFromUrl(
+      request.recipeText
+    );
+
+    return {
+      analysisText: formatParsedRecipeForAnalysis(parsedRecipe),
+      sourceType: parsedRecipe.source.sourceType,
+      sourceUrl: parsedRecipe.source.sourceUrl ?? null,
+      sourceName: parsedRecipe.source.sourceName ?? null,
+      importedAt: parsedRecipe.source.importedAt ?? new Date().toISOString(),
+      lastParsedAt: parsedRecipe.source.lastParsedAt ?? new Date().toISOString(),
+      parserVersion: parsedRecipe.source.parserVersion ?? null
+    };
+  }
+
+  return {
+    analysisText: request.recipeText,
+    sourceType: request.sourceType ?? defaultManualRecipeSource.sourceType,
+    sourceUrl: request.sourceUrl ?? null,
+    sourceName: request.sourceName ?? null,
+    importedAt: new Date().toISOString(),
+    lastParsedAt: null,
+    parserVersion: request.sourceType === "url" ? null : manualParserVersion
+  };
 }
