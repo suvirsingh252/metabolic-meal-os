@@ -81,6 +81,7 @@ interface SaveIngredientsResponse {
 type IngredientPersistenceStatus =
   | { state: "idle" }
   | { state: "saving" }
+  | { state: "empty" }
   | {
       state: "success";
       createdCount: number;
@@ -300,10 +301,13 @@ export default function AnalyzePage() {
   }
 
   async function persistIngredientSuggestions(meal: MealAnalysisResult) {
-    const ingredients = meal.ingredientSuggestions;
+    const ingredients = normalizeIngredientSuggestionText(
+      ingredientText,
+      meal.ingredientSuggestions
+    );
 
     if (ingredients.length === 0) {
-      setIngredientPersistence({ state: "skipped" });
+      setIngredientPersistence({ state: "empty" });
       return;
     }
 
@@ -852,7 +856,15 @@ function IngredientPersistenceMessage({
   if (status.state === "skipped") {
     return (
       <p className="mt-3 text-muted-foreground">
-        No ingredient suggestions to save.
+        Ingredient save completed. Suggestions were already present or malformed.
+      </p>
+    );
+  }
+
+  if (status.state === "empty") {
+    return (
+      <p className="mt-3 text-muted-foreground">
+        No ingredient suggestions were available to save.
       </p>
     );
   }
@@ -875,6 +887,29 @@ function IngredientPersistenceMessage({
       .
     </p>
   );
+}
+
+function normalizeIngredientSuggestionText(
+  text: string,
+  fallback: unknown
+): string[] {
+  const textIngredients = text
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (textIngredients.length > 0) {
+    return textIngredients;
+  }
+
+  if (!Array.isArray(fallback)) {
+    return [];
+  }
+
+  return fallback
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 interface TextInputProps {

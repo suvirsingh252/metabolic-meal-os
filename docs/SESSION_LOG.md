@@ -1,5 +1,31 @@
 # Session Log
 
+## 2026-05-24 Analyze Ingredient Persistence Payload Fix
+
+Goal:
+- Fix the warning shown after saving from `/analyze` when direct production calls to `/api/notion/save-ingredients` succeed.
+- Do not change Notion schema, Evidence-Aware Analysis v3 output, or the save-ingredients API behavior unless necessary.
+
+Finding:
+- Direct production payload `{ mealName: string, ingredients: string[] }` succeeds.
+- The `/analyze` client was passing `meal.ingredientSuggestions` directly after meal save.
+- The editable UI stores ingredient suggestions as newline text, so the safest client payload source is the current textarea value normalized to a string array at save time, with the analysis array as fallback.
+
+Completed work:
+- Added `normalizeIngredientSuggestionText()` in `/analyze`.
+- Ingredient persistence now sends exactly `{ mealName, ingredients }`, where `ingredients` is a trimmed, blank-filtered `string[]` derived from the editable ingredient textarea.
+- If the textarea is empty, it falls back to a defensive string-only normalization of `meal.ingredientSuggestions`.
+- Added a distinct `empty` client state so the UI can say no ingredient suggestions were available instead of showing an API failure.
+- Kept meal save non-blocking if ingredient persistence fails.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+
+Next recommended action:
+- Deploy and test `/analyze` end to end in production with ingredient suggestions populated. Confirm ingredient persistence reports success or duplicate skips, and confirm no warning appears when the API succeeds.
+
 ## 2026-05-24 Evidence-Aware Analysis v3
 
 Goals:
