@@ -8,6 +8,7 @@ Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 
 ## Bugs
 
+- [ ] Production ingredient persistence fix is implemented locally but still needs deployment/retest on Vercel. Root cause was reading Ingredients schema from `databases.retrieve()` instead of the active data source; local create and duplicate checks now pass.
 - [ ] In-app browser localhost testing has sometimes been blocked by `net::ERR_BLOCKED_BY_CLIENT`; use command-line checks or a normal browser if this recurs.
 - [ ] Multiple Next dev servers can remain running on alternate ports after interrupted sessions; check with `lsof -ti :3011` or inspect `.next/dev/logs`.
 
@@ -26,16 +27,16 @@ Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 - [ ] Source registry and health-guidance principles are not yet wired into prompts, UI, or saved analysis records.
 - [ ] FoodData Central matching is heuristic. Some lookups may return branded foods or adjacent common foods; review `matchedDescription` and `confidence`.
 - [ ] USDA `DEMO_KEY` can hit rate limits during repeated diagnostics. Configure a real `FDC_API_KEY` locally and in Vercel before relying on lookup tests.
-- [ ] Current Ingredients database is missing all optional nutrient enrichment properties, so `/api/ingredients/enrich` skips every Notion update field until the properties are added manually.
+- [ ] Ingredient nutrient properties are present in production schema diagnostics, and production USDA lookup/enrich lookup-only works. Ingredient page creation has a local code fix and needs production redeploy verification.
 
 ## UX Problems
 
 - [ ] Analyze, save, and feedback flows are functional but plain.
 - [ ] Meals page has no filtering or search yet.
-- [ ] Meal Feedback -> Meals relation property may not yet be created in Notion. The app code supports it and falls back gracefully, but the Notion manual setup step must be done before relation writes are enabled. Verify in `/settings` → `Test Notion Schemas`.
+- [ ] Meal Feedback -> Meals relation is not present on the active Feedback data source configured by `NOTION_FEEDBACK_DATABASE_ID`. Selected-meal feedback saves, but returns the missing-relation warning and does not write a Meal relation until the active Feedback data source gets a relation to Meals.
 - [ ] Ingredients are saved as standalone records, but are not related to saved meals in Notion yet.
 - [ ] Success/error UI patterns are not fully standardized.
-- [ ] Analysis Framework v2 and Recipe URL analysis have not been smoke-tested on the live Vercel deployment. Deploy and verify before trusting production.
+- [ ] Analysis Framework v2 and Recipe URL analysis have been smoke-tested through production APIs, but browser-rendered review UI still needs a human/UI pass on the live deployment.
 - [ ] Household defaults are read-only and hard-coded to CA/NS/Halifax for now. There is no settings persistence UI yet.
 - [ ] Recipe source fields only persist to Notion if compatible optional Meals properties exist. Missing properties are ignored by design.
 

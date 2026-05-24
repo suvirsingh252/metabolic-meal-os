@@ -140,6 +140,15 @@ function getIngredientDatabaseSchema(database: unknown): IngredientDatabaseSchem
   };
 }
 
+function describeSchema(schema: IngredientDatabaseSchema) {
+  return {
+    titlePropertyName: schema.titlePropertyName,
+    sourceMealPropertyName: schema.sourceMealPropertyName,
+    sourceMealPropertyType: schema.sourceMealPropertyType,
+    createdDatePropertyName: schema.createdDatePropertyName
+  };
+}
+
 function readTitle(property: NotionProperty | undefined) {
   if (!property || property.type !== "title") {
     return "";
@@ -272,8 +281,12 @@ export async function POST(request: Request) {
     const database = await notion.databases.retrieve({
       database_id: NOTION_INGREDIENTS_DATABASE_ID
     });
-    const schema = getIngredientDatabaseSchema(database);
     const dataSourceId = getPrimaryDataSourceId(database);
+    const dataSource = await notion.dataSources.retrieve({
+      data_source_id: dataSourceId
+    });
+    const schema = getIngredientDatabaseSchema(dataSource);
+    console.info("Notion save ingredients schema", describeSchema(schema));
     const existingKeys = await listExistingIngredientKeys(
       notion,
       dataSourceId,

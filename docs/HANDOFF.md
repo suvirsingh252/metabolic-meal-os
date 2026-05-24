@@ -235,26 +235,27 @@ Reasoning:
 ## Current Blockers
 
 - Rotate the OpenAI and Notion keys that were found in `.env.example` if not already completed.
-- Analysis Framework v2 and Recipe URL analysis have not been smoke-tested on the live Vercel deployment yet. Deploy and verify before trusting production.
+- Analysis Framework v2 and Recipe URL analysis passed production API smoke tests, but browser-rendered review UI still needs a human/UI pass on the live deployment.
 - Optional source tracking fields require matching Notion Meals properties before they persist in Notion. The app detects compatible fields but does not create schema.
 - Recipe URL parsing is intentionally basic and dependency-free. Some recipe sites may block server-side fetches or hide recipe content behind scripts.
 - Health guidance and source registry are static foundations only; analysis output has not yet been changed to cite or apply them.
 - FoodData Central lookup is diagnostic only. It is not wired into analysis prompts, ingredient persistence, or Notion enrichment.
 - DEMO_KEY testing can hit USDA rate limits; use a real `FDC_API_KEY` for reliable diagnostics.
-- Current Ingredients database is missing all nutrient enrichment properties: `FDC ID`, `FDC Description`, `Nutrient Source`, `Nutrient Confidence`, `Protein (g)`, `Fiber (g)`, `Carbohydrates (g)`, `Sugars (g)`, `Sodium (mg)`, `Energy (kcal)`, and `Last Nutrient Lookup`.
-- With the current schema, `/api/ingredients/enrich` will return lookup results but skip Notion updates.
+- Ingredient nutrient properties are present in the active Ingredients data source and USDA lookup/enrich lookup-only works in production.
+- A local fix for ingredient persistence is implemented: `/api/notion/save-ingredients` now reads schema from the active Ingredients data source rather than the database object. Deploy and retest on Vercel before considering the production blocker closed.
+- The active Meal Feedback data source configured by `NOTION_FEEDBACK_DATABASE_ID` does not currently expose a relation property to Meals. Selected-meal feedback saves with a warning until the active Feedback data source gets a relation to the configured Meals database.
 
 ## Immediate Next Tasks
 
-1. Deploy the foundation changes and run the existing Analyze -> Save -> Meals -> Feedback smoke test.
+1. Deploy the ingredient persistence/relation-diagnostics fix and rerun the production smoke checks for ingredient creation, duplicate handling, and selected-meal feedback.
 2. If desired, add optional source properties to the Notion Meals database: Source Type, Source URL, Source Name, Imported At, Last Parsed At, Parser Version.
 3. Confirm manual meal saves still work with and without those optional Notion properties.
 4. Rotate exposed OpenAI and Notion keys if not already completed.
-5. Test Recipe URL analysis on representative recipe sites and document blocked/problematic domains.
+5. Add a relation property on the active Meal Feedback data source/database configured by `NOTION_FEEDBACK_DATABASE_ID`, pointing to the Meals database configured by `NOTION_MEALS_DATABASE_ID`; rerun `/settings` schema diagnostics to confirm it appears.
 6. Add structured ingredient persistence behind the current string-compatible ingredient flow.
 7. Future prompt/schema slice: incorporate source IDs and health-guidance principles into analysis generation without expanding medical claims.
 8. Future ingredient slice: review whether FoodData Central snapshots should attach to normalized ingredients, still without overwriting canonical household data.
-9. Manually add optional nutrient properties to the Ingredients database before expecting enrichment updates to persist in Notion.
+9. Proceed to Evidence-Aware Analysis v3 only after the blocker smoke tests pass or the remaining Notion relation mismatch is explicitly accepted.
 
 ## Manual Testing Checklist
 
@@ -372,23 +373,25 @@ Current Feedback properties used:
 
 Manual Notion setup required for feedback relations:
 1. Open the Meal Feedback database in Notion.
-2. Add a Relation property named exactly `Meal`.
-3. Point the relation to the Meals database.
-4. Share both databases with the same Notion integration.
-5. Run `/settings` -> `Test Notion Schemas` and confirm Meal Feedback includes `Meal` with type `relation`.
-6. Selected-meal feedback will then write the relation automatically.
+2. Confirm it is the same active database/data source configured by `NOTION_FEEDBACK_DATABASE_ID`; `/settings` -> `Test Notion Schemas` must list the relation under Meal Feedback.
+3. Add a Relation property named `Meal`, or any relation property pointing to the configured Meals database.
+4. Point the relation to the Meals database.
+5. Share both databases with the same Notion integration.
+6. Run `/settings` -> `Test Notion Schemas` and confirm Meal Feedback includes a `relation` property with a relation target matching Meals.
+7. Selected-meal feedback will then write the relation automatically.
 
 Feedback relation status:
-- The app code supports writing the Meal Feedback → Meals relation when the `Meal` relation property exists in Notion.
-- If the relation property is present, selected-meal feedback writes a relation automatically.
+- The app code supports writing the Meal Feedback → Meals relation when a relation property exists on the active Feedback data source.
+- It prefers a relation property named `Meal`; if absent, it can use any relation property targeting the configured Meals database/data source.
 - If the relation property is absent, feedback still saves and returns a non-blocking warning.
-- Relation support is deployed. Verify in `/settings` → `Test Notion Schemas` that Meal Feedback includes a `Meal` property of type `relation`; if not, create it manually following the steps above.
+- Production smoke testing showed selected-meal feedback still warns because the active Feedback data source did not expose a relation property.
 
 Current Ingredients behavior:
-- Uses the database's title property for ingredient name.
+- Uses the active Ingredients data source title property for ingredient name.
 - Optional source meal property is used if named `Source Meal`, `Source Meal Name`, `Meal`, or `Meal Name` and typed as rich_text or select.
 - Optional created date property is used if named `Created`, `Created Date`, `Created At`, or `Added Date` and typed as date.
 - Duplicate detection uses trimmed, lowercase, lightly singularized ingredient names.
+- Empty ingredient lists return `200`; local post-fix testing confirms a new ingredient can be created and the repeated request is skipped as a duplicate.
 
 # Mandatory Start-of-Session Procedure
 

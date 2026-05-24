@@ -17,6 +17,10 @@ interface SchemaSummary {
   properties: Array<{
     name: string;
     type: string;
+    relationTarget?: {
+      databaseId: string | null;
+      dataSourceId: string | null;
+    };
   }>;
 }
 
@@ -53,13 +57,31 @@ function getProperties(database: unknown) {
   }
 
   return Object.entries(database.properties)
-    .map(([name, property]) => ({
-      name,
-      type:
+    .map(([name, property]) => {
+      const type =
         isRecord(property) && typeof property.type === "string"
           ? property.type
-          : "unknown"
-    }))
+          : "unknown";
+      const relationTarget =
+        type === "relation" && isRecord(property) && isRecord(property.relation)
+          ? {
+              databaseId:
+                typeof property.relation.database_id === "string"
+                  ? property.relation.database_id
+                  : null,
+              dataSourceId:
+                typeof property.relation.data_source_id === "string"
+                  ? property.relation.data_source_id
+                  : null
+            }
+          : undefined;
+
+      return {
+        name,
+        type,
+        ...(relationTarget ? { relationTarget } : {})
+      };
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

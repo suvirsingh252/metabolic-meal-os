@@ -1,5 +1,188 @@
 # Session Log
 
+## 2026-05-24 Production Blocker Fix Slice Before Evidence-Aware Analysis v3
+
+Goals:
+- Fix the two production blockers found during smoke testing before starting Evidence-Aware Analysis v3.
+- Do not implement Evidence-Aware Analysis v3.
+
+Blocker 1 — Ingredient persistence 500:
+- Root cause: `src/app/api/notion/save-ingredients/route.ts` retrieved the Ingredients database with `notion.databases.retrieve()` and then tried to read `database.properties`.
+- With the current Notion SDK/API shape, database objects contain `data_sources` but do not contain the active property map. Properties live on the retrieved data source.
+- Empty ingredient lists returned `200` because that path exits before schema inspection.
+- Real ingredient creation returned `500` because schema detection was using the wrong object.
+
+Ingredient fix:
+- Updated `save-ingredients` to retrieve the primary Ingredients data source and derive the title/source/created schema from that data source.
+- Added safe server logging for the detected ingredient schema: title property, optional source meal property/type, and optional created date property.
+- Preserved existing behavior:
+  - Empty list returns `200`.
+  - Duplicate prevention still queries the active data source.
+  - App code still does not create Notion schema.
+  - Optional source/created properties are only written when compatible.
+
+Ingredient verification:
+- Local `POST /api/notion/save-ingredients` with `["smoke-test-ingredient-fix-2026-05-24"]` returned `200` with `createdCount: 1`.
+- Repeating the same request returned `200` with `createdCount: 0`, `skippedCount: 1`.
+- Notion search verified the new Ingredient page exists.
+- Production deploy/retest is still needed for this fix to affect the live Vercel URL.
+
+Blocker 2 — Meal Feedback -> Meals relation:
+- Root cause/mismatch identified: the active Meal Feedback data source configured by `NOTION_FEEDBACK_DATABASE_ID` does not expose any relation property.
+- Direct schema inspection shows the Feedback data source properties are only: `Cravings Later`, `Energy After`, `Feedback Entry`, `Hunger Later`, `Notes`, and `Would Repeat`.
+- The only `Meal` relation found in diagnostics is on the Meals data source itself, where it points back to the Meals database/data source. That is not usable for writing Feedback -> Meal relations.
+
+Feedback relation code improvement:
+- Updated selected-feedback relation detection to prefer a relation property named `Meal`.
+- If `Meal` is absent, detection now checks for any relation property targeting the configured Meals database or Meals data source.
+- Updated feedback mapping so it can write to the detected relation property name instead of hardcoding `Meal`.
+- If no relation exists, feedback still saves and returns the existing safe warning.
+- Added safe server logging with Feedback database ID, Meals database/data source ID, and Feedback property summaries when no relation is found.
+- Enhanced schema diagnostics to include relation target database/data source IDs for relation properties.
+
+Feedback verification:
+- Local selected-meal feedback still saves successfully but returns the expected missing-relation warning because the active Feedback data source lacks a relation property.
+- Exact manual fix: add a relation property on the active `Meal Feedback` data source/database configured by `NOTION_FEEDBACK_DATABASE_ID`, pointing to the `Meals` database configured by `NOTION_MEALS_DATABASE_ID`. The property may be named `Meal`, or any relation name targeting Meals after this code change.
+- Production deploy/retest is needed after the Notion relation is corrected.
+
+Files changed:
+- `src/app/api/notion/save-ingredients/route.ts`
+- `src/app/api/notion/log-feedback/route.ts`
+- `src/app/api/diagnostics/notion-schemas/route.ts`
+- `src/lib/notion/mappers.ts`
+- `docs/SESSION_LOG.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/HANDOFF.md`
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+
+Next required actions:
+- Deploy the code fix to Vercel.
+- Re-run production ingredient persistence with a new ingredient and duplicate check.
+- Add/fix the Meal Feedback relation on the active production Feedback data source, then rerun selected-meal feedback.
+
+## 2026-05-24 Production Smoke Test Retry After Vercel Protection Disabled
+
+Goal:
+- Retry the production smoke checklist against `https://metabolic-meal-lf3ys2msu-suvir-singh-s-projects.vercel.app` after Vercel deployment protection was temporarily disabled.
+- Do not implement Evidence-Aware Analysis v3.
+
+Production route/page checks:
+- `HEAD /settings`: `200 OK`.
+- `HEAD /analyze`: `200 OK`.
+- `HEAD /meals`: `200 OK`.
+- `HEAD /feedback`: `200 OK`.
+- `GET /manifest.webmanifest`: `200 OK`; manifest returned expected `Metabolic Meal OS` app metadata and icons.
+
+Settings/API diagnostics:
+- `GET /api/diagnostics/notion`: `200 OK`, returned Meals database title/id.
+- `GET /api/diagnostics/notion-schemas`: `200 OK`, returned Meals, Ingredients, and Meal Feedback schema summaries.
+- Ingredients schema includes nutrient fields: `FDC ID`, `FDC Description`, `Nutrient Source`, `Nutrient Confidence`, `Protein (g)`, `Fiber (g)`, `Carbohydrates (g)`, `Sugars (g)`, `Sodium (mg)`, `Energy (kcal)`, and `Last Nutrient Lookup`.
+- Meal Feedback schema returned by production diagnostics does **not** include a `Meal` relation property.
+- `POST /api/ingredients/lookup` with `paneer`: `200 OK`, returned USDA FoodData Central match with nutrient snapshot.
+- `POST /api/ingredients/enrich` lookup-only with `paneer`: `200 OK`, returned lookup mode, no updated fields, and expected skipped fields because no `ingredientPageId` was provided.
+
+Analyze smoke tests:
+- Plain-text meal analysis: `200 OK`.
+- Plain-text test meal: chana masala bowl with chickpeas, basmati rice, cucumber kachumber, plain yogurt, lemon, and mango pickle.
+- Result meal name: `Chana Masala Bowl`.
+- Analysis Framework v2 fields were present in the API response.
+- Recipe URL analysis with `https://www.hungrypaprikas.com/kofta-smash-tacos/`: `200 OK`.
+- URL result meal name: `Kofta Smash Tacos`.
+- URL result source metadata: `sourceType: url`, `sourceName: Kofta Smash Tacos`, `parserVersion: recipe-parser-basic-v1`, and the original source URL.
+
+Notion meal persistence:
+- `POST /api/notion/save-meal`: `200 OK`.
+- Created Notion Meal page: `36a682da-780a-8188-9fda-c49a767ade2f`.
+- `GET /api/notion/meals`: `200 OK`; saved meal was present in returned list.
+- Notion fetch verified the saved Meal page exists.
+- Notion `Notes` contains the Analysis Framework v2 summary, including Quick Verdict, Scorecard, Main Concerns, Plate Strategy, and Cautions.
+
+Ingredient persistence:
+- Ingredient persistence after save failed in production.
+- `POST /api/notion/save-ingredients` with the analyzed meal's ingredient suggestions returned `500`.
+- A follow-up empty-list request returned `200`, but a single real ingredient creation request also returned `500`.
+- Duplicate-avoidance behavior could not be verified because ingredient creation is failing in production.
+
+Feedback:
+- Manual feedback save: `200 OK`; Notion Feedback page created and verified.
+- Selected-meal feedback save: `200 OK`; Notion Feedback page created and verified.
+- Selected-meal feedback returned warning: `Meal Feedback -> Meals relation property is missing. Feedback was saved without a Meal relation.`
+- Because production schema diagnostics do not show the `Meal` relation property on Meal Feedback, relation behavior is not working in production.
+
+Production blockers found:
+- Ingredient creation/persistence to Notion Ingredients fails with `500` in production when at least one ingredient needs to be created.
+- Meal Feedback -> Meals relation is not detected in production; selected-meal feedback saves without relation and returns the missing-relation warning.
+
+Commands/checks run:
+- `curl -I` for `/settings`, `/analyze`, `/meals`, and `/feedback`.
+- `curl -i` for Notion diagnostics, schema diagnostics, USDA lookup, USDA enrichment lookup-only, manifest, and focused ingredient persistence tests.
+- Node-based production workflow for Analyze -> Save -> Ingredients -> Meals -> Feedback after elevated network access was approved.
+- Notion connector fetches for the saved Meal page and both Feedback pages.
+
+Recommended next actions:
+- Fix production ingredient persistence before adding Evidence-Aware Analysis v3.
+- Recheck Notion Meal Feedback data source/schema; ensure the `Meal` relation is on the active data source queried by production, not only visible somewhere else in the Notion UI.
+- After those two blockers are fixed, rerun the production smoke checklist once more, then proceed to Evidence-Aware Analysis v3 implementation.
+
+## 2026-05-24 Production Smoke Test Attempt + Evidence-Aware Analysis v3 Prep
+
+Goals:
+- Run the production smoke checklist against the deployed Vercel URL before layering Evidence-Aware Analysis v3 on top.
+- Use `https://metabolic-meal-lf3ys2msu-suvir-singh-s-projects.vercel.app`.
+- Use recipe URL `https://www.hungrypaprikas.com/kofta-smash-tacos/` for recipe URL analysis testing.
+- Do not implement Evidence-Aware Analysis v3 yet.
+
+User-confirmed setup before testing:
+- Local `.env.local` has required keys including `FDC_API_KEY`.
+- Meal Feedback has a `Meal` relation to Meals.
+- Ingredients database nutrient fields have been added.
+- Paneer enrichment successfully updated Notion locally.
+
+Production smoke-test result:
+- Blocked by Vercel deployment protection/authentication before any product behavior could be verified.
+- `HEAD /settings`, `/analyze`, `/meals`, and `/feedback` all returned `401` from Vercel with `Authentication Required`, `_vercel_sso_nonce`, and `x-robots-tag: noindex`.
+- `GET /api/diagnostics/notion`, `GET /api/diagnostics/notion-schemas`, `POST /api/ingredients/lookup`, and `POST /api/ingredients/enrich` also returned the Vercel authentication page with `401`.
+- Vercel CLI is not installed in this workspace, and no Vercel MCP tool was available in this session.
+- No production Analyze, Save, Meals, Feedback, USDA, or Notion behavior was verified.
+
+Files inspected for Evidence-Aware Analysis v3 prep:
+- `src/lib/sources/source-registry.ts`
+- `src/lib/health-guidance/index.ts`
+- `src/lib/health-guidance/types.ts`
+- `src/lib/health-guidance/diabetes.ts`
+- `src/lib/health-guidance/pcos.ts`
+- `src/lib/health-guidance/canada-food-guide.ts`
+- `src/app/api/analyze-meal/route.ts`
+- `src/lib/types/meal.ts`
+- `src/app/analyze/page.tsx`
+- `src/lib/notion/meal-notes.ts`
+
+V3 prep findings:
+- Approved source records and health-guidance principles are well-structured and source-ID based.
+- Current analysis prompt already contains general diabetes-aware and PCOS-aware safety language, but it is hand-written and not generated from the source registry or health-guidance modules.
+- Current `MealAnalysisResult` has Analysis Framework v2 fields only; no `evidenceNotes`, `guidanceBasis`, `safetyDisclaimer`, or `confidenceNotes` fields exist yet.
+- `/analyze` displays and edits all current v2 fields locally in the analysis state.
+- Notion persistence writes a concise v2 summary into the existing `Notes` rich_text field via `buildMealNotesSummary`.
+- Because Notion `Notes` has a 2000-character limit, v3 Notion persistence should stay concise or deliberately omit detailed source lists until a richer persistence model exists.
+
+Recommended Evidence-Aware Analysis v3 implementation plan:
+1. Add typed v3 fields to `MealAnalysisResult`: `evidenceNotes: string[]`, `guidanceBasis: { sourceId: ApprovedSourceId; principleId: string; relevance: string }[]`, `safetyDisclaimer: string`, and `confidenceNotes: string[]`.
+2. Add a small helper that formats `globalHealthSafetyRules` and selected `healthGuidancePrinciples` into concise prompt context, rather than duplicating guidance text by hand inside `route.ts`.
+3. Update the OpenAI JSON schema and system prompt to require v3 fields, with strict instructions to cite only known `sourceId` and `principleId` values.
+4. Keep v3 language general: family diabetes risk support, possible PCOS-supportive patterns, protein/fibre/satiety/carbohydrate-quality nudges, Canadian household context, Indian and Atlantic Canadian food-pattern preservation.
+5. Explicitly prohibit diagnosis, treatment/cure/prevention claims, fertility claims, medication/supplement advice, and individualized clinical targets in both prompt context and output descriptions.
+6. Update `/analyze` to display/edit v3 fields in one compact "Evidence & safety" section after the existing v2 strategy sections.
+7. Update `buildMealNotesSummary` to include only a concise v3 summary: safety disclaimer, up to 3 evidence notes, up to 3 confidence notes, and compact `sourceId/principleId` references if space allows.
+8. Keep USDA nutrient lookup out of v3 runtime analysis for now; use source registry and health-guidance principles only.
+9. Add focused validation once implementation starts: typecheck, lint, build, and at least one API smoke test confirming the v3 shape.
+
+Next required action before production smoke can complete:
+- Provide a Vercel protection bypass token, use an authenticated `vercel curl` setup, or temporarily disable deployment protection for the test deployment.
+
 ## 2026-05-24 Ingredient Nutrient Enrichment USDA To Notion
 
 Goals:

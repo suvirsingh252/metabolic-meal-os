@@ -144,6 +144,7 @@ export function mapMealFeedbackToNotionProperties(
   feedback: MealFeedbackRequest,
   options?: {
     includeMealRelation?: boolean;
+    mealRelationPropertyName?: string;
   }
 ): PageProperties {
   const properties: PageProperties = {
@@ -155,8 +156,12 @@ export function mapMealFeedbackToNotionProperties(
     Notes: richText(feedback.notes)
   };
 
-  if (options?.includeMealRelation && feedback.selectedMealId) {
-    properties.Meal = relation(feedback.selectedMealId);
+  if (
+    options?.includeMealRelation &&
+    options.mealRelationPropertyName &&
+    feedback.selectedMealId
+  ) {
+    properties[options.mealRelationPropertyName] = relation(feedback.selectedMealId);
   }
 
   return properties;
