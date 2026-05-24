@@ -37,7 +37,8 @@ type EditableTextField =
   | "supportiveVersion"
   | "plateStrategy"
   | "whyThisHelps"
-  | "culturalNotes";
+  | "culturalNotes"
+  | "safetyDisclaimer";
 
 type EditableScoreField =
   | "metabolicScore"
@@ -98,6 +99,9 @@ export default function AnalyzePage() {
   const [prepNotesText, setPrepNotesText] = useState("");
   const [mealPairingsText, setMealPairingsText] = useState("");
   const [cautionsText, setCautionsText] = useState("");
+  const [evidenceNotesText, setEvidenceNotesText] = useState("");
+  const [confidenceNotesText, setConfidenceNotesText] = useState("");
+  const [guidanceBasisText, setGuidanceBasisText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMeal, setSavedMeal] = useState<SaveMealResponse | null>(null);
@@ -151,6 +155,9 @@ export default function AnalyzePage() {
       setPrepNotesText(result.prepNotes.join("\n"));
       setMealPairingsText(result.mealPairings.join("\n"));
       setCautionsText(result.cautions.join("\n"));
+      setEvidenceNotesText(result.evidenceNotes.join("\n"));
+      setConfidenceNotesText(result.confidenceNotes.join("\n"));
+      setGuidanceBasisText(formatGuidanceBasis(result.guidanceBasis));
     } catch {
       setError("Unable to reach the analysis service. Try again.");
     } finally {
@@ -212,7 +219,14 @@ export default function AnalyzePage() {
 
   function updateArrayField(
     textSetter: (text: string) => void,
-    field: "mainConcerns" | "shoppingAdditions" | "prepNotes" | "mealPairings" | "cautions",
+    field:
+      | "mainConcerns"
+      | "shoppingAdditions"
+      | "prepNotes"
+      | "mealPairings"
+      | "cautions"
+      | "evidenceNotes"
+      | "confidenceNotes",
     value: string
   ) {
     clearSaveStatus();
@@ -222,6 +236,19 @@ export default function AnalyzePage() {
         ? {
             ...current,
             [field]: value.split("\n").map((s) => s.trim()).filter(Boolean)
+          }
+        : current
+    );
+  }
+
+  function updateGuidanceBasis(value: string) {
+    clearSaveStatus();
+    setGuidanceBasisText(value);
+    setAnalysis((current) =>
+      current
+        ? {
+            ...current,
+            guidanceBasis: parseGuidanceBasis(value)
           }
         : current
     );
@@ -616,6 +643,46 @@ export default function AnalyzePage() {
                   value={cautionsText}
                 />
 
+                <SectionHeader label="Evidence & safety" />
+                <TextareaInput
+                  id="evidenceNotes"
+                  label="Evidence notes (one per line)"
+                  onChange={(value) =>
+                    updateArrayField(setEvidenceNotesText, "evidenceNotes", value)
+                  }
+                  rows={4}
+                  value={evidenceNotesText}
+                />
+                <TextareaInput
+                  id="confidenceNotes"
+                  label="Confidence notes (one per line)"
+                  onChange={(value) =>
+                    updateArrayField(
+                      setConfidenceNotesText,
+                      "confidenceNotes",
+                      value
+                    )
+                  }
+                  rows={3}
+                  value={confidenceNotesText}
+                />
+                <TextareaInput
+                  id="safetyDisclaimer"
+                  label="Safety disclaimer"
+                  onChange={(value) =>
+                    updateTextField("safetyDisclaimer", value)
+                  }
+                  rows={2}
+                  value={analysis.safetyDisclaimer}
+                />
+                <TextareaInput
+                  id="guidanceBasis"
+                  label="Guidance basis (sourceId | principleId | relevance)"
+                  onChange={updateGuidanceBasis}
+                  rows={5}
+                  value={guidanceBasisText}
+                />
+
                 {/* ── Original fields ── */}
 
                 <SectionHeader label="Optimized version" />
@@ -697,6 +764,41 @@ export default function AnalyzePage() {
       </div>
     </div>
   );
+}
+
+function formatGuidanceBasis(
+  guidanceBasis: MealAnalysisResult["guidanceBasis"]
+) {
+  return guidanceBasis
+    .map(
+      (basis) =>
+        `${basis.sourceId} | ${basis.principleId} | ${basis.relevance}`
+    )
+    .join("\n");
+}
+
+function parseGuidanceBasis(value: string): MealAnalysisResult["guidanceBasis"] {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [sourceId = "", principleId = "", ...relevanceParts] = line
+        .split("|")
+        .map((part) => part.trim());
+
+      return {
+        sourceId,
+        principleId,
+        relevance: relevanceParts.join(" | ")
+      };
+    })
+    .filter(
+      (basis) =>
+        basis.sourceId.length > 0 &&
+        basis.principleId.length > 0 &&
+        basis.relevance.length > 0
+    );
 }
 
 function SourceSummary({ analysis }: { analysis: MealAnalysisResult }) {

@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-24
 
-This app now has a static evidence-aware foundation for future meal analysis, nutrition enrichment, and grocery intelligence. It does not call external source APIs yet and does not change the OpenAI analysis output schema.
+This app has an evidence-aware foundation for meal analysis, nutrition enrichment, and grocery intelligence. The source registry and health-guidance principles are now wired into runtime meal analysis prompt context and output fields. It does not call external source APIs for this guidance and does not use USDA nutrient lookup during meal analysis.
 
 ## Source Registry
 
@@ -72,15 +72,24 @@ The app may:
 
 ## Architecture Notes
 
-This is a foundation layer only. It is intended for future use by:
+This layer is used by:
 
 - Prompt construction.
 - Source-attributed AI analysis.
+
+It is still intended for future use by:
 - Nutrition enrichment.
 - Canadian grocery intelligence.
 - User-facing explanation and safety copy.
 
-Do not wire this directly into production analysis output until a dedicated prompt/schema slice is planned and validated.
+Runtime analysis returns:
+
+- `evidenceNotes`
+- `confidenceNotes`
+- `safetyDisclaimer`
+- `guidanceBasis`
+
+`guidanceBasis` cites source IDs and health-guidance principle IDs rather than long free-text citations.
 
 Future integrations should cite source IDs, not free-text source names, so records remain verifiable and reviewable.
 

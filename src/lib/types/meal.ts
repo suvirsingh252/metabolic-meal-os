@@ -35,6 +35,12 @@ export type SatietyLevel = (typeof satietyLevels)[number];
 export type BloodSugarImpact = (typeof bloodSugarImpacts)[number];
 export type EffortLevel = (typeof effortLevels)[number];
 
+export interface MealGuidanceBasis {
+  sourceId: string;
+  principleId: string;
+  relevance: string;
+}
+
 export interface MealAnalysisRequest {
   recipeText: string;
   sourceType?: "manual" | "url" | "ai" | "family";
@@ -76,6 +82,12 @@ export interface MealAnalysisResult {
   prepNotes: string[];
   mealPairings: string[];
   cautions: string[];
+
+  // Evidence-Aware Analysis v3
+  evidenceNotes: string[];
+  confidenceNotes: string[];
+  safetyDisclaimer: string;
+  guidanceBasis: MealGuidanceBasis[];
 
   // Recipe source tracking foundation. Optional for backward compatibility.
   sourceType?: "manual" | "url" | "ai" | "family";

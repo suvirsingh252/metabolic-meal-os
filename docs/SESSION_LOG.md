@@ -1,5 +1,58 @@
 # Session Log
 
+## 2026-05-24 Evidence-Aware Analysis v3
+
+Goals:
+- Wire the existing evidence-aware foundation into runtime meal analysis safely and incrementally.
+- Support family diabetes risk awareness, insulin-sensitivity-friendly eating, possible PCOS-supportive food patterns, sustainable household nutrition, Canadian context, Indian and Atlantic Canadian food patterns, and culturally preserving guidance.
+- Do not implement calorie counting, macro tracking, medical scoring, or automated USDA runtime enrichment.
+
+Files changed:
+- `src/lib/types/meal.ts`
+- `src/app/api/analyze-meal/route.ts`
+- `src/app/api/notion/save-meal/route.ts`
+- `src/app/analyze/page.tsx`
+- `src/lib/notion/meal-notes.ts`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/DECISIONS.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/SESSION_LOG.md`
+- `docs/SOURCES.md`
+
+Completed work:
+- Added Evidence-Aware Analysis v3 fields to `MealAnalysisResult`:
+  - `evidenceNotes: string[]`
+  - `confidenceNotes: string[]`
+  - `safetyDisclaimer: string`
+  - `guidanceBasis: { sourceId: string; principleId: string; relevance: string }[]`
+- Updated `/api/analyze-meal` to build prompt context from `globalHealthSafetyRules`, `healthGuidancePrinciples`, and approved source records.
+- Updated the OpenAI structured output schema to require the four v3 fields.
+- Restricted `guidanceBasis.sourceId` and `guidanceBasis.principleId` to known source/principle IDs.
+- Kept v3 focused on general food-pattern guidance; no medical claims, no diagnosis, no treatment/cure/prevention language, no supplement/medication/fertility/dosing advice, and no runtime USDA enrichment.
+- Updated `/analyze` to display and edit a compact Evidence & Safety section with evidence notes, confidence notes, safety disclaimer, and guidance basis.
+- Updated save-meal validation to accept v3 fields leniently for backward compatibility.
+- Updated Notion Notes summary to include a concise Evidence-Aware v3 Summary without adding Notion schema properties.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Local `POST /api/analyze-meal` smoke test returned `200 OK` with all v3 fields present.
+- Local `POST /api/notion/save-meal` smoke test with v3 fields returned `200 OK`.
+- Notion fetch verified the saved smoke-test Meal Notes include the Evidence-Aware v3 Summary.
+
+Known limitations:
+- V3 output is model-generated and needs production smoke testing and real-meal review for language drift.
+- `guidanceBasis` is source/principle-ID linked, not a full citation layer.
+- Notion persistence remains constrained by the existing 2000-character Notes rich_text limit.
+- USDA FoodData Central remains diagnostic/manual and is not used during runtime meal analysis.
+
+Next recommended actions:
+- Deploy v3 to Vercel.
+- Production smoke-test plain text analysis, recipe URL analysis, v3 UI display/editing, save to Notion, and Notion Notes summary.
+- Review output on representative Indian, Atlantic Canadian, and mixed household meals before broad use.
+
 ## 2026-05-24 Production Blocker Fix Slice Before Evidence-Aware Analysis v3
 
 Goals:

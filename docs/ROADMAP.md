@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
+Last updated: 2026-05-24 (Evidence-Aware Analysis v3)
 
 ## Completed
 
@@ -42,6 +42,10 @@ Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 - [x] Add Settings diagnostic panel for ingredient nutrient lookup.
 - [x] Add explicit USDA -> Notion Ingredient enrichment endpoint that updates only existing compatible properties.
 - [x] Add Settings diagnostic panel for lookup-only or lookup-and-update enrichment testing.
+- [x] Add Evidence-Aware Analysis v3 fields to runtime analysis: evidence notes, confidence notes, safety disclaimer, and source/principle-linked guidance basis.
+- [x] Wire approved source registry and health-guidance principles into analysis prompt context without adding medical claims or runtime USDA enrichment.
+- [x] Display and edit Evidence-Aware Analysis v3 fields in `/analyze`.
+- [x] Persist concise Evidence-Aware Analysis v3 summary into Notion Notes without schema changes.
 
 ## Current Sprint
 
@@ -55,11 +59,12 @@ Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 - [ ] Confirm `/meals` still loads after save on live URL.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
+- [ ] Deploy Evidence-Aware Analysis v3 and smoke-test `/analyze` output plus Notion Notes on the live URL.
 
 ## Next Up
 
 - [ ] Harden Recipe URL analysis after real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, improve SSRF protection with DNS checks, and record blocked/problematic domains.
-- [ ] Plan a prompt/schema slice that can use source IDs and health-guidance principles without making medical claims.
+- [ ] Review Evidence-Aware Analysis v3 output quality on representative Indian, Atlantic Canadian, and mixed household meals.
 - [ ] Add structured ingredient persistence behind the current ingredient suggestion flow.
 - [ ] Decide how FoodData Central nutrient snapshots should relate to normalized ingredients without changing Notion schema prematurely.
 - [ ] Manually add optional nutrient properties to Ingredients database and retest `/api/ingredients/enrich` with a real `FDC_API_KEY`.

@@ -1,6 +1,21 @@
 # Architectural Decisions
 
-Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
+Last updated: 2026-05-24 (Evidence-Aware Analysis v3)
+
+## 2026-05-24 — Evidence-Aware Analysis v3 Uses Static Guidance At Runtime
+
+Decision: Wire the existing source registry and health-guidance principles into `/api/analyze-meal` prompt context and structured output with four v3 fields: `evidenceNotes`, `confidenceNotes`, `safetyDisclaimer`, and `guidanceBasis`.
+
+Reasoning:
+- The app needs safer family decision support for diabetes risk awareness, insulin-sensitivity-friendly eating, possible PCOS-supportive patterns, Canadian household context, and culturally preserving food guidance.
+- Source/principle IDs make generated guidance reviewable without adding long citations or medical claims.
+- A small v3 schema avoids a larger rewrite and keeps current Notion schema stable.
+
+Tradeoffs:
+- V3 output is still model-generated and should be reviewed for wording drift.
+- Guidance basis uses static source/principle IDs, not live source retrieval.
+- Notion Notes remains the persistence surface, so v3 summaries must stay concise because of the rich_text character limit.
+- USDA nutrient lookup remains diagnostic-only and is intentionally not used in runtime analysis.
 
 ## 2026-05-24 — Ingredient Nutrient Enrichment Skips Missing Schema
 

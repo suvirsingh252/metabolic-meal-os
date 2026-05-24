@@ -40,6 +40,21 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function isGuidanceBasisArray(
+  value: unknown
+): value is MealAnalysisResult["guidanceBasis"] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.sourceId === "string" &&
+        typeof item.principleId === "string" &&
+        typeof item.relevance === "string"
+    )
+  );
+}
+
 function isEnumValue<TValue extends string>(
   value: unknown,
   options: readonly TValue[]
@@ -246,6 +261,17 @@ function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse 
   const prepNotes = isStringArray(body.prepNotes) ? body.prepNotes : [];
   const mealPairings = isStringArray(body.mealPairings) ? body.mealPairings : [];
   const cautions = isStringArray(body.cautions) ? body.cautions : [];
+  const evidenceNotes = isStringArray(body.evidenceNotes)
+    ? body.evidenceNotes
+    : [];
+  const confidenceNotes = isStringArray(body.confidenceNotes)
+    ? body.confidenceNotes
+    : [];
+  const safetyDisclaimer =
+    typeof body.safetyDisclaimer === "string" ? body.safetyDisclaimer : "";
+  const guidanceBasis = isGuidanceBasisArray(body.guidanceBasis)
+    ? body.guidanceBasis
+    : [];
   const sourceType =
     isEnumValue<RecipeSourceType>(body.sourceType, recipeSourceTypes)
       ? body.sourceType
@@ -301,6 +327,10 @@ function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse 
     prepNotes,
     mealPairings,
     cautions,
+    evidenceNotes,
+    confidenceNotes,
+    safetyDisclaimer,
+    guidanceBasis,
     sourceType,
     sourceUrl,
     sourceName,

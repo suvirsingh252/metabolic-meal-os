@@ -23,8 +23,54 @@ import {
   recipeSourceTypes,
   type RecipeSourceType
 } from "@/src/lib/types/recipe";
+import {
+  globalHealthSafetyRules,
+  healthGuidancePrinciples
+} from "@/src/lib/health-guidance";
+import { approvedSources } from "@/src/lib/sources/source-registry";
 
 export const runtime = "nodejs";
+
+const approvedSourceIds = approvedSources.map((source) => source.id);
+const healthGuidancePrincipleIds = healthGuidancePrinciples.map(
+  (principle) => principle.id
+);
+
+function formatEvidenceContext() {
+  const sourceLines = approvedSources
+    .filter((source) =>
+      [
+        "diabetes-canada-guidelines",
+        "international-pcos-guideline-2023",
+        "canadas-food-guide"
+      ].includes(source.id)
+    )
+    .map(
+      (source) =>
+        `- ${source.id}: ${source.name}; allowed uses: ${source.allowedUses.join(" ")}; prohibited uses: ${source.prohibitedUses.join(" ")}`
+    )
+    .join("\n");
+
+  const principleLines = healthGuidancePrinciples
+    .map(
+      (principle) =>
+        `- ${principle.id}: ${principle.summary} Analysis use: ${principle.analysisUse.join(" ")} Safe language: ${principle.safeLanguage.join(" ")} Prohibited claims: ${principle.prohibitedClaims.join(" ")} Source IDs: ${principle.sourceIds.join(", ")}`
+    )
+    .join("\n");
+
+  return `
+Evidence-aware guidance context:
+
+Global safety rules:
+${globalHealthSafetyRules.map((rule) => `- ${rule}`).join("\n")}
+
+Approved sources for runtime meal analysis:
+${sourceLines}
+
+Health-guidance principles available for guidanceBasis:
+${principleLines}
+`.trim();
+}
 
 const systemPrompt = `
 You analyze household recipes and return practical structured JSON for a meal review screen.
@@ -43,6 +89,9 @@ Guidelines:
 - Keep substitutions culturally respectful and avoid stripping the identity of the dish.
 - Never call foods "bad". Frame everything as "could support" or "worth watching".
 - Avoid calorie or macro obsession. Focus on protein, fiber, satiety, and blood sugar stability.
+- Use the evidence-aware guidance context below to produce source-linked, non-medical food-pattern support.
+- Cite only sourceId and principleId values that appear in the context.
+- Do not use USDA nutrient lookup, calorie counting, macro tracking, medical targets, or automated nutrition enrichment in this analysis.
 
 Scoring (all scores 1–10):
 - metabolicScore: overall metabolic friendliness for insulin-resistance-supportive eating.
@@ -63,6 +112,14 @@ Text fields:
 - prepNotes: 1–3 short practical prep tips (timing, batch cooking, shortcuts).
 - mealPairings: 2–3 simple food or drink pairings that would complement this meal metabolically.
 - cautions: 0–2 short notes about things worth watching (e.g. portion size, high sodium, added sugar). Empty array if none.
+
+Evidence-aware v3 fields:
+- evidenceNotes: 2–4 short notes connecting the meal advice to general food-pattern principles. Use careful language such as "may support", "could help", or "worth watching".
+- confidenceNotes: 1–3 short uncertainty notes. Mention that individual responses, portions, product choices, and preparation can vary where relevant.
+- safetyDisclaimer: one concise sentence stating this is general food-pattern support, not diagnosis or individualized medical advice.
+- guidanceBasis: 2–5 objects. Each object must include a valid sourceId, a valid principleId, and a short relevance string explaining why that principle applies to this meal.
+
+${formatEvidenceContext()}
 `.trim();
 
 const mealAnalysisJsonSchema = {
@@ -195,6 +252,48 @@ const mealAnalysisJsonSchema = {
       type: "array",
       items: { type: "string" },
       description: "0–2 short notes about things worth watching. Empty array if none."
+    },
+    evidenceNotes: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "2–4 concise evidence-aware notes using general food-pattern support language. No medical claims."
+    },
+    confidenceNotes: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "1–3 concise uncertainty notes about portions, preparation, product variation, or individual response."
+    },
+    safetyDisclaimer: {
+      type: "string",
+      description:
+        "One concise sentence: general food-pattern support only, not diagnosis or individualized medical advice."
+    },
+    guidanceBasis: {
+      type: "array",
+      description:
+        "2–5 source-linked guidance references that use only approved sourceId and principleId values.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          sourceId: {
+            type: "string",
+            enum: approvedSourceIds
+          },
+          principleId: {
+            type: "string",
+            enum: healthGuidancePrincipleIds
+          },
+          relevance: {
+            type: "string",
+            description:
+              "Short explanation of why this source/principle is relevant to this meal."
+          }
+        },
+        required: ["sourceId", "principleId", "relevance"]
+      }
     }
   },
   required: [
@@ -227,7 +326,11 @@ const mealAnalysisJsonSchema = {
     "shoppingAdditions",
     "prepNotes",
     "mealPairings",
-    "cautions"
+    "cautions",
+    "evidenceNotes",
+    "confidenceNotes",
+    "safetyDisclaimer",
+    "guidanceBasis"
   ]
 } as const;
 

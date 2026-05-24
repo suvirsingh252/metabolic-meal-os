@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
+Last updated: 2026-05-24 (Evidence-Aware Analysis v3)
 
 ## Critical
 
@@ -24,7 +24,7 @@ Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 - [ ] `save-meal` performs a Meals database schema read before page creation so optional source fields can be detected. If Notion permissions are ever narrowed, this route needs a smoke test.
 - [ ] Integration adapter interfaces are placeholders and may need revision when real API constraints are known. Recipe parser is the first active adapter.
 - [ ] Recipe URL parser uses dependency-free JSON-LD and cleaned-text extraction. It is not as robust as a full Readability parser.
-- [ ] Source registry and health-guidance principles are not yet wired into prompts, UI, or saved analysis records.
+- [ ] Evidence-Aware Analysis v3 is wired into prompts, UI, and Notion Notes locally, but still needs production deployment and live smoke testing.
 - [ ] FoodData Central matching is heuristic. Some lookups may return branded foods or adjacent common foods; review `matchedDescription` and `confidence`.
 - [ ] USDA `DEMO_KEY` can hit rate limits during repeated diagnostics. Configure a real `FDC_API_KEY` locally and in Vercel before relying on lookup tests.
 - [ ] Ingredient nutrient properties are present in production schema diagnostics, and production USDA lookup/enrich lookup-only works. Ingredient page creation has a local code fix and needs production redeploy verification.
@@ -53,7 +53,7 @@ Last updated: 2026-05-24 (USDA ingredient nutrient enrichment)
 - [ ] Structured ingredients are type/helper-ready. Recipe JSON-LD ingredients are represented as `RecipeIngredient.rawText`, but quantity/unit parsing is not implemented.
 - [ ] Pantry support is type-only; there is no pantry UI, storage, or grocery-list deduction.
 - [ ] AI-generated analysis/enrichment has a separate type foundation, but is not persisted as a separate record yet.
-- [ ] Evidence-aware source citations are static only; there is no runtime citation/explanation layer yet.
+- [ ] Evidence-aware guidance is now source/principle-ID linked in analysis output, but still uses static guidance context rather than live source retrieval.
 - [ ] FoodData Central nutrient snapshots are diagnostic only and are not persisted to Notion ingredients yet.
 - [ ] Ingredient enrichment is explicit/manual only from Settings or direct API calls; it does not run during meal analysis or ingredient suggestion persistence.
 - [ ] Canada grocery, nutrition, Open Food Facts, and weather integrations are adapter stubs only. Recipe parser has a basic active implementation.

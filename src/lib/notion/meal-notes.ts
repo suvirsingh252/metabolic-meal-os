@@ -7,6 +7,17 @@ function bulletList(items: string[]): string {
   return items.map((item) => `- ${item}`).join("\n");
 }
 
+function guidanceBasisList(
+  guidanceBasis: MealAnalysisResult["guidanceBasis"]
+): string {
+  return guidanceBasis
+    .map(
+      (basis) =>
+        `- ${basis.sourceId} / ${basis.principleId}: ${basis.relevance}`
+    )
+    .join("\n");
+}
+
 /**
  * Builds the plain-text content written to the Notion "Notes" property.
  * Combines the original notes with a concise Analysis Framework v2 summary
@@ -48,6 +59,34 @@ export function buildMealNotesSummary(meal: MealAnalysisResult): string {
   }
 
   parts.push(v2Sections.join("\n\n"));
+
+  const v3Sections: string[] = ["Evidence-Aware v3 Summary:"];
+
+  if (meal.safetyDisclaimer.trim()) {
+    v3Sections.push(`Safety:\n${meal.safetyDisclaimer.trim()}`);
+  }
+
+  if (meal.evidenceNotes.length > 0) {
+    v3Sections.push(
+      `Evidence Notes:\n${bulletList(meal.evidenceNotes.slice(0, 3))}`
+    );
+  }
+
+  if (meal.confidenceNotes.length > 0) {
+    v3Sections.push(
+      `Confidence Notes:\n${bulletList(meal.confidenceNotes.slice(0, 3))}`
+    );
+  }
+
+  if (meal.guidanceBasis.length > 0) {
+    v3Sections.push(
+      `Guidance Basis:\n${guidanceBasisList(meal.guidanceBasis.slice(0, 3))}`
+    );
+  }
+
+  if (v3Sections.length > 1) {
+    parts.push(v3Sections.join("\n\n"));
+  }
 
   const summary = parts.join("\n\n");
 
