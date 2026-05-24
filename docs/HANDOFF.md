@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-24 (FoodData Central Matching Quality)
+Last updated: 2026-05-24 (Analyze UX Simplification)
 
 This is the primary resume document for future Codex sessions. Keep it current.
 
@@ -54,6 +54,7 @@ Implemented:
 - FoodData Central matching quality improvements: lookup now fetches preferred generic USDA data types more robustly, ranks Foundation/SR Legacy/Survey ahead of Experimental and Branded where suitable, penalizes prepared/flavored/plain-staple mismatches, adds limited query expansion for paneer and atta, and returns optional match metadata explaining the selected data type and fallback reason.
 - Ingredient picker/enrichment UX: Settings loads existing Notion Ingredients, lets the user select an Ingredient by name, and enriches the selected page without manual Notion page ID copy/paste. Manual lookup-only mode remains available when no Ingredient is selected.
 - Production smoke-test script: `npm run smoke:prod` runs `scripts/smoke-test.ts` against `SMOKE_BASE_URL` and verifies read-only production health checks without OpenAI calls or Notion writes.
+- `/analyze` household review UX first pass: analysis results now start with a practical household summary, then keep editable details in progressively disclosed sections for guidance, quick edits, deeper tuning, shopping/prep, scores, evidence/safety, and advanced saved fields.
 
 Not implemented yet:
 - Authentication.
@@ -110,7 +111,7 @@ Architecture rule:
 
 Pages:
 - `/`: dashboard overview.
-- `/analyze`: paste recipe text, call analysis API, edit result, save to Notion.
+- `/analyze`: paste recipe text or URL, call analysis API, review a household-first summary, edit progressively disclosed details, and save to Notion.
 - `/meals`: fetch and display saved meals from Notion.
 - `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback to Notion.
 - `/settings`: Notion diagnostics and server environment status.
@@ -288,10 +289,11 @@ Reasoning:
 
 1. Review FoodData Central matching quality on a larger household ingredient set and add targeted query expansions only where needed.
 2. Review Evidence-Aware Analysis v3 plus known Ingredient context output quality on real household meals and tighten prompt/schema language if it drifts into medical claims or over-precise nutrition claims.
-3. Add Ingredient -> Meal relation work after confirming the desired Notion relation model.
-4. Add structured ingredient persistence behind the current string-compatible ingredient flow.
-5. Add meal detail view.
-6. Harden Recipe URL analysis after real-site testing.
+3. Continue the household experience audit across save, meals, feedback, and settings flows so the rest of the app matches the simplified `/analyze` hierarchy.
+4. Add Ingredient -> Meal relation work after confirming the desired Notion relation model.
+5. Add structured ingredient persistence behind the current string-compatible ingredient flow.
+6. Add meal detail view.
+7. Harden Recipe URL analysis after real-site testing.
 
 ## Manual Testing Checklist
 
@@ -304,8 +306,9 @@ Local:
 - In `/settings`, click `Test Notion Schemas` and verify Meals, Ingredients, and Feedback property lists appear.
 - Open `/analyze`, paste at least 10 characters, and verify the Analyze button enables.
 - Paste a public recipe URL into `/analyze`; verify an analysis is produced and the Review Result shows source type `url`, source name/URL, and parser version `recipe-parser-basic-v1`.
-- Analyze a meal and verify all Analysis Framework v2 sections appear: Quick Verdict, Scorecard (five numeric fields), Main Concerns, Minimal-Change Version, More Supportive Version, Plate Strategy, Why This Helps, Cultural Notes, Shopping Additions, Prep Notes, Meal Pairings, Cautions.
-- Verify Evidence-Aware Analysis v3 sections appear: Evidence Notes, Confidence Notes, Safety Disclaimer, and Guidance Basis.
+- Analyze a meal and verify the Review Result begins with `Household answer`, including the quick verdict, smallest helpful change, why it helps, and cultural-preservation note when available.
+- Verify Analysis Framework v2 sections remain editable through progressive sections: Practical Guidance, Quick Edits, More Ways to Make It Work, Shopping/Prep/Pairings, Scores, and Advanced Saved Fields.
+- Verify Evidence-Aware Analysis v3 remains editable inside the collapsed Evidence and Safety section: Evidence Notes, Confidence Notes, Safety Disclaimer, and Guidance Basis.
 - Edit at least one score, one text field, and one array field to confirm they are editable before save.
 - Save the meal to Notion and open the returned Notion link.
 - In Notion, confirm the `Notes` field contains: original notes, Analysis Framework v2 Summary header, Quick Verdict, Scorecard, Main Concerns, Plate Strategy, Cautions, and Evidence-Aware v3 Summary sections.

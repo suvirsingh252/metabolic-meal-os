@@ -1,7 +1,14 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
-import { ExternalLink, FileText, Loader2, Save, Wand2 } from "lucide-react";
+import { type FormEvent, type ReactNode, useState } from "react";
+import {
+  ChevronDown,
+  ExternalLink,
+  FileText,
+  Loader2,
+  Save,
+  Wand2
+} from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -356,7 +363,7 @@ export default function AnalyzePage() {
       <PageHeader
         eyebrow="Recipe intake"
         title="Analyze a recipe"
-        description="Paste a recipe URL, recipe text, or meal idea, then review and edit the structured result before saving."
+        description="Paste a recipe URL, recipe text, or meal idea. The review starts with the practical household answer, then keeps the details editable before saving."
       />
 
       {error ? <Alert>{error}</Alert> : null}
@@ -366,7 +373,7 @@ export default function AnalyzePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Recipe text
+              Meal or recipe
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -416,312 +423,350 @@ export default function AnalyzePage() {
           <CardContent>
             {analysis ? (
               <div className="space-y-6">
-                <SourceSummary analysis={analysis} />
+                <HouseholdSummary analysis={analysis} />
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput
-                    id="mealName"
-                    label="Meal name"
-                    onChange={(value) => updateTextField("mealName", value)}
-                    value={analysis.mealName}
+                <CollapsibleSection
+                  defaultOpen
+                  description="The short answer and the edits most likely to matter at home."
+                  title="Practical guidance"
+                >
+                  <TextareaInput
+                    id="quickVerdict"
+                    label="Quick verdict"
+                    onChange={(value) => updateTextField("quickVerdict", value)}
+                    rows={3}
+                    value={analysis.quickVerdict}
                   />
-                  <EnumSelect<Cuisine>
-                    id="cuisine"
-                    label="Cuisine"
+                  <TextareaInput
+                    id="minimalChangeVersion"
+                    label="Smallest helpful change"
                     onChange={(value) =>
-                      updateAnalysis({ ...analysis, cuisine: value })
+                      updateTextField("minimalChangeVersion", value)
                     }
-                    options={cuisines}
-                    value={analysis.cuisine}
+                    rows={4}
+                    value={analysis.minimalChangeVersion}
                   />
-                  <EnumSelect<MealType>
-                    id="mealType"
-                    label="Meal type"
+                  <TextareaInput
+                    id="whyThisHelps"
+                    label="Why this helps"
+                    onChange={(value) => updateTextField("whyThisHelps", value)}
+                    rows={3}
+                    value={analysis.whyThisHelps}
+                  />
+                  <TextareaInput
+                    id="culturalNotes"
+                    label="Keep the dish itself"
+                    onChange={(value) => updateTextField("culturalNotes", value)}
+                    rows={3}
+                    value={analysis.culturalNotes}
+                  />
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  defaultOpen
+                  description="Meal identity and household fit."
+                  title="Quick edits"
+                >
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <TextInput
+                      id="mealName"
+                      label="Meal name"
+                      onChange={(value) => updateTextField("mealName", value)}
+                      value={analysis.mealName}
+                    />
+                    <EnumSelect<Cuisine>
+                      id="cuisine"
+                      label="Cuisine"
+                      onChange={(value) =>
+                        updateAnalysis({ ...analysis, cuisine: value })
+                      }
+                      options={cuisines}
+                      value={analysis.cuisine}
+                    />
+                    <EnumSelect<MealType>
+                      id="mealType"
+                      label="Meal type"
+                      onChange={(value) =>
+                        updateAnalysis({ ...analysis, mealType: value })
+                      }
+                      options={mealTypes}
+                      value={analysis.mealType}
+                    />
+                    <EnumSelect<ProteinLevel>
+                      id="proteinLevel"
+                      label="Protein level"
+                      onChange={(value) =>
+                        updateAnalysis({ ...analysis, proteinLevel: value })
+                      }
+                      options={proteinLevels}
+                      value={analysis.proteinLevel}
+                    />
+                    <EnumSelect<SatietyLevel>
+                      id="satietyLevel"
+                      label="Satiety level"
+                      onChange={(value) =>
+                        updateAnalysis({ ...analysis, satietyLevel: value })
+                      }
+                      options={satietyLevels}
+                      value={analysis.satietyLevel}
+                    />
+                    <EnumSelect<BloodSugarImpact>
+                      id="bloodSugarImpact"
+                      label="Blood sugar impact"
+                      onChange={(value) =>
+                        updateAnalysis({ ...analysis, bloodSugarImpact: value })
+                      }
+                      options={bloodSugarImpacts}
+                      value={analysis.bloodSugarImpact}
+                    />
+                    <EnumSelect<EffortLevel>
+                      id="effortLevel"
+                      label="Effort level"
+                      onChange={(value) =>
+                        updateAnalysis({ ...analysis, effortLevel: value })
+                      }
+                      options={effortLevels}
+                      value={analysis.effortLevel}
+                    />
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <BooleanInput
+                      checked={analysis.familyApproved}
+                      id="familyApproved"
+                      label="Family approved"
+                      onChange={(checked) =>
+                        updateBooleanField("familyApproved", checked)
+                      }
+                    />
+                    <BooleanInput
+                      checked={analysis.weeknightFriendly}
+                      id="weeknightFriendly"
+                      label="Weeknight friendly"
+                      onChange={(checked) =>
+                        updateBooleanField("weeknightFriendly", checked)
+                      }
+                    />
+                    <BooleanInput
+                      checked={analysis.comfortMeal}
+                      id="comfortMeal"
+                      label="Comfort meal"
+                      onChange={(checked) =>
+                        updateBooleanField("comfortMeal", checked)
+                      }
+                    />
+                  </div>
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  description="Useful when you want to tune the meal more carefully."
+                  title="More ways to make it work"
+                >
+                  <TextareaInput
+                    id="mainConcerns"
+                    label="Main concerns (one per line)"
                     onChange={(value) =>
-                      updateAnalysis({ ...analysis, mealType: value })
+                      updateArrayField(
+                        setMainConcernsText,
+                        "mainConcerns",
+                        value
+                      )
                     }
-                    options={mealTypes}
-                    value={analysis.mealType}
+                    rows={4}
+                    value={mainConcernsText}
                   />
-                  <EnumSelect<ProteinLevel>
-                    id="proteinLevel"
-                    label="Protein level"
+                  <TextareaInput
+                    id="supportiveVersion"
+                    label="More supportive version"
                     onChange={(value) =>
-                      updateAnalysis({ ...analysis, proteinLevel: value })
+                      updateTextField("supportiveVersion", value)
                     }
-                    options={proteinLevels}
-                    value={analysis.proteinLevel}
+                    rows={5}
+                    value={analysis.supportiveVersion}
                   />
-                  <EnumSelect<SatietyLevel>
-                    id="satietyLevel"
-                    label="Satiety level"
+                  <TextareaInput
+                    id="plateStrategy"
+                    label="Plate strategy"
+                    onChange={(value) => updateTextField("plateStrategy", value)}
+                    rows={3}
+                    value={analysis.plateStrategy}
+                  />
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  description="Small household moves that can make the meal easier to repeat."
+                  title="Shopping, prep, and pairings"
+                >
+                  <TextareaInput
+                    id="shoppingAdditions"
+                    label="Shopping additions (one per line)"
                     onChange={(value) =>
-                      updateAnalysis({ ...analysis, satietyLevel: value })
+                      updateArrayField(
+                        setShoppingAdditionsText,
+                        "shoppingAdditions",
+                        value
+                      )
                     }
-                    options={satietyLevels}
-                    value={analysis.satietyLevel}
+                    rows={4}
+                    value={shoppingAdditionsText}
                   />
-                  <EnumSelect<BloodSugarImpact>
-                    id="bloodSugarImpact"
-                    label="Blood sugar impact"
+                  <TextareaInput
+                    id="prepNotes"
+                    label="Prep notes (one per line)"
                     onChange={(value) =>
-                      updateAnalysis({ ...analysis, bloodSugarImpact: value })
+                      updateArrayField(setPrepNotesText, "prepNotes", value)
                     }
-                    options={bloodSugarImpacts}
-                    value={analysis.bloodSugarImpact}
+                    rows={4}
+                    value={prepNotesText}
                   />
-                  <EnumSelect<EffortLevel>
-                    id="effortLevel"
-                    label="Effort level"
+                  <TextareaInput
+                    id="mealPairings"
+                    label="Meal pairings (one per line)"
                     onChange={(value) =>
-                      updateAnalysis({ ...analysis, effortLevel: value })
+                      updateArrayField(
+                        setMealPairingsText,
+                        "mealPairings",
+                        value
+                      )
                     }
-                    options={effortLevels}
-                    value={analysis.effortLevel}
+                    rows={4}
+                    value={mealPairingsText}
                   />
-                </div>
+                </CollapsibleSection>
 
-                <div className="grid gap-3 md:grid-cols-3">
-                  <BooleanInput
-                    checked={analysis.familyApproved}
-                    id="familyApproved"
-                    label="Family approved"
-                    onChange={(checked) =>
-                      updateBooleanField("familyApproved", checked)
+                <CollapsibleSection
+                  description="Kept compact so the review stays practical."
+                  title="Scores"
+                >
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <ScoreInput
+                      id="metabolicScore"
+                      label="Metabolic"
+                      onChange={(v) => updateScore("metabolicScore", v)}
+                      value={analysis.metabolicScore}
+                    />
+                    <ScoreInput
+                      id="proteinScore"
+                      label="Protein"
+                      onChange={(v) => updateScore("proteinScore", v)}
+                      value={analysis.proteinScore}
+                    />
+                    <ScoreInput
+                      id="fiberScore"
+                      label="Fiber"
+                      onChange={(v) => updateScore("fiberScore", v)}
+                      value={analysis.fiberScore}
+                    />
+                    <ScoreInput
+                      id="satietyScoreNumeric"
+                      label="Satiety"
+                      onChange={(v) => updateScore("satietyScoreNumeric", v)}
+                      value={analysis.satietyScoreNumeric}
+                    />
+                    <ScoreInput
+                      id="bloodSugarRiskScore"
+                      label="Blood sugar risk"
+                      onChange={(v) => updateScore("bloodSugarRiskScore", v)}
+                      value={analysis.bloodSugarRiskScore}
+                    />
+                  </div>
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  description="Evidence context stays available without dominating the household answer."
+                  title="Evidence and safety"
+                >
+                  <TextareaInput
+                    id="evidenceNotes"
+                    label="Evidence notes (one per line)"
+                    onChange={(value) =>
+                      updateArrayField(
+                        setEvidenceNotesText,
+                        "evidenceNotes",
+                        value
+                      )
                     }
+                    rows={4}
+                    value={evidenceNotesText}
                   />
-                  <BooleanInput
-                    checked={analysis.weeknightFriendly}
-                    id="weeknightFriendly"
-                    label="Weeknight friendly"
-                    onChange={(checked) =>
-                      updateBooleanField("weeknightFriendly", checked)
+                  <TextareaInput
+                    id="confidenceNotes"
+                    label="Confidence notes (one per line)"
+                    onChange={(value) =>
+                      updateArrayField(
+                        setConfidenceNotesText,
+                        "confidenceNotes",
+                        value
+                      )
                     }
+                    rows={3}
+                    value={confidenceNotesText}
                   />
-                  <BooleanInput
-                    checked={analysis.comfortMeal}
-                    id="comfortMeal"
-                    label="Comfort meal"
-                    onChange={(checked) =>
-                      updateBooleanField("comfortMeal", checked)
+                  <TextareaInput
+                    id="safetyDisclaimer"
+                    label="Safety disclaimer"
+                    onChange={(value) =>
+                      updateTextField("safetyDisclaimer", value)
                     }
+                    rows={2}
+                    value={analysis.safetyDisclaimer}
                   />
-                </div>
-
-                {/* ── Analysis Framework v2 ── */}
-
-                <SectionHeader label="Quick verdict" />
-                <TextareaInput
-                  id="quickVerdict"
-                  label="Quick verdict"
-                  onChange={(value) => updateTextField("quickVerdict", value)}
-                  rows={3}
-                  value={analysis.quickVerdict}
-                />
-
-                <SectionHeader label="Scorecard (1–10)" />
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <ScoreInput
-                    id="metabolicScore"
-                    label="Metabolic"
-                    onChange={(v) => updateScore("metabolicScore", v)}
-                    value={analysis.metabolicScore}
+                  <TextareaInput
+                    id="guidanceBasis"
+                    label="Guidance basis (sourceId | principleId | relevance)"
+                    onChange={updateGuidanceBasis}
+                    rows={5}
+                    value={guidanceBasisText}
                   />
-                  <ScoreInput
-                    id="proteinScore"
-                    label="Protein"
-                    onChange={(v) => updateScore("proteinScore", v)}
-                    value={analysis.proteinScore}
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  description="Source details and fields saved into Notion."
+                  title="Advanced saved fields"
+                >
+                  <SourceSummary analysis={analysis} />
+                  <TextareaInput
+                    id="optimizedVersion"
+                    label="Optimized version"
+                    onChange={(value) =>
+                      updateTextField("optimizedVersion", value)
+                    }
+                    rows={8}
+                    value={analysis.optimizedVersion}
                   />
-                  <ScoreInput
-                    id="fiberScore"
-                    label="Fiber"
-                    onChange={(v) => updateScore("fiberScore", v)}
-                    value={analysis.fiberScore}
+                  <TextareaInput
+                    id="notes"
+                    label="Notes"
+                    onChange={(value) => updateTextField("notes", value)}
+                    rows={5}
+                    value={analysis.notes}
                   />
-                  <ScoreInput
-                    id="satietyScoreNumeric"
-                    label="Satiety"
-                    onChange={(v) => updateScore("satietyScoreNumeric", v)}
-                    value={analysis.satietyScoreNumeric}
+                  <TextareaInput
+                    id="ingredientSuggestions"
+                    label="Ingredient suggestions"
+                    onChange={updateIngredientSuggestions}
+                    rows={6}
+                    value={ingredientText}
                   />
-                  <ScoreInput
-                    id="bloodSugarRiskScore"
-                    label="Blood sugar risk"
-                    onChange={(v) => updateScore("bloodSugarRiskScore", v)}
-                    value={analysis.bloodSugarRiskScore}
+                  <TextareaInput
+                    id="feedbackPrompt"
+                    label="Feedback prompt"
+                    onChange={(value) =>
+                      updateTextField("feedbackPrompt", value)
+                    }
+                    rows={3}
+                    value={analysis.feedbackPrompt}
                   />
-                </div>
-
-                <SectionHeader label="Concerns & improvements" />
-                <TextareaInput
-                  id="mainConcerns"
-                  label="Main concerns (one per line)"
-                  onChange={(value) =>
-                    updateArrayField(setMainConcernsText, "mainConcerns", value)
-                  }
-                  rows={4}
-                  value={mainConcernsText}
-                />
-                <TextareaInput
-                  id="minimalChangeVersion"
-                  label="Minimal-change version"
-                  onChange={(value) =>
-                    updateTextField("minimalChangeVersion", value)
-                  }
-                  rows={4}
-                  value={analysis.minimalChangeVersion}
-                />
-                <TextareaInput
-                  id="supportiveVersion"
-                  label="More supportive version"
-                  onChange={(value) =>
-                    updateTextField("supportiveVersion", value)
-                  }
-                  rows={5}
-                  value={analysis.supportiveVersion}
-                />
-
-                <SectionHeader label="Strategy" />
-                <TextareaInput
-                  id="plateStrategy"
-                  label="Plate strategy"
-                  onChange={(value) => updateTextField("plateStrategy", value)}
-                  rows={3}
-                  value={analysis.plateStrategy}
-                />
-                <TextareaInput
-                  id="whyThisHelps"
-                  label="Why this helps"
-                  onChange={(value) => updateTextField("whyThisHelps", value)}
-                  rows={3}
-                  value={analysis.whyThisHelps}
-                />
-                <TextareaInput
-                  id="culturalNotes"
-                  label="Cultural notes"
-                  onChange={(value) => updateTextField("culturalNotes", value)}
-                  rows={3}
-                  value={analysis.culturalNotes}
-                />
-
-                <SectionHeader label="Shopping & prep" />
-                <TextareaInput
-                  id="shoppingAdditions"
-                  label="Shopping additions (one per line)"
-                  onChange={(value) =>
-                    updateArrayField(
-                      setShoppingAdditionsText,
-                      "shoppingAdditions",
-                      value
-                    )
-                  }
-                  rows={4}
-                  value={shoppingAdditionsText}
-                />
-                <TextareaInput
-                  id="prepNotes"
-                  label="Prep notes (one per line)"
-                  onChange={(value) =>
-                    updateArrayField(setPrepNotesText, "prepNotes", value)
-                  }
-                  rows={4}
-                  value={prepNotesText}
-                />
-                <TextareaInput
-                  id="mealPairings"
-                  label="Meal pairings (one per line)"
-                  onChange={(value) =>
-                    updateArrayField(setMealPairingsText, "mealPairings", value)
-                  }
-                  rows={4}
-                  value={mealPairingsText}
-                />
-                <TextareaInput
-                  id="cautions"
-                  label="Cautions (one per line)"
-                  onChange={(value) =>
-                    updateArrayField(setCautionsText, "cautions", value)
-                  }
-                  rows={3}
-                  value={cautionsText}
-                />
-
-                <SectionHeader label="Evidence & safety" />
-                <TextareaInput
-                  id="evidenceNotes"
-                  label="Evidence notes (one per line)"
-                  onChange={(value) =>
-                    updateArrayField(setEvidenceNotesText, "evidenceNotes", value)
-                  }
-                  rows={4}
-                  value={evidenceNotesText}
-                />
-                <TextareaInput
-                  id="confidenceNotes"
-                  label="Confidence notes (one per line)"
-                  onChange={(value) =>
-                    updateArrayField(
-                      setConfidenceNotesText,
-                      "confidenceNotes",
-                      value
-                    )
-                  }
-                  rows={3}
-                  value={confidenceNotesText}
-                />
-                <TextareaInput
-                  id="safetyDisclaimer"
-                  label="Safety disclaimer"
-                  onChange={(value) =>
-                    updateTextField("safetyDisclaimer", value)
-                  }
-                  rows={2}
-                  value={analysis.safetyDisclaimer}
-                />
-                <TextareaInput
-                  id="guidanceBasis"
-                  label="Guidance basis (sourceId | principleId | relevance)"
-                  onChange={updateGuidanceBasis}
-                  rows={5}
-                  value={guidanceBasisText}
-                />
-
-                {/* ── Original fields ── */}
-
-                <SectionHeader label="Optimized version" />
-                <TextareaInput
-                  id="optimizedVersion"
-                  label="Optimized version"
-                  onChange={(value) =>
-                    updateTextField("optimizedVersion", value)
-                  }
-                  rows={8}
-                  value={analysis.optimizedVersion}
-                />
-                <TextareaInput
-                  id="notes"
-                  label="Notes"
-                  onChange={(value) => updateTextField("notes", value)}
-                  rows={5}
-                  value={analysis.notes}
-                />
-                <TextareaInput
-                  id="ingredientSuggestions"
-                  label="Ingredient suggestions"
-                  onChange={updateIngredientSuggestions}
-                  rows={6}
-                  value={ingredientText}
-                />
-                <TextareaInput
-                  id="feedbackPrompt"
-                  label="Feedback prompt"
-                  onChange={(value) =>
-                    updateTextField("feedbackPrompt", value)
-                  }
-                  rows={3}
-                  value={analysis.feedbackPrompt}
-                />
+                  <TextareaInput
+                    id="cautions"
+                    label="Cautions (one per line)"
+                    onChange={(value) =>
+                      updateArrayField(setCautionsText, "cautions", value)
+                    }
+                    rows={3}
+                    value={cautionsText}
+                  />
+                </CollapsibleSection>
 
                 <div className="rounded-md border bg-background p-4">
                   <Button
@@ -803,6 +848,123 @@ function parseGuidanceBasis(value: string): MealAnalysisResult["guidanceBasis"] 
         basis.principleId.length > 0 &&
         basis.relevance.length > 0
     );
+}
+
+function HouseholdSummary({ analysis }: { analysis: MealAnalysisResult }) {
+  const answer = getHouseholdAnswer(analysis);
+
+  return (
+    <div className="rounded-md border border-primary/20 bg-primary/5 p-4 sm:p-5">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Household answer
+          </p>
+          <h3 className="text-xl font-semibold leading-snug text-foreground">
+            {answer.headline}
+          </h3>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {analysis.quickVerdict}
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <SummaryBadge label="Protein" value={analysis.proteinLevel} />
+          <SummaryBadge label="Satiety" value={analysis.satietyLevel} />
+          <SummaryBadge
+            label="Blood sugar impact"
+            value={analysis.bloodSugarImpact}
+          />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <SummaryBlock
+            label="Smallest helpful change"
+            value={analysis.minimalChangeVersion}
+          />
+          <SummaryBlock label="Why" value={analysis.whyThisHelps} />
+        </div>
+
+        {analysis.culturalNotes.trim().length > 0 ? (
+          <SummaryBlock
+            label="Keep the dish itself"
+            value={analysis.culturalNotes}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function getHouseholdAnswer(analysis: MealAnalysisResult) {
+  if (analysis.metabolicScore >= 8 && analysis.bloodSugarImpact !== "High") {
+    return { headline: "Yes. This looks like a strong household option." };
+  }
+
+  if (analysis.metabolicScore >= 6 || analysis.bloodSugarImpact === "Moderate") {
+    return {
+      headline: "Yes, with a small nudge. This looks workable for the table."
+    };
+  }
+
+  return {
+    headline:
+      "It can work better with a few changes before becoming a regular meal."
+  };
+}
+
+function SummaryBadge({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-background px-3 py-2">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function SummaryBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-foreground">{value}</p>
+    </div>
+  );
+}
+
+interface CollapsibleSectionProps {
+  title: string;
+  description: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}
+
+function CollapsibleSection({
+  title,
+  description,
+  children,
+  defaultOpen = false
+}: CollapsibleSectionProps) {
+  return (
+    <details
+      className="group rounded-md border bg-background p-4"
+      open={defaultOpen}
+    >
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">{title}</p>
+            <p className="text-sm leading-5 text-muted-foreground">
+              {description}
+            </p>
+          </div>
+          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </div>
+      </summary>
+      <div className="mt-4 space-y-4 border-t pt-4">{children}</div>
+    </details>
+  );
 }
 
 function SourceSummary({ analysis }: { analysis: MealAnalysisResult }) {
@@ -1017,16 +1179,6 @@ function BooleanInput({ id, label, checked, onChange }: BooleanInputProps) {
       />
       {label}
     </label>
-  );
-}
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <div className="border-t pt-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-    </div>
   );
 }
 

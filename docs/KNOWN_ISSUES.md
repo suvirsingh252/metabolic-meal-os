@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-05-24 (FoodData Central Matching Quality)
+Last updated: 2026-05-24 (Analyze UX Simplification)
 
 ## Critical
 
@@ -27,7 +27,7 @@ Last updated: 2026-05-24 (FoodData Central Matching Quality)
 
 ## UX Problems
 
-- [ ] Analyze, save, and feedback flows are functional but plain.
+- [ ] `/analyze` review has a first household-first hierarchy pass, but save, meals, feedback, and settings flows are still functional and plain.
 - [ ] Meals page has no filtering or search yet.
 - [ ] Ingredients are saved as standalone records, but are not related to saved meals in Notion yet.
 - [ ] Success/error UI patterns are not fully standardized.

@@ -1,5 +1,53 @@
 # Session Log
 
+## 2026-05-24 UX Simplification & Household Experience Audit
+
+Mandatory documentation hygiene:
+- Read `HANDOFF`, `ROADMAP`, `KNOWN_ISSUES`, `DECISIONS`, and `SESSION_LOG` before coding.
+- Current docs were already aligned with verified production state, key rotation, production smoke automation, Ingredient picker/enrichment UX, and FoodData Central matching quality.
+- No stale blocker needed removal before this slice.
+
+Audit findings:
+- The previous `/analyze` review UI was functionally complete but gave almost every field equal visual weight.
+- The practical household answer was split across quick verdict, minimal-change version, why-this-helps, and cultural notes.
+- Numeric scores, evidence metadata, source details, and long editable textareas appeared too early for a non-technical household review flow.
+- Mobile scrolling was long and form-heavy even when the user only needed the decision-level guidance.
+
+Proposed hierarchy:
+- Primary: household verdict, smallest helpful change, why it helps, and culturally preserving guidance.
+- Secondary: quick edits, main concerns, supportive version, plate strategy, shopping additions, prep notes, and meal pairings.
+- Collapsed: score editing, evidence notes, confidence notes, safety disclaimer, guidance basis, source metadata, cautions, optimized version, notes, ingredient suggestions, and feedback prompt.
+- Optional/admin: source/parser context, known Ingredient context names, raw guidance basis, and advanced saved fields.
+
+Completed work:
+- Updated `/analyze` copy so the page frames the result as a practical household review.
+- Added a `Household answer` summary panel at the top of the review result.
+- The summary answers whether the meal looks workable, shows the quick verdict, highlights protein/satiety/blood-sugar impact as compact badges, and surfaces the smallest helpful change, why it helps, and cultural-preservation note.
+- Grouped the existing editable fields into progressive sections:
+  - Practical guidance
+  - Quick edits
+  - More ways to make it work
+  - Shopping, prep, and pairings
+  - Scores
+  - Evidence and safety
+  - Advanced saved fields
+- Preserved all existing functionality, editability, save behavior, Evidence-Aware Analysis v3 fields, ingredient persistence, and Notion payload shape.
+- No backend features, calorie tracking, macro tracking, dashboards, or medical-language changes were added.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Local production server started on `http://localhost:3022`.
+- Browser sanity check confirmed `/analyze` renders, including the updated title, `Meal or recipe` input card, and no-analysis state.
+
+Known limitations:
+- Browser automation could not populate the textarea because the in-app browser virtual clipboard was unavailable, so generated-result UI was verified by build/type safety and source review rather than a completed browser analysis run.
+- The rest of the app still needs the same household UX pass.
+
+Recommended next slice:
+- Review evidence-aware guidance plus known Ingredient context on real household meals using the simplified `/analyze` review flow, then tune tone and hierarchy where real outputs feel too numeric, medicalized, or dense.
+
 ## 2026-05-24 Session Closeout — FDC Matching Quality
 
 Closeout scope:

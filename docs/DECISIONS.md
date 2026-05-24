@@ -1,6 +1,20 @@
 # Architectural Decisions
 
-Last updated: 2026-05-24 (FoodData Central Matching Quality)
+Last updated: 2026-05-24 (Analyze UX Simplification)
+
+## 2026-05-24 — Analyze Review Starts With Household Guidance
+
+Decision: Keep the existing `/analyze` data model and editable fields, but reorganize the review UI so it starts with a household-first summary and moves detailed editing into progressive sections.
+
+Reasoning:
+- Non-technical household users need the first screen to answer whether the meal is workable, what small change helps most, and why.
+- Evidence-aware guidance, safety notes, numeric scores, source metadata, and raw saved fields are important but should not dominate everyday meal decisions.
+- Preserving every editable field avoids a backend or persistence rewrite while reducing cognitive load.
+
+Tradeoffs:
+- This is a first hierarchy pass, not a full design-system overhaul.
+- Native progressive disclosure keeps the implementation small, but the rest of the app still needs similar UX simplification.
+- The top summary depends on current generated fields and should be reviewed against real household meals for tone and usefulness.
 
 ## 2026-05-24 — FoodData Central Matching Prefers Suitable Generic Records
 

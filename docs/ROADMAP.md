@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-24 (FoodData Central Matching Quality)
+Last updated: 2026-05-24 (Analyze UX Simplification)
 
 ## Completed
 
@@ -64,12 +64,14 @@ Last updated: 2026-05-24 (FoodData Central Matching Quality)
 - [x] Improve FoodData Central matching ranker to prefer suitable generic USDA data types over branded records.
 - [x] Add richer FoodData Central matching notes and optional matching metadata.
 - [x] Validate staple lookup cases: paneer, chickpeas, basmati rice, lentils, yogurt, atta flour, and whole wheat flour.
+- [x] Simplify `/analyze` review UI with a household-first summary and progressive disclosure for editable details.
 
 ## Current Sprint
 
 - [ ] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
 - [ ] Review evidence-aware guidance quality on real household meals.
+- [ ] Audit remaining household UX flows for clarity, mobile readability, and supportive tone.
 - [ ] Harden recipe parser robustness for representative recipe sites.
 - [ ] If optional source properties are added to Notion Meals, confirm manual saves populate them.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
@@ -86,6 +88,7 @@ Last updated: 2026-05-24 (FoodData Central Matching Quality)
 - [ ] Decide how FoodData Central nutrient snapshots should relate to normalized ingredients without changing Notion schema prematurely.
 - [ ] Add optional Meals Notion source fields manually or document the exact schema setup.
 - [ ] Add a richer household recipe feedback UI/database slice using `HouseholdRecipeFeedback`.
+- [ ] Simplify `/feedback`, `/meals`, and `/settings` flows after the `/analyze` hierarchy pass.
 - [ ] Add a persisted household preferences source before adding multi-household support.
 - [ ] Add better empty/error states where needed.
 - [ ] Add optimistic refresh after saving to Notion.
@@ -122,3 +125,4 @@ Last updated: 2026-05-24 (FoodData Central Matching Quality)
 - [ ] Structured ingredient parsing is not implemented yet; only the compatible type/helper foundation exists.
 - [ ] Recipe parser remains dependency-free/basic and is not robust across every recipe site.
 - [ ] FoodData Central matching is improved but remains heuristic and needs ongoing quality review.
+- [ ] The `/analyze` review UI has a first hierarchy pass, but the rest of the app still needs household UX simplification.
