@@ -4,6 +4,11 @@ import type {
   FoodDataCentralSearchFood,
   IngredientNutrientSnapshot
 } from "@/src/lib/integrations/food-data-central/types";
+import {
+  validateNutritionSnapshot,
+  type FoodState,
+  type NutritionSnapshot
+} from "@/src/lib/domain/nutrition";
 
 const brandedDataType = "Branded";
 const dataTypeRank: Record<string, number> = {
@@ -114,6 +119,18 @@ export function mapFoodDataCentralSearchResult(
   const confidence = calculateConfidence(query, bestMatch);
   const matching = buildMatchingDetails(query, bestMatch, foods, confidence);
 
+  const nutrients = mapNutrients(bestMatch.foodNutrients ?? []);
+  const nutritionSnapshot = buildNutritionSnapshot(
+    bestMatch,
+    confidence,
+    nutrients
+  );
+  const validation = validateNutritionSnapshot(nutritionSnapshot);
+
+  if (!validation.success) {
+    return null;
+  }
+
   return {
     ingredient: query,
     source: "usda-food-data-central",
@@ -122,9 +139,76 @@ export function mapFoodDataCentralSearchResult(
     matchedDescription: bestMatch.description,
     fdcId: bestMatch.fdcId,
     matching,
-    nutrients: mapNutrients(bestMatch.foodNutrients ?? []),
+    nutrients,
+    nutritionSnapshot,
     notes: buildNotes(query, bestMatch, matching)
   };
+}
+
+function buildNutritionSnapshot(
+  food: FoodDataCentralSearchFood,
+  confidence: FoodDataCentralConfidence,
+  nutrients: IngredientNutrientSnapshot["nutrients"]
+): NutritionSnapshot {
+  return {
+    amountBasis: "per-100g",
+    basisUnit: "g",
+    per100g: true,
+    servingSize:
+      typeof food.servingSize === "number" && Number.isFinite(food.servingSize)
+        ? food.servingSize
+        : null,
+    servingUnit: food.servingSizeUnit ?? null,
+    source: "usda-food-data-central",
+    sourceId: String(food.fdcId),
+    confidence,
+    matchedFoodState: inferMatchedFoodState(food),
+    rawOrCookedState: inferRawOrCookedState(food.description),
+    ediblePortionNotes:
+      "FoodData Central search nutrient values are treated as per-100g reference values for the matched food description.",
+    nutrients,
+    lastVerifiedAt: new Date().toISOString()
+  };
+}
+
+function inferMatchedFoodState(food: FoodDataCentralSearchFood): FoodState {
+  if (food.dataType === brandedDataType) {
+    return "branded";
+  }
+
+  const description = normalizeText(food.description);
+
+  if (description.includes("cooked")) {
+    return "cooked";
+  }
+
+  if (description.includes("raw")) {
+    return "raw";
+  }
+
+  if (
+    ["prepared", "restaurant", "ready", "canned", "frozen"].some((word) =>
+      description.includes(word)
+    )
+  ) {
+    return "prepared";
+  }
+
+  return "unknown";
+}
+
+function inferRawOrCookedState(description: string) {
+  const normalized = normalizeText(description);
+
+  if (normalized.includes("cooked")) {
+    return "cooked";
+  }
+
+  if (normalized.includes("raw")) {
+    return "raw";
+  }
+
+  return "unknown";
 }
 
 function findBestMatch(

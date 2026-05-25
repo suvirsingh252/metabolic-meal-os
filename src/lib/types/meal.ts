@@ -43,6 +43,8 @@ export interface MealGuidanceBasis {
 
 export interface MealKnownIngredientContext {
   ingredientName: string;
+  matchConfidence?: "high" | "medium" | "low";
+  matchReason?: string;
   proteinSource?: boolean;
   fiberSource?: boolean;
   staple?: boolean;
@@ -53,6 +55,23 @@ export interface MealKnownIngredientContext {
   fiberG?: number | null;
   carbohydratesG?: number | null;
   energyKcal?: number | null;
+}
+
+export interface MealNutritionTotals {
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  fiber: number | null;
+  sodium: number | null;
+  sugar: number | null;
+}
+
+export interface MealNutritionEstimate {
+  totals: MealNutritionTotals;
+  confidence: "high" | "medium" | "low";
+  provenance: string;
+  source: "recipe-json-ld" | "user-entered" | "notion-backfill";
 }
 
 export type MealSourceClassification =
@@ -124,4 +143,13 @@ export interface MealAnalysisResult {
   // Runtime analysis metadata. Optional and not required for Notion persistence.
   knownIngredientContextUsed?: boolean;
   knownIngredientContextNames?: string[];
+  analysisVersion?: string;
+  analysisModel?: string;
+
+  nutritionEstimate?: MealNutritionEstimate | null;
+
+  householdId?: string;
+  createdBy?: string;
+  visibility?: "private" | "household";
+  schemaVersion?: string;
 }

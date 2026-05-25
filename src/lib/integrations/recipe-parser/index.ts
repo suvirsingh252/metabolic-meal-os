@@ -1,8 +1,12 @@
 import type {
   RecipeIngredient,
+  RecipeNutritionFacts,
   RecipeSourceClassification,
   RecipeSourceMetadata
 } from "@/src/lib/types/recipe";
+import dns from "node:dns/promises";
+import type { LookupAddress } from "node:dns";
+import net from "node:net";
 import type { IntegrationAdapterStatus } from "@/src/lib/integrations/shared";
 import { urlParserVersion } from "@/src/lib/types/recipe";
 
@@ -12,6 +16,7 @@ export interface ParsedRecipeDraft {
   ingredients: RecipeIngredient[];
   instructions?: string[];
   notes?: string;
+  nutrition?: RecipeNutritionFacts | null;
   extractionConfidence?: "high" | "medium" | "low";
   extractionNotes?: string[];
 }
@@ -29,6 +34,7 @@ export const recipeParserAdapterStatus: IntegrationAdapterStatus = {
 };
 
 const maxHtmlBytes = 2_000_000;
+const maxRedirects = 5;
 const minParsedTextLength = 80;
 const maxAnalysisTextCharacters = 12_000;
 const trackingParamPrefixes = ["utm_"];
@@ -173,8 +179,8 @@ export function validateRecipeUrl(value: string) {
     throw new RecipeParserError("Recipe URL must be a valid http or https URL.");
   }
 
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new RecipeParserError("Recipe URL must use http or https.");
+  if (url.protocol !== "https:") {
+    throw new RecipeParserError("Recipe URL must use https.");
   }
 
   if (isBlockedHostname(url.hostname)) {
@@ -182,6 +188,46 @@ export function validateRecipeUrl(value: string) {
   }
 
   return stripTrackingParams(url);
+}
+
+export function isPrivateOrReservedIp(address: string) {
+  const version = net.isIP(address);
+
+  if (version === 4) {
+    const parts = address.split(".").map((part) => Number(part));
+    const [a, b] = parts;
+
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 192 && b === 0) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    );
+  }
+
+  if (version === 6) {
+    const normalized = address.toLowerCase();
+
+    return (
+      normalized === "::1" ||
+      normalized === "::" ||
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe8") ||
+      normalized.startsWith("fe9") ||
+      normalized.startsWith("fea") ||
+      normalized.startsWith("feb") ||
+      normalized.startsWith("ff")
+    );
+  }
+
+  return false;
 }
 
 export function formatParsedRecipeForAnalysis(recipe: ParsedRecipeDraft) {
@@ -263,49 +309,95 @@ function isBlockedHostname(hostname: string) {
   if (
     normalized === "localhost" ||
     normalized.endsWith(".localhost") ||
-    normalized === "0.0.0.0" ||
-    normalized === "::1"
+    normalized.endsWith(".local") ||
+    normalized.endsWith(".internal")
   ) {
     return true;
   }
 
-  if (/^127\./.test(normalized) || /^10\./.test(normalized)) {
-    return true;
-  }
-
-  if (/^192\.168\./.test(normalized)) {
-    return true;
-  }
-
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(normalized)) {
+  if (net.isIP(normalized) && isPrivateOrReservedIp(normalized)) {
     return true;
   }
 
   return false;
 }
 
-async function fetchRecipeHtml(url: URL) {
-  let response: Response;
+export async function assertSafeRecipeUrl(url: URL) {
+  if (url.protocol !== "https:") {
+    throw new RecipeParserError("Recipe URL must use https.");
+  }
+
+  if (url.username || url.password) {
+    throw new RecipeParserError("Recipe URL must not include credentials.");
+  }
+
+  if (isBlockedHostname(url.hostname)) {
+    throw new RecipeParserError("Recipe URL host is not allowed.");
+  }
+
+  let addresses: LookupAddress[];
 
   try {
-    response = await fetch(url, {
-      headers: {
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-CA,en;q=0.9",
-        "User-Agent":
-          "Mozilla/5.0 (compatible; MetabolicMealOS/0.1; +https://metabolic-meal-os.local)"
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(10_000)
-    });
+    addresses = await dns.lookup(url.hostname, { all: true, verbatim: true });
   } catch {
     throw new RecipeParserError(
-      "I could not reach that link. Paste the caption, transcript, ingredient list, or recipe text instead."
+      "I could not resolve that link. Paste the recipe text instead."
     );
   }
 
-  const finalUrl = validateFinalResponseUrl(response.url, url);
+  if (
+    addresses.length === 0 ||
+    addresses.some((address) => isPrivateOrReservedIp(address.address))
+  ) {
+    throw new RecipeParserError("Recipe URL host is not allowed.");
+  }
+}
+
+async function fetchRecipeHtml(url: URL) {
+  let currentUrl = url;
+  let response: Response | null = null;
+
+  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+    await assertSafeRecipeUrl(currentUrl);
+
+    try {
+      response = await fetch(currentUrl, {
+        headers: {
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-CA,en;q=0.9",
+          "User-Agent":
+            "Mozilla/5.0 (compatible; MetabolicMealOS/0.1; +https://metabolic-meal-os.local)"
+        },
+        redirect: "manual",
+        signal: AbortSignal.timeout(10_000)
+      });
+    } catch {
+      throw new RecipeParserError(
+        "I could not reach that link. Paste the caption, transcript, ingredient list, or recipe text instead."
+      );
+    }
+
+    if (![301, 302, 303, 307, 308].includes(response.status)) {
+      break;
+    }
+
+    const location = response.headers.get("location");
+
+    if (!location) {
+      break;
+    }
+
+    currentUrl = getSafeRedirectUrl(location, currentUrl);
+  }
+
+  if (!response) {
+    throw new RecipeParserError(
+      "I could not reach that link. Paste the recipe text instead."
+    );
+  }
+
+  const finalUrl = validateFinalResponseUrl(response.url || currentUrl.toString(), url);
 
   if (!response.ok) {
     throw new RecipeParserError(
@@ -347,8 +439,8 @@ function validateFinalResponseUrl(responseUrl: string, fallbackUrl: URL) {
     }
   }
 
-  if (finalUrl.protocol !== "http:" && finalUrl.protocol !== "https:") {
-    throw new RecipeParserError("Recipe URL must use http or https.");
+  if (finalUrl.protocol !== "https:") {
+    throw new RecipeParserError("Recipe URL must use https.");
   }
 
   if (isBlockedHostname(finalUrl.hostname)) {
@@ -356,6 +448,10 @@ function validateFinalResponseUrl(responseUrl: string, fallbackUrl: URL) {
   }
 
   return finalUrl;
+}
+
+export function getSafeRedirectUrl(location: string, currentUrl: URL) {
+  return validateFinalResponseUrl(new URL(location, currentUrl).toString(), currentUrl);
 }
 
 function stripTrackingParams(url: URL) {
@@ -460,6 +556,7 @@ function parseRecipeJsonLd(
       ingredients,
       instructions,
       notes: readString(recipeNode.description) ?? undefined,
+      nutrition: readRecipeNutrition(recipeNode.nutrition),
       extractionConfidence: "high",
       extractionNotes: buildExtractionNotes("high", sourceClassification)
     };
@@ -762,6 +859,47 @@ function readString(value: unknown): string | null {
   const cleaned = normalizeWhitespace(value);
 
   return cleaned || null;
+}
+
+function readRecipeNutrition(value: unknown): RecipeNutritionFacts | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const totals = {
+    calories: readNutritionNumber(value.calories),
+    protein: readNutritionNumber(value.proteinContent),
+    carbs: readNutritionNumber(value.carbohydrateContent),
+    fat: readNutritionNumber(value.fatContent),
+    fiber: readNutritionNumber(value.fiberContent),
+    sodium: readNutritionNumber(value.sodiumContent),
+    sugar: readNutritionNumber(value.sugarContent)
+  };
+
+  if (Object.values(totals).every((item) => item === null)) {
+    return null;
+  }
+
+  return {
+    ...totals,
+    confidence: "medium",
+    provenance: "Recipe page structured nutrition facts"
+  };
+}
+
+function readNutritionNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const match = value.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  const parsed = match ? Number(match[0]) : NaN;
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function readStringArray(value: unknown): string[] {

@@ -4,6 +4,7 @@ export interface MealSummary {
   id: string;
   url: string;
   mealName: string;
+  createdAt: string;
   cuisine: string | null;
   mealType: string | null;
   proteinLevel: string | null;
@@ -14,6 +15,21 @@ export interface MealSummary {
   weeknightFriendly: boolean;
   comfortMeal: boolean;
   notes: string | null;
+  calories: number | null;
+  proteinG: number | null;
+  carbohydratesG: number | null;
+  fatG: number | null;
+  fiberG: number | null;
+  sodiumMg: number | null;
+  sugarG: number | null;
+  nutritionConfidence: string | null;
+  nutritionProvenance: string | null;
+  qualityScore: number | null;
+  metabolicScore: number | null;
+  proteinScore: number | null;
+  fiberScore: number | null;
+  satietyScoreNumeric: number | null;
+  bloodSugarRiskScore: number | null;
 }
 
 type NotionProperty = PageObjectResponse["properties"][string];
@@ -74,15 +90,75 @@ function readRichText(property: NotionProperty | undefined) {
   return value || null;
 }
 
+function readNumberProperty(property: NotionProperty | undefined) {
+  if (!property || property.type !== "number") {
+    return null;
+  }
+
+  return typeof property.number === "number" ? property.number : null;
+}
+
+function readFormulaNumber(property: NotionProperty | undefined) {
+  if (!property || property.type !== "formula") {
+    return null;
+  }
+
+  return property.formula.type === "number" &&
+    typeof property.formula.number === "number"
+    ? property.formula.number
+    : null;
+}
+
+function readNumber(page: PageObjectResponse, propertyNames: string[]) {
+  for (const propertyName of propertyNames) {
+    const property = getProperty(page, propertyName);
+    const value = readNumberProperty(property) ?? readFormulaNumber(property);
+
+    if (typeof value === "number") {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function readTextLike(page: PageObjectResponse, propertyNames: string[]) {
+  for (const propertyName of propertyNames) {
+    const property = getProperty(page, propertyName);
+    const value = readSelect(property) ?? readRichText(property);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function parseScoreFromNotes(notes: string | null, label: string) {
+  if (!notes) {
+    return null;
+  }
+
+  const pattern = new RegExp(`${label}:\\s*(\\d+(?:\\.\\d+)?)\\/10`, "i");
+  const match = notes.match(pattern);
+  const value = match ? Number(match[1]) : NaN;
+
+  return Number.isFinite(value) ? value : null;
+}
+
 export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
   if (!isFullPage(page)) {
     return null;
   }
 
+  const notes = readRichText(getProperty(page, "Notes"));
+
   return {
     id: page.id,
     url: page.url,
     mealName: readTitle(getProperty(page, "Meal Name")) || "Untitled meal",
+    createdAt: page.created_time,
     cuisine: readSelect(getProperty(page, "Cuisine")),
     mealType: readSelect(getProperty(page, "Meal Type")),
     proteinLevel: readSelect(getProperty(page, "Protein Level")),
@@ -92,6 +168,47 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     familyApproved: readCheckbox(getProperty(page, "Family Approved")),
     weeknightFriendly: readCheckbox(getProperty(page, "Weeknight Friendly")),
     comfortMeal: readCheckbox(getProperty(page, "Comfort Meal")),
-    notes: readRichText(getProperty(page, "Notes"))
+    notes,
+    calories: readNumber(page, ["Calories", "Energy (kcal)", "Energy Kcal"]),
+    proteinG: readNumber(page, ["Protein (g)", "Protein g", "Protein"]),
+    carbohydratesG: readNumber(page, [
+      "Carbohydrates (g)",
+      "Carbs (g)",
+      "Carbohydrate (g)",
+      "Carbohydrates"
+    ]),
+    fatG: readNumber(page, ["Fat (g)", "Total Fat (g)", "Fat"]),
+    fiberG: readNumber(page, ["Fiber (g)", "Fibre (g)", "Fiber"]),
+    sodiumMg: readNumber(page, ["Sodium (mg)", "Sodium"]),
+    sugarG: readNumber(page, [
+      "Sugar (g)",
+      "Sugars (g)",
+      "Total Sugars (g)",
+      "Total Sugar (g)"
+    ]),
+    nutritionConfidence: readTextLike(page, [
+      "Nutrition Confidence",
+      "Nutrient Confidence",
+      "Confidence"
+    ]),
+    nutritionProvenance: readTextLike(page, [
+      "Nutrition Source",
+      "Nutrition Provenance",
+      "Source Name",
+      "Source Type"
+    ]),
+    qualityScore: readNumber(page, ["Meal Quality Score", "Quality Score"]),
+    metabolicScore:
+      readNumber(page, ["Metabolic Score"]) ??
+      parseScoreFromNotes(notes, "Metabolic"),
+    proteinScore:
+      readNumber(page, ["Protein Score"]) ?? parseScoreFromNotes(notes, "Protein"),
+    fiberScore:
+      readNumber(page, ["Fiber Score"]) ?? parseScoreFromNotes(notes, "Fiber"),
+    satietyScoreNumeric:
+      readNumber(page, ["Satiety Score"]) ?? parseScoreFromNotes(notes, "Satiety"),
+    bloodSugarRiskScore:
+      readNumber(page, ["Blood Sugar Risk Score"]) ??
+      parseScoreFromNotes(notes, "Blood Sugar Risk")
   };
 }

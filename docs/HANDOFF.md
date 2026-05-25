@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-24 (Shared URL Intake)
+Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -29,6 +29,9 @@ Production verified:
 
 Implemented:
 - Responsive dashboard shell and route navigation.
+- Dashboard Behavioral Intelligence slice: `/` and `/dashboard` now load `/api/dashboard`, render daily nutrition snapshot cards, weekly summaries, rule-based insights, recent meals, and meal quality summaries from a stable `DashboardViewModel`.
+- Dashboard analytics domain layer under `src/lib/domain/analytics`, with pure aggregation, insight, target-progress, meal-quality, and view-model builders.
+- Configurable dashboard targets for calories, protein, fiber, and sodium. Current target preferences are client-side only and passed to `/api/dashboard`; there is no persisted user settings backend yet.
 - Recipe/meal analysis via OpenAI structured outputs.
 - Editable analysis review form.
 - Save analyzed meals to the Notion Meals database.
@@ -46,12 +49,15 @@ Implemented:
 - Structured ingredient foundation: `RecipeIngredient` supports raw text, parsed name, quantity, unit, preparation, optional flag, and category while preserving string ingredient compatibility.
 - Adapter directories exist for future Open Food Facts, nutrition, recipe parser, grocery prices, and weather integrations.
 - Recipe/shared URL analysis support: `/analyze` accepts normal recipe URLs, shortened/shared URLs, TikTok links, Instagram Reels, YouTube Shorts, and pasted text in the existing input. `/api/analyze-meal` classifies the source, fetches safely server-side through the recipe-parser adapter, prefers Recipe JSON-LD when present, falls back to bounded metadata/page text, and returns source metadata plus source notes with the analysis.
+- Recipe JSON-LD nutrition extraction: when a recipe page exposes structured nutrition facts, the parser carries meal-level totals into `nutritionEstimate` with confidence and provenance.
 - Social/video link handling: the parser only uses accessible HTML/OpenGraph metadata and does not bypass platform protections. If TikTok, Instagram, YouTube Shorts, or similar links do not expose enough recipe-like detail, the API returns a clear fallback asking for a caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
 - Household recipe feedback, AI analysis, pantry item, operational tag, and localization types are present for future workflows.
 - Evidence-aware foundation: static approved source registry and safe health-guidance principles for diabetes-aware, PCOS-aware, and Canada's Food Guide-aligned future analysis.
 - Evidence-Aware Analysis v3: runtime meal analysis now uses the approved source registry and health-guidance principles to produce evidence notes, confidence notes, a safety disclaimer, and source/principle-linked guidance basis. V3 fields are production-active, editable in `/analyze`, and summarized into Notion Notes without schema changes.
 - Ingredient-aware analysis context: `/api/analyze-meal` now does a best-effort read of matching known Ingredients from Notion before the OpenAI call and adds a compact "Known household ingredient context" block when matches exist. This can include household flags, nutrient confidence, FDC description, and ingredient-level protein/fiber/carbohydrate/energy hints already stored in Notion.
 - USDA FoodData Central ingredient lookup foundation: server-side `/api/ingredients/lookup` route, scoped `FDC_API_KEY`, normalized nutrient snapshot mapper, and Settings diagnostics panel.
+- Meal-level nutrition persistence v1: reviewed meals can carry calories, protein, carbs, fat, fiber, sodium, sugar, confidence, provenance, and source. `/analyze` exposes editable nutrition totals in the review flow, and `save-meal` writes compatible Notion properties when they already exist.
+- Meal quality v1: rule-based quality scoring considers protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. Existing meals without exact nutrition can receive read-time quality backfill from legacy scorecards in Notion Notes.
 - Explicit USDA -> Notion ingredient enrichment endpoint: `/api/ingredients/enrich` can lookup only or lookup and update an Ingredient page when compatible Notion properties already exist.
 - FoodData Central matching quality improvements: lookup now fetches preferred generic USDA data types more robustly, ranks Foundation/SR Legacy/Survey ahead of Experimental and Branded where suitable, penalizes prepared/flavored/plain-staple mismatches, adds limited query expansion for paneer and atta, and returns optional match metadata explaining the selected data type and fallback reason.
 - Ingredient picker/enrichment UX: Settings loads existing Notion Ingredients, lets the user select an Ingredient by name, and enriches the selected page without manual Notion page ID copy/paste. Manual lookup-only mode remains available when no Ingredient is selected.
@@ -61,17 +67,19 @@ Implemented:
 - PM handover package: `docs/PM_HANDOVER.md` is the concise start-here document for a new PM/chat.
 
 Not implemented yet:
-- Authentication.
+- Full user-account authentication and household RBAC. Beta token/private-mode guardrails are implemented.
 - Structured ingredient persistence beyond normalized suggestions.
 - Weekly planning workflows.
 - Meal template workflows.
 - Service worker/offline PWA support.
 - Full settings persistence UI.
+- Server-side persisted user nutrition targets.
 - Full pantry management.
 - Live Open Food Facts, nutrition, grocery price, flyer, or weather API integrations.
 - Persistence for structured ingredients, pantry items, household preferences, or separate AI analysis records beyond current safe Notion meal-source writes.
-- Automatic nutrition enrichment of analysis or Notion ingredient records from FoodData Central.
+- Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not invent exact meal totals from ingredient context without serving quantities.
 - Automatic USDA lookup/enrichment during meal analysis or ingredient suggestion persistence.
+- Multi-household Notion partitioning.
 
 ## Current Architecture
 
@@ -95,10 +103,19 @@ Code organization:
 - `src/lib/types/pantry.ts`: lightweight pantry item foundation.
 - `src/lib/integrations/*`: future API adapter boundaries. `recipe-parser` has a basic URL parser; the other adapters are currently stubs only.
 - `src/lib/integrations/food-data-central/*`: server-side USDA FoodData Central client, types, and nutrient snapshot mapper.
+- `src/lib/domain/meal`: shared meal validation.
+- `src/lib/domain/nutrition`: canonical nutrition snapshot/provenance types and validation.
+- `src/lib/domain/analytics`: dashboard view-model, aggregation, insight, target-progress, and meal-quality scoring logic.
+- `src/lib/ai/meal-analysis/v1`: first versioned AI config/response parser boundary.
+- `src/lib/ai/meal-analysis/v1`: full versioned meal-analysis service boundary: config, prompt, schema, source context, request validation, recipe prep, parser, fallback, and service.
+- `src/lib/server/request-guards.ts`: private deployment checks, bounded JSON parsing, and in-memory rate limiting.
+- `src/lib/server/rate-limit`: rate limiter interface and memory provider.
+- `src/app/analyze/reducer.ts`, `src/app/analyze/hooks`, `src/app/analyze/components`: maintainable `/analyze` client flow.
 - `src/lib/sources/source-registry.ts`: typed approved source records with allowed/prohibited uses and confidence levels.
 - `src/lib/health-guidance/*`: safe guidance principles and global health safety rules.
 - `src/lib/household/preferences.ts`: default household preference access.
 - `src/lib/notion`: Notion client, mappers, and page summary extraction.
+- `src/lib/notion/meals-query.ts`: shared Notion Meals read path used by `/api/notion/meals` and `/api/dashboard`.
 - `src/lib/notion/ingredient-context.ts`: best-effort read-only helper for matching known Ingredients and formatting lightweight household ingredient context for analysis prompts.
 - `src/lib/notion/ingredient-summary.ts`: maps Notion Ingredient pages into simplified summaries for Settings picker/enrichment UX.
 - `components`: reusable UI and layout components.
@@ -115,6 +132,7 @@ Architecture rule:
 
 Pages:
 - `/`: dashboard overview.
+- `/dashboard`: same dashboard intelligence surface as `/`, with daily snapshot, configurable targets, quality summary, insights, weekly trends, and recent meals.
 - `/analyze`: paste recipe text or URL, call analysis API, review a household-first summary, edit progressively disclosed details, and save to Notion.
 - `/meals`: fetch and display saved meals from Notion.
 - `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback to Notion.
@@ -134,7 +152,17 @@ Pages:
   - Accepts optional source metadata and returns source defaults for current manual paste flows.
   - If `recipeText` looks like a URL, including common bare shared hosts such as TikTok, Instagram, YouTube, or `youtu.be`, treats it as a URL, normalizes common tracking parameters, follows normal redirects, fetches it server-side, parses JSON-LD recipe data when available, falls back to metadata/page text, and then analyzes only when enough recipe detail is available.
   - Classifies intake as `manual-text`, `recipe-page`, `social-video`, `video-page`, `short-link`, or `unknown-url` and returns `sourceClassification` plus `sourceNotes` in the response.
-  - Blocks obvious local/private URL hosts before and after redirects and returns a user-facing fallback error when pages cannot be fetched or parsed.
+  - Uses a shared request-size limit and rate limit.
+  - Blocks local/private/reserved URL hosts using hostname checks plus DNS resolution before fetches and after redirects. Redirects are followed manually through the same checks.
+  - Returns `analysisVersion` and `analysisModel`.
+  - Carries recipe-page JSON-LD nutrition facts through to `nutritionEstimate` when present. It still does not ask OpenAI to calculate exact calories or macros.
+
+- `GET /api/dashboard`
+  - Queries recent saved Meals through the shared Notion Meals read utility.
+  - Builds and returns a `DashboardViewModel`.
+  - Accepts optional query params for dashboard targets: `calories`, `protein`, `fiber`, and `sodium`.
+  - Does not call OpenAI.
+  - Uses persisted meal-level nutrition where available, and falls back to legacy scorecard parsing for quality only.
 
 - `POST /api/ingredients/lookup`
   - Input: `{ ingredient: string }`
@@ -150,9 +178,11 @@ Pages:
   - If `ingredientPageId` is omitted, returns lookup plus skipped fields.
   - If `ingredientPageId` is present, inspects the Ingredients database schema and updates only compatible properties that already exist.
   - Never creates Notion schema properties.
+  - Emits nutrition snapshots with explicit per-100g basis and skips plain nutrient writes unless the Notion schema has compatible basis projection fields.
 
 - `GET /api/notion/ingredients`
   - Queries the Notion Ingredients database's primary data source.
+  - Supports `pageSize`, `cursor`, and `search`.
   - Returns simplified Ingredient summaries for Settings picker/enrichment UX: page ID, name, URL, category, household flags, nutrient confidence, and FDC description.
   - Does not write to Notion.
 
@@ -169,13 +199,18 @@ Pages:
 - `GET /api/notion/meals`
   - Queries the Notion Meals database's primary data source.
   - Returns simplified meal summaries.
+  - Supports `pageSize`, `cursor`, and `search`.
+  - Filters by configured `householdId` when a compatible `Household ID` rich_text property exists.
+  - Reads optional meal-level nutrition, nutrition provenance, quality score, explicit analysis scores, and legacy Notes scorecards for dashboard compatibility.
 
 - `POST /api/notion/save-meal`
   - Input: `MealAnalysisResult`
+  - Strictly validates required v2/v3 generated fields and returns safe validation details instead of defaulting missing values.
   - Saves core meal fields to Notion Meals.
   - Writes a concise Analysis Framework v2 and Evidence-Aware v3 summary into the existing `Notes` field via `buildMealNotesSummary`.
   - Defaults current saves to `sourceType: manual`, `importedAt: now`, and `parserVersion: manual-v1`.
   - Writes optional source tracking fields only if compatible Notion Meals properties already exist.
+  - Writes optional nutrition totals, nutrition confidence/provenance/source, explicit analysis scores, and meal quality score only if compatible Notion Meals properties already exist.
   - Does not create Notion properties or relations.
 
 - `POST /api/notion/save-ingredients`
@@ -209,6 +244,16 @@ NOTION_WEEKLY_PLANS_DATABASE_ID=
 NOTION_MEAL_TEMPLATES_DATABASE_ID=
 ```
 
+Optional beta guard variables:
+
+```bash
+APP_AUTH_TOKEN=
+PRIVATE_DEPLOYMENT_MODE=true
+APP_HOUSEHOLD_ID=
+APP_CREATED_BY=
+APP_RECORD_VISIBILITY=private
+```
+
 Current route-scoped usage:
 - `/api/analyze-meal`: `OPENAI_API_KEY`
 - `/api/ingredients/lookup`: `FDC_API_KEY`
@@ -224,6 +269,92 @@ Smoke test:
 - `SMOKE_BASE_URL`: required only for `npm run smoke:prod`.
 - Example: `SMOKE_BASE_URL=https://your-vercel-url npm run smoke:prod`.
 - The script performs read-only checks for pages, manifest, Notion diagnostics, schema diagnostics, and USDA paneer lookup. It does not call OpenAI and does not create Notion records.
+
+## Manual Vercel Deployment Checklist
+
+Do not deploy automatically from Codex. When Suvir is ready:
+
+1. Confirm these pass locally:
+   - `npm run test`
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npm run build`
+2. Review the dirty worktree and commit only intended changes.
+3. Push from the local machine when ready.
+4. In Vercel, confirm required environment variables are present:
+   - `OPENAI_API_KEY`
+   - `FDC_API_KEY`
+   - `NOTION_API_KEY`
+   - `NOTION_MEALS_DATABASE_ID`
+   - `NOTION_INGREDIENTS_DATABASE_ID`
+   - `NOTION_FEEDBACK_DATABASE_ID`
+   - `NOTION_WEEKLY_PLANS_DATABASE_ID`
+   - `NOTION_MEAL_TEMPLATES_DATABASE_ID`
+   - optional `APP_AUTH_TOKEN`
+   - optional `PRIVATE_DEPLOYMENT_MODE=true`
+   - optional household metadata env vars
+5. Trigger or wait for deployment from `main`.
+6. After deploy, smoke test:
+   - `/`
+   - `/analyze`
+   - `/dashboard`
+   - `/api/dashboard`
+   - `/api/analyze-meal`
+7. If private deployment/token guardrails are enabled, verify production requires the expected access header/token behavior:
+   - `Authorization: Bearer <APP_AUTH_TOKEN>`
+   - or `x-app-auth-token: <APP_AUTH_TOKEN>`
+   - or an `app_auth_token` cookie.
+
+## Manual Notion Schema Checklist
+
+The app does not create or mutate Notion schema automatically. Nutrition, score, and quality fields are written only when compatible properties already exist in the Meals database.
+
+Ask the operator whether they want to add these Meals properties:
+
+- `Calories` — Number
+- `Protein` or `Protein (g)` — Number
+- `Carbs` or `Carbs (g)` — Number
+- `Fat` or `Fat (g)` — Number
+- `Fiber` or `Fiber (g)` — Number
+- `Sodium` or `Sodium (mg)` — Number
+- `Sugar` or `Sugar (g)` — Number
+- `Nutrition Confidence` — Select or Rich text for current high/medium/low app compatibility. If a Number field is preferred, add a follow-up code adjustment.
+- `Nutrition Provenance` — Select or Rich text
+- `Nutrition Source` — Select or Rich text
+- `Meal Quality Score` — Number
+- `Metabolic Score` — Number
+- `Protein Score` — Number
+- `Fiber Score` — Number
+- `Satiety Score` — Number
+- `Blood Sugar Risk Score` — Number
+
+The operator also requested considering these more granular quality component fields. They are not written by the current app yet:
+
+- `Sodium Score` — Number
+- `Sugar Score` — Number
+- `Diversity Score` — Number
+- `Processing Score` — Number
+
+Operator-requested candidate checklist, before compatibility review:
+- `Calories` — Number
+- `Protein` — Number
+- `Carbs` — Number
+- `Fat` — Number
+- `Fiber` — Number
+- `Sodium` — Number
+- `Sugar` — Number
+- `Nutrition Confidence` — Number
+- `Nutrition Provenance` — Select or Rich text
+- `Nutrition Source` — Select or Rich text
+- `Meal Quality Score` — Number
+- `Protein Score` — Number
+- `Fiber Score` — Number
+- `Sodium Score` — Number
+- `Sugar Score` — Number
+- `Diversity Score` — Number
+- `Processing Score` — Number
+
+Compatibility note: current code writes `Nutrition Confidence` as high/medium/low text through Select or Rich text, not Number. If the operator wants `Nutrition Confidence` as Number, update the mapper and review UI first.
 
 Available env helpers:
 - `getOpenAIEnv()`

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getConfiguredHouseholdMetadata } from "@/src/lib/domain/household/metadata";
+import { validateMealAnalysisResult } from "@/src/lib/domain/meal/validation";
 import { getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import {
@@ -6,25 +8,9 @@ import {
   type MealSourcePropertySchema
 } from "@/src/lib/notion/mappers";
 import {
-  bloodSugarImpacts,
-  cuisines,
-  effortLevels,
-  mealTypes,
-  proteinLevels,
-  satietyLevels,
-  type BloodSugarImpact,
-  type Cuisine,
-  type EffortLevel,
-  type MealAnalysisResult,
-  type MealType,
-  type ProteinLevel,
-  type SatietyLevel
-} from "@/src/lib/types/meal";
-import {
-  defaultManualRecipeSource,
-  recipeSourceTypes,
-  type RecipeSourceType
-} from "@/src/lib/types/recipe";
+  guardApiRequest,
+  readJsonWithLimit
+} from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
@@ -32,38 +18,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isGuidanceBasisArray(
-  value: unknown
-): value is MealAnalysisResult["guidanceBasis"] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (item) =>
-        isRecord(item) &&
-        typeof item.sourceId === "string" &&
-        typeof item.principleId === "string" &&
-        typeof item.relevance === "string"
-    )
+function validationError(errors: string[]) {
+  return NextResponse.json(
+    {
+      error: "Meal payload failed validation.",
+      details: errors
+    },
+    { status: 400 }
   );
-}
-
-function isEnumValue<TValue extends string>(
-  value: unknown,
-  options: readonly TValue[]
-): value is TValue {
-  return typeof value === "string" && options.includes(value as TValue);
-}
-
-function validationError(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 });
 }
 
 function getNotionPageUrl(page: { id: string; url?: string }) {
@@ -107,20 +69,28 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   const properties = getProperties(database);
   const schema: MealSourcePropertySchema = {};
 
-  const sourceType = findProperty(
-    properties,
-    ["Source Type", "sourceType"],
-    ["select", "rich_text"]
-  );
+  const sourceType = findProperty(properties, ["Source Type", "sourceType"], [
+    "select",
+    "rich_text"
+  ]);
   const sourceUrl = findProperty(
     properties,
     ["Source URL", "Source Url", "sourceUrl"],
     ["url", "rich_text"]
   );
-  const sourceName = findProperty(
+  const sourceName = findProperty(properties, ["Source Name", "sourceName"], [
+    "select",
+    "rich_text"
+  ]);
+  const sourceClassification = findProperty(
     properties,
-    ["Source Name", "sourceName"],
+    ["Source Classification", "sourceClassification"],
     ["select", "rich_text"]
+  );
+  const sourceNotes = findProperty(
+    properties,
+    ["Source Notes", "sourceNotes"],
+    ["rich_text"]
   );
   const importedAt = findProperty(
     properties,
@@ -136,6 +106,90 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
     properties,
     ["Parser Version", "parserVersion"],
     ["select", "rich_text"]
+  );
+  const analysisVersion = findProperty(
+    properties,
+    ["Analysis Version", "analysisVersion"],
+    ["select", "rich_text"]
+  );
+  const analysisModel = findProperty(
+    properties,
+    ["Analysis Model", "analysisModel"],
+    ["select", "rich_text"]
+  );
+  const householdId = findProperty(
+    properties,
+    ["Household ID", "householdId"],
+    ["rich_text", "select"]
+  );
+  const createdBy = findProperty(properties, ["Created By", "createdBy"], [
+    "rich_text",
+    "select"
+  ]);
+  const visibility = findProperty(properties, ["Visibility", "visibility"], [
+    "select",
+    "rich_text"
+  ]);
+  const schemaVersion = findProperty(
+    properties,
+    ["Schema Version", "schemaVersion"],
+    ["select", "rich_text"]
+  );
+  const calories = findProperty(properties, ["Calories", "Energy (kcal)", "Energy Kcal"], [
+    "number"
+  ]);
+  const proteinG = findProperty(properties, ["Protein (g)", "Protein g", "Protein"], [
+    "number"
+  ]);
+  const carbohydratesG = findProperty(
+    properties,
+    ["Carbohydrates (g)", "Carbs (g)", "Carbohydrate (g)", "Carbohydrates"],
+    ["number"]
+  );
+  const fatG = findProperty(properties, ["Fat (g)", "Total Fat (g)", "Fat"], [
+    "number"
+  ]);
+  const fiberG = findProperty(properties, ["Fiber (g)", "Fibre (g)", "Fiber"], [
+    "number"
+  ]);
+  const sodiumMg = findProperty(properties, ["Sodium (mg)", "Sodium"], [
+    "number"
+  ]);
+  const sugarG = findProperty(
+    properties,
+    ["Sugar (g)", "Sugars (g)", "Total Sugars (g)", "Total Sugar (g)"],
+    ["number"]
+  );
+  const nutritionConfidence = findProperty(
+    properties,
+    ["Nutrition Confidence", "Nutrient Confidence"],
+    ["select", "rich_text"]
+  );
+  const nutritionProvenance = findProperty(
+    properties,
+    ["Nutrition Provenance", "Nutrition Source Notes"],
+    ["select", "rich_text"]
+  );
+  const nutritionSource = findProperty(
+    properties,
+    ["Nutrition Source", "Nutrition Data Source"],
+    ["select", "rich_text"]
+  );
+  const mealQualityScore = findProperty(
+    properties,
+    ["Meal Quality Score", "Quality Score"],
+    ["number"]
+  );
+  const metabolicScore = findProperty(properties, ["Metabolic Score"], ["number"]);
+  const proteinScoreField = findProperty(properties, ["Protein Score"], ["number"]);
+  const fiberScoreField = findProperty(properties, ["Fiber Score"], ["number"]);
+  const satietyScoreNumeric = findProperty(properties, ["Satiety Score"], [
+    "number"
+  ]);
+  const bloodSugarRiskScore = findProperty(
+    properties,
+    ["Blood Sugar Risk Score"],
+    ["number"]
   );
 
   if (sourceType) {
@@ -156,6 +210,20 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
     schema.sourceName = {
       name: sourceName[0],
       type: getPropertyType(sourceName[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (sourceClassification) {
+    schema.sourceClassification = {
+      name: sourceClassification[0],
+      type: getPropertyType(sourceClassification[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (sourceNotes) {
+    schema.sourceNotes = {
+      name: sourceNotes[0],
+      type: "rich_text"
     };
   }
 
@@ -180,179 +248,123 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
     };
   }
 
+  if (analysisVersion) {
+    schema.analysisVersion = {
+      name: analysisVersion[0],
+      type: getPropertyType(analysisVersion[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (analysisModel) {
+    schema.analysisModel = {
+      name: analysisModel[0],
+      type: getPropertyType(analysisModel[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (householdId) {
+    schema.householdId = {
+      name: householdId[0],
+      type: getPropertyType(householdId[1]) as "rich_text" | "select"
+    };
+  }
+
+  if (createdBy) {
+    schema.createdBy = {
+      name: createdBy[0],
+      type: getPropertyType(createdBy[1]) as "rich_text" | "select"
+    };
+  }
+
+  if (visibility) {
+    schema.visibility = {
+      name: visibility[0],
+      type: getPropertyType(visibility[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (schemaVersion) {
+    schema.schemaVersion = {
+      name: schemaVersion[0],
+      type: getPropertyType(schemaVersion[1]) as "select" | "rich_text"
+    };
+  }
+
+  if (calories) schema.calories = { name: calories[0], type: "number" };
+  if (proteinG) schema.proteinG = { name: proteinG[0], type: "number" };
+  if (carbohydratesG) {
+    schema.carbohydratesG = { name: carbohydratesG[0], type: "number" };
+  }
+  if (fatG) schema.fatG = { name: fatG[0], type: "number" };
+  if (fiberG) schema.fiberG = { name: fiberG[0], type: "number" };
+  if (sodiumMg) schema.sodiumMg = { name: sodiumMg[0], type: "number" };
+  if (sugarG) schema.sugarG = { name: sugarG[0], type: "number" };
+  if (nutritionConfidence) {
+    schema.nutritionConfidence = {
+      name: nutritionConfidence[0],
+      type: getPropertyType(nutritionConfidence[1]) as "select" | "rich_text"
+    };
+  }
+  if (nutritionProvenance) {
+    schema.nutritionProvenance = {
+      name: nutritionProvenance[0],
+      type: getPropertyType(nutritionProvenance[1]) as "select" | "rich_text"
+    };
+  }
+  if (nutritionSource) {
+    schema.nutritionSource = {
+      name: nutritionSource[0],
+      type: getPropertyType(nutritionSource[1]) as "select" | "rich_text"
+    };
+  }
+  if (mealQualityScore) {
+    schema.mealQualityScore = { name: mealQualityScore[0], type: "number" };
+  }
+  if (metabolicScore) {
+    schema.metabolicScore = { name: metabolicScore[0], type: "number" };
+  }
+  if (proteinScoreField) {
+    schema.proteinScore = { name: proteinScoreField[0], type: "number" };
+  }
+  if (fiberScoreField) {
+    schema.fiberScore = { name: fiberScoreField[0], type: "number" };
+  }
+  if (satietyScoreNumeric) {
+    schema.satietyScoreNumeric = {
+      name: satietyScoreNumeric[0],
+      type: "number"
+    };
+  }
+  if (bloodSugarRiskScore) {
+    schema.bloodSugarRiskScore = {
+      name: bloodSugarRiskScore[0],
+      type: "number"
+    };
+  }
+
   return schema;
 }
 
-function validateMealAnalysis(body: unknown): MealAnalysisResult | NextResponse {
-  if (!isRecord(body)) {
-    return validationError("Request body must be a JSON object.");
-  }
-
-  if (!isString(body.mealName)) {
-    return validationError("mealName is required.");
-  }
-
-  if (!isEnumValue<Cuisine>(body.cuisine, cuisines)) {
-    return validationError("cuisine is required.");
-  }
-
-  if (!isEnumValue<MealType>(body.mealType, mealTypes)) {
-    return validationError("mealType is required.");
-  }
-
-  if (!isEnumValue<ProteinLevel>(body.proteinLevel, proteinLevels)) {
-    return validationError("proteinLevel is required.");
-  }
-
-  if (!isEnumValue<SatietyLevel>(body.satietyLevel, satietyLevels)) {
-    return validationError("satietyLevel is required.");
-  }
-
-  if (!isEnumValue<BloodSugarImpact>(body.bloodSugarImpact, bloodSugarImpacts)) {
-    return validationError("bloodSugarImpact is required.");
-  }
-
-  if (!isEnumValue<EffortLevel>(body.effortLevel, effortLevels)) {
-    return validationError("effortLevel is required.");
-  }
-
-  if (typeof body.familyApproved !== "boolean") {
-    return validationError("familyApproved is required.");
-  }
-
-  if (typeof body.weeknightFriendly !== "boolean") {
-    return validationError("weeknightFriendly is required.");
-  }
-
-  if (typeof body.comfortMeal !== "boolean") {
-    return validationError("comfortMeal is required.");
-  }
-
-  if (!isString(body.optimizedVersion)) {
-    return validationError("optimizedVersion is required.");
-  }
-
-  if (!isString(body.notes)) {
-    return validationError("notes is required.");
-  }
-
-  if (!isStringArray(body.ingredientSuggestions)) {
-    return validationError("ingredientSuggestions must be an array of strings.");
-  }
-
-  if (!isString(body.feedbackPrompt)) {
-    return validationError("feedbackPrompt is required.");
-  }
-
-  // v2 fields — required in type but optional in Notion save (not written to Notion yet)
-  const metabolicScore = typeof body.metabolicScore === "number" ? body.metabolicScore : 0;
-  const proteinScore = typeof body.proteinScore === "number" ? body.proteinScore : 0;
-  const fiberScore = typeof body.fiberScore === "number" ? body.fiberScore : 0;
-  const satietyScoreNumeric = typeof body.satietyScoreNumeric === "number" ? body.satietyScoreNumeric : 0;
-  const bloodSugarRiskScore = typeof body.bloodSugarRiskScore === "number" ? body.bloodSugarRiskScore : 0;
-  const quickVerdict = typeof body.quickVerdict === "string" ? body.quickVerdict : "";
-  const mainConcerns = isStringArray(body.mainConcerns) ? body.mainConcerns : [];
-  const minimalChangeVersion = typeof body.minimalChangeVersion === "string" ? body.minimalChangeVersion : "";
-  const supportiveVersion = typeof body.supportiveVersion === "string" ? body.supportiveVersion : "";
-  const plateStrategy = typeof body.plateStrategy === "string" ? body.plateStrategy : "";
-  const whyThisHelps = typeof body.whyThisHelps === "string" ? body.whyThisHelps : "";
-  const culturalNotes = typeof body.culturalNotes === "string" ? body.culturalNotes : "";
-  const shoppingAdditions = isStringArray(body.shoppingAdditions) ? body.shoppingAdditions : [];
-  const prepNotes = isStringArray(body.prepNotes) ? body.prepNotes : [];
-  const mealPairings = isStringArray(body.mealPairings) ? body.mealPairings : [];
-  const cautions = isStringArray(body.cautions) ? body.cautions : [];
-  const evidenceNotes = isStringArray(body.evidenceNotes)
-    ? body.evidenceNotes
-    : [];
-  const confidenceNotes = isStringArray(body.confidenceNotes)
-    ? body.confidenceNotes
-    : [];
-  const safetyDisclaimer =
-    typeof body.safetyDisclaimer === "string" ? body.safetyDisclaimer : "";
-  const guidanceBasis = isGuidanceBasisArray(body.guidanceBasis)
-    ? body.guidanceBasis
-    : [];
-  const sourceType =
-    isEnumValue<RecipeSourceType>(body.sourceType, recipeSourceTypes)
-      ? body.sourceType
-      : defaultManualRecipeSource.sourceType;
-  const sourceUrl = typeof body.sourceUrl === "string" && body.sourceUrl.trim()
-    ? body.sourceUrl.trim()
-    : null;
-  const sourceName =
-    typeof body.sourceName === "string" && body.sourceName.trim()
-      ? body.sourceName.trim()
-      : null;
-  const importedAt =
-    typeof body.importedAt === "string" && body.importedAt.trim()
-      ? body.importedAt.trim()
-      : new Date().toISOString();
-  const lastParsedAt =
-    typeof body.lastParsedAt === "string" && body.lastParsedAt.trim()
-      ? body.lastParsedAt.trim()
-      : null;
-  const parserVersion =
-    typeof body.parserVersion === "string" && body.parserVersion.trim()
-      ? body.parserVersion.trim()
-      : defaultManualRecipeSource.parserVersion;
-
-  return {
-    mealName: body.mealName.trim(),
-    cuisine: body.cuisine,
-    mealType: body.mealType,
-    proteinLevel: body.proteinLevel,
-    satietyLevel: body.satietyLevel,
-    bloodSugarImpact: body.bloodSugarImpact,
-    effortLevel: body.effortLevel,
-    familyApproved: body.familyApproved,
-    weeknightFriendly: body.weeknightFriendly,
-    comfortMeal: body.comfortMeal,
-    optimizedVersion: body.optimizedVersion.trim(),
-    notes: body.notes.trim(),
-    ingredientSuggestions: body.ingredientSuggestions,
-    feedbackPrompt: body.feedbackPrompt.trim(),
-    metabolicScore,
-    proteinScore,
-    fiberScore,
-    satietyScoreNumeric,
-    bloodSugarRiskScore,
-    quickVerdict,
-    mainConcerns,
-    minimalChangeVersion,
-    supportiveVersion,
-    plateStrategy,
-    whyThisHelps,
-    culturalNotes,
-    shoppingAdditions,
-    prepNotes,
-    mealPairings,
-    cautions,
-    evidenceNotes,
-    confidenceNotes,
-    safetyDisclaimer,
-    guidanceBasis,
-    sourceType,
-    sourceUrl,
-    sourceName,
-    importedAt,
-    lastParsedAt,
-    parserVersion
-  };
-}
-
 export async function POST(request: Request) {
-  let body: unknown;
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "notion-save-meal",
+    rateLimit: 30
+  });
 
-  try {
-    body = await request.json();
-  } catch {
-    return validationError("Request body must be valid JSON.");
+  if (guardResponse) {
+    return guardResponse;
   }
 
-  const meal = validateMealAnalysis(body);
+  const body = await readJsonWithLimit(request, 80_000);
 
-  if (meal instanceof NextResponse) {
-    return meal;
+  if (body instanceof NextResponse) {
+    return body;
+  }
+
+  const validatedMeal = validateMealAnalysisResult(body);
+
+  if (!validatedMeal.success || !validatedMeal.data) {
+    return validationError(validatedMeal.errors);
   }
 
   try {
@@ -363,11 +375,22 @@ export async function POST(request: Request) {
     });
     const sourceSchema = getMealSourcePropertySchema(database);
 
+    const ownership = getConfiguredHouseholdMetadata();
     const page = await notion.pages.create({
       parent: {
         database_id: NOTION_MEALS_DATABASE_ID
       },
-      properties: mapMealAnalysisToNotionProperties(meal, sourceSchema)
+      properties: mapMealAnalysisToNotionProperties(
+        {
+          ...validatedMeal.data,
+          householdId: validatedMeal.data.householdId ?? ownership.householdId,
+          createdBy: validatedMeal.data.createdBy ?? ownership.createdBy,
+          visibility: validatedMeal.data.visibility ?? ownership.visibility,
+          schemaVersion:
+            validatedMeal.data.schemaVersion ?? ownership.schemaVersion
+        },
+        sourceSchema
+      )
     });
 
     return NextResponse.json({

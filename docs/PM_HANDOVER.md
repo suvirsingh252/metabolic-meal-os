@@ -1,6 +1,6 @@
 # PM Handover
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 This is the recommended starting point for a new PM/chat with no prior conversation context. Read this first, then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md` before proposing work.
 
@@ -17,7 +17,7 @@ Medical safety boundary:
 - Do not claim to treat, cure, prevent, reverse, or manage disease.
 - Do not replace clinician, registered dietitian, pharmacist, or other qualified professional advice.
 - Do not provide medication, supplement, fertility, insulin, or individualized clinical dosing advice.
-- Do not add exact calorie or macro tracking unless explicitly approved later; current nutrition data is contextual and approximate.
+- Do not ask OpenAI to invent exact calorie or macro totals. Meal-level nutrition totals may be persisted when they come from recipe structured data or user review edits with clear provenance.
 
 ## 2. Current Production State
 
@@ -36,6 +36,8 @@ Live and working:
 - PWA/mobile shell: manifest, app metadata, icons, safe-area/mobile layout work.
 - Read-only production smoke-test automation via `npm run smoke:prod`.
 - `/analyze` review UI has a first household-first simplification pass with progressive disclosure.
+- Local dashboard intelligence slice exists but has not been deployed from this session: `/` and `/dashboard` use `/api/dashboard`, `DashboardViewModel`, daily/weekly summaries, insights, configurable targets, recent meals, and meal quality v1.
+- Local nutrition persistence v1 exists but has not been deployed from this session: recipe JSON-LD nutrition facts can flow into review, users can edit nutrition totals before save, and Notion writes compatible existing nutrition/quality properties only.
 
 Recently verified production facts:
 - Evidence-Aware Analysis v3 works in production.
@@ -69,6 +71,7 @@ Important architecture rules:
 - External providers should enter through `src/lib/integrations/*`.
 - AI-generated analysis and enrichment should remain separate from canonical recipe data unless deliberately reviewed/promoted.
 - Notion schema is not created or mutated by the app; routes only write compatible existing properties.
+- Dashboard analytics are pure domain functions under `src/lib/domain/analytics`; React components do not aggregate nutrition directly.
 
 ## 4. Current User Experience
 
@@ -79,6 +82,12 @@ Important architecture rules:
 - Existing editable details remain available through progressive sections.
 - Evidence, safety, source metadata, scores, and advanced saved fields are secondary/collapsed so they do not dominate the household answer.
 - User can save the meal to Notion; ingredient suggestions persist separately.
+- Review includes editable nutrition totals. Blank values remain unknown; the app distinguishes unknown from zero.
+
+`/` and `/dashboard`:
+- Load dashboard intelligence from `/api/dashboard`.
+- Show daily nutrition, configurable targets, smart insights, weekly trends, recent meals, and quality summaries.
+- Targets for calories, protein, fiber, and sodium are client-side only for now.
 
 `/meals`:
 - Loads saved Meals from Notion.
@@ -104,6 +113,7 @@ Meals:
 - Stores analyzed meals and core classification fields.
 - `Notes` contains original notes plus concise Analysis Framework v2 and Evidence-Aware v3 summaries.
 - Optional source tracking fields are written only if compatible Notion properties exist.
+- Optional nutrition totals, nutrition provenance, explicit score fields, and meal quality score are written only if compatible Notion properties exist.
 
 Ingredients:
 - Actively used.
@@ -146,14 +156,15 @@ Safety rules:
 ## 7. Current Technical Debt
 
 Highest priority:
-- No authentication. Do not broaden public sharing before auth exists.
+- No full authentication. Private deployment/token guardrails exist, but do not broaden public sharing before real auth exists.
 - No automated write-flow smoke tests; current smoke automation is read-only.
 - Structured ingredient parsing/persistence is pending.
-- Structured ingredient parsing/persistence is pending.
+- No Notion write-back migration exists for legacy nutrition or quality fields.
+- Dashboard targets are client-side only.
 - Recipe parser is dependency-free and improved for shared intake, but still cannot bypass blocked, login-gated, video-only, or client-rendered sources.
 - FoodData Central matching is improved but still heuristic.
 - Notion-only persistence may eventually limit querying, permissions, and performance.
-- No exact macro/calorie tracking by design.
+- Legacy meals may lack exact macro/calorie totals by design; read-time quality backfill from scorecards is available, but exact nutrition is not invented.
 
 Other debt:
 - Duplicated route validators/helpers.
@@ -174,8 +185,8 @@ Other debt:
 ## 9. Recommended Next Slices
 
 1. Real-meal tone and household usability review.
-2. UX pass across `/meals`, `/feedback`, and `/settings`.
-3. Structured ingredient persistence.
+2. Add a Notion schema checklist/migration path for explicit nutrition and quality fields, then an operator-triggered backfill job for legacy score fields.
+3. UX pass across `/meals`, `/feedback`, and `/settings`.
 4. Structured ingredient persistence.
 5. Continue real-world recipe/social URL intake testing and record blocked/problematic domains.
 6. Write-flow smoke tests.
@@ -183,7 +194,24 @@ Other debt:
 8. Household preference persistence.
 9. Weekly planning later.
 
-## 10. How The New PM Should Start
+## 10. Manual Closeout Notes From 2026-05-25
+
+Do not assume the latest local dashboard/nutrition work is deployed. This closeout explicitly did not deploy, push, or mutate Vercel/Notion.
+
+Manual Vercel deployment:
+1. Confirm locally: `npm run test`, `npm run typecheck`, `npm run lint`, `npm run build`.
+2. Commit and push from the local machine when ready.
+3. In Vercel, confirm required env vars are present.
+4. Trigger or wait for deployment from `main`.
+5. Smoke test `/`, `/analyze`, `/dashboard`, `/api/dashboard`, and `/api/analyze-meal`.
+6. If private/token guardrails are enabled, verify required token/header/cookie behavior in production.
+
+Manual Notion schema:
+- The app does not create or mutate Notion schema automatically.
+- Add compatible Meals fields manually if nutrition and quality persistence should be active.
+- Current compatible fields include Number fields for calories, protein, carbs, fat, fiber, sodium, sugar, meal quality score, and explicit analysis scores; Select or Rich text fields for nutrition confidence/provenance/source.
+
+## 11. How The New PM Should Start
 
 1. Read `docs/PM_HANDOVER.md`.
 2. Then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`.

@@ -59,6 +59,18 @@ export interface RecipeRecord {
   operationalTags?: OperationalRecipeTag[];
 }
 
+export interface RecipeNutritionFacts {
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  fiber: number | null;
+  sodium: number | null;
+  sugar: number | null;
+  confidence: "high" | "medium" | "low";
+  provenance: string;
+}
+
 export const defaultManualRecipeSource: RecipeSourceMetadata = {
   sourceType: "manual",
   sourceUrl: null,

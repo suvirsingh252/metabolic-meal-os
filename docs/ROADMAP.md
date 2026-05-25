@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-24 (Shared URL Intake)
+Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -71,34 +71,55 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Tune `/analyze` first-screen meal guidance toward plain household language, culturally preserving same-dish nudges, shorter evidence/confidence notes, and mobile scroll/focus to the result.
 - [x] Add schema-aware Ingredient -> Meal relation support during ingredient suggestion persistence, including duplicate Ingredient relation updates and non-blocking missing-schema warnings.
 - [x] Harden `/analyze` shared URL intake with source classification, tracking-param cleanup, short/social/video link handling, bounded metadata/page-text extraction, and clear caption/transcript fallback messages.
+- [x] Add beta-safe private deployment/token guardrails, request-size limits, and route-level rate limits for high-risk API paths.
+- [x] Harden recipe URL import with DNS-based private/reserved IP rejection and manually checked redirects.
+- [x] Add canonical nutrition provenance snapshots for FoodData Central mappings.
+- [x] Stop writing plain nutrient values to Notion unless basis projection fields exist.
+- [x] Tighten `save-meal` validation so missing v2/v3 generated fields fail explicitly.
+- [x] Add pagination/search parameters to Meals and Ingredients APIs.
+- [x] Add focused `npm test` coverage for ingredient normalization/matching, save validation, nutrition provenance, and recipe URL security.
+- [x] Fully extract meal-analysis v1 prompt/schema/model/source-context/parsing/fallback/service out of the API route.
+- [x] Refactor `/analyze` into reducer, hook, and component sections without redesigning the UX.
+- [x] Add configured household ownership metadata and Notion projection/filtering where schema supports it.
+- [x] Abstract rate limiting behind a provider interface with a memory implementation.
+- [x] Document SSRF socket/IP pinning limitation and keep defensive mitigations explicit.
+- [x] Add Dashboard Behavioral Intelligence slice with `/api/dashboard`, `DashboardViewModel`, daily/weekly aggregation, rule-based insights, recent meals, and dashboard UI.
+- [x] Add configurable dashboard targets for calories, protein, fiber, and sodium.
+- [x] Add meal-level nutrition persistence v1 for recipe JSON-LD nutrition facts and user-entered review totals.
+- [x] Add editable nutrition totals in the `/analyze` review flow.
+- [x] Add meal quality v1 scoring and dashboard quality surfaces.
+- [x] Add legacy scorecard read-time quality backfill for saved meals without exact nutrition totals.
 
 ## Current Sprint
 
-- [ ] Improve trust and quality for ingredient intelligence.
+- [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
 - [x] Review evidence-aware guidance quality on representative real household meals and tune the first household answer.
 - [ ] Audit remaining household UX flows for clarity, mobile readability, and supportive tone.
 - [x] Harden recipe parser robustness for first-pass representative recipe and social/shared URL intake.
 - [ ] Continue real-world recipe/social URL testing and record domains that are blocked, login-gated, or script-rendered.
 - [ ] If optional source properties are added to Notion Meals, confirm manual saves populate them.
+- [ ] If optional nutrition and quality properties are added to Notion Meals, confirm new saves populate them.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
 
 ## Next Up
 
 - [ ] Add structured ingredient persistence behind the current ingredient suggestion flow.
+- [ ] Add a Notion schema checklist/migration path for explicit nutrition and quality fields, then an operator-triggered backfill job for legacy score fields.
 - [ ] Add meal detail view.
-- [ ] Harden Recipe URL analysis further after more real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, improve SSRF protection with DNS checks, and record blocked/problematic domains.
+- [ ] Harden Recipe URL analysis further after more real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, add socket-level IP pinning if needed, and record blocked/problematic domains.
 - [ ] Review whether known Ingredient context improves protein/fiber and blood-sugar reasoning without becoming too numeric.
-- [ ] Decide how FoodData Central nutrient snapshots should relate to normalized ingredients without changing Notion schema prematurely.
+- [x] Decide first-pass FoodData Central nutrient provenance model with explicit per-100g basis and source metadata.
 - [ ] Add optional Meals Notion source fields manually or document the exact schema setup.
+- [ ] Add optional Meals Notion nutrition and quality fields manually, then verify `/api/dashboard` and new saves use them.
 - [ ] Add a richer household recipe feedback UI/database slice using `HouseholdRecipeFeedback`.
 - [ ] Simplify `/feedback`, `/meals`, and `/settings` flows after the `/analyze` hierarchy pass.
 - [ ] Add a persisted household preferences source before adding multi-household support.
 - [ ] Add better empty/error states where needed.
 - [ ] Add optimistic refresh after saving to Notion.
-- [ ] Add basic smoke tests for API validation.
-- [ ] Tighten save-meal validator: stop defaulting missing v2 fields to 0/empty once backward compatibility is no longer needed.
+- [x] Add basic unit tests for API/domain validation.
+- [x] Tighten save-meal validator: stop defaulting missing v2 fields to 0/empty.
 
 ## Future Ideas
 
@@ -115,6 +136,11 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Personalized planning using household feedback signals.
 - [ ] PWA offline shell.
 - [ ] Authentication and household accounts.
+- [ ] Replace beta token/private-mode guardrails with full household authentication and ownership checks.
+- [ ] Server-side persisted nutrition targets.
+- [ ] Household-level analytics after auth/tenancy exists.
+- [ ] Predictive coaching or ML only after reliable nutrition/feedback data exists.
+- [ ] Add real model-quality golden fixtures/evals beyond parser/schema unit tests.
 - [ ] Migration from Notion to a dedicated database if needed.
 - [ ] Provider abstraction for AI and storage.
 
@@ -123,11 +149,12 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Duplicate validation helpers exist across API routes.
 - [ ] Duplicate enum select/boolean input components exist in client pages.
 - [ ] Need reusable success alert/card patterns.
-- [ ] Need automated tests for route validators.
-- [ ] save-meal route validator accepts v2 fields leniently (defaults scores to 0, strings to empty) for backward compatibility. Should be tightened once old saves are no longer a concern.
-- [ ] Notion Notes field has a 2000-character hard limit; buildMealNotesSummary truncates at 1997 chars with ellipsis as a safety measure.
+- [ ] Need broader integration tests for API route validators and Notion adapter behavior.
+- [ ] Notion Notes field has a 2000-character hard limit; buildMealNotesSummary truncates with an explicit marker as a safety measure.
 - [ ] Integration adapter interfaces are intentionally stubbed and may evolve once real providers are selected.
 - [ ] Structured ingredient parsing is not implemented yet; only the compatible type/helper foundation exists.
 - [ ] Recipe parser remains dependency-free. It now handles shared/social intake more gracefully, but it is still not as robust as a full Readability parser and cannot access blocked captions/transcripts.
 - [ ] FoodData Central matching is improved but remains heuristic and needs ongoing quality review.
 - [ ] The `/analyze` review UI has a first hierarchy pass, but the rest of the app still needs household UX simplification.
+- [ ] Dashboard targets are client-side only and need persisted user/household settings later.
+- [ ] Legacy nutrition and quality backfill is read-time only; no Notion write-back migration exists yet.

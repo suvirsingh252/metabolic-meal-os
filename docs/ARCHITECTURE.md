@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-05-24 (Shared URL Intake)
+Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -15,8 +15,10 @@ Frontend surfaces:
   - `/meals`
   - `/feedback`
   - `/settings`
+- `/` and `/dashboard` share the dashboard intelligence client backed by `/api/dashboard`.
 - Tailwind CSS for styling.
 - Local shadcn-style primitives in `components/ui`.
+- `/analyze` state is reducer-backed in `src/app/analyze/reducer.ts` with controller logic in `src/app/analyze/hooks/use-analyze-controller.ts` and UI sections under `src/app/analyze/components`.
 - `lucide-react` for icons.
 
 The UI is still intentionally MVP-simple: cards, forms, badges, alerts, buttons, and native progressive disclosure. No global state manager is used. `/analyze` has a first household-first hierarchy pass; `/meals`, `/feedback`, and `/settings` still need deeper UX simplification.
@@ -25,6 +27,7 @@ The UI is still intentionally MVP-simple: cards, forms, badges, alerts, buttons,
 
 Backend work is implemented through App Router API routes:
 - `src/app/api/analyze-meal/route.ts`
+- `src/app/api/dashboard/route.ts`
 - `src/app/api/diagnostics/notion/route.ts`
 - `src/app/api/diagnostics/notion-schemas/route.ts`
 - `src/app/api/ingredients/lookup/route.ts`
@@ -40,6 +43,14 @@ API routes:
 - read secrets through `src/lib/env.ts`.
 - return safe client-facing errors.
 - log detailed errors server-side only.
+- pass through shared private-deployment, request-size, and in-memory rate-limit guards for high-risk routes.
+
+Shared backend guardrails live in `src/lib/server/request-guards.ts`. They cover private deployment/token checks, bounded JSON parsing/request-size limits, route-specific rate limits, and safe client-facing errors.
+
+Rate limiting:
+- API guards call `src/lib/server/rate-limit`.
+- The default provider is `MemoryRateLimiter`.
+- The interface is ready for Redis/Upstash later, but the current implementation is single-instance only.
 
 ## OpenAI Integration Flow
 
@@ -47,7 +58,7 @@ Flow:
 1. User enters meal or recipe text on `/analyze`.
 2. Client calls `POST /api/analyze-meal`.
 3. Server validates `recipeText`.
-4. If the input looks like a URL, including common shared/social hosts, the recipe-parser adapter normalizes it, strips common tracking parameters, classifies it, fetches and extracts content server-side, and refuses obvious local/private hosts before and after redirects.
+4. If the input looks like a URL, including common shared/social hosts, the recipe-parser adapter normalizes it, strips common tracking parameters, classifies it, resolves DNS, rejects private/reserved hosts, follows redirects manually through the same checks, fetches and extracts content server-side.
 5. Server reads matching known Ingredients from Notion as lightweight context when available.
 6. Server builds Evidence-Aware Analysis v3 prompt context from the source registry and health-guidance modules.
 7. Server reads `OPENAI_API_KEY`.
@@ -67,8 +78,14 @@ Recipe extraction:
 - Fallback extraction uses accessible title/site metadata, OpenGraph description, likely recipe snippets, and a bounded page excerpt.
 - Social/video pages only use accessible HTML/OpenGraph metadata. The app does not use browser automation, video downloads, paid scraping, or platform bypasses.
 - If a social/video link or blocked page does not expose enough recipe detail, `/api/analyze-meal` returns a clear fallback asking the user to paste the caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
+- If a recipe page exposes schema.org JSON-LD nutrition facts, the parser carries meal-level totals forward with provenance. The AI prompt still does not ask OpenAI to calculate calories or exact macros.
 
 Structured output is used so the review screen receives predictable fields.
+
+AI module boundary:
+- Versioned config, prompt, JSON schema, source context, request validation, recipe preparation, response parsing, fallback behavior, and service orchestration live under `src/lib/ai/meal-analysis/v1`.
+- `src/app/api/analyze-meal/route.ts` is now a thin controller.
+- Responses include `analysisVersion` and `analysisModel` metadata.
 
 ## Notion Integration Flow
 
@@ -88,6 +105,7 @@ Meals list:
 2. Server retrieves Meals database.
 3. Server queries the database primary data source.
 4. Server maps Notion pages to `MealSummary`.
+5. `pageSize`, `cursor`, and `search` are supported to avoid unbounded scans.
 
 Feedback:
 1. `/feedback` calls `POST /api/notion/log-feedback`.
@@ -115,6 +133,48 @@ USDA lookup/enrichment:
 2. `/settings` can load existing Ingredients via `GET /api/notion/ingredients`.
 3. `/settings` can call `POST /api/ingredients/enrich` to update a selected Ingredient page.
 4. Enrichment updates only compatible existing Notion properties and never creates schema.
+5. Plain nutrient values are only persisted when compatible basis fields such as `Nutrient Amount Basis` and `Nutrient Basis Unit` exist.
+
+Nutrition provenance:
+- Canonical nutrition snapshot types live in `src/lib/domain/nutrition`.
+- FoodData Central mappings emit explicit `amountBasis`, `basisUnit`, `per100g`, source ID, confidence, food state, nutrients, and `lastVerifiedAt`.
+- Runtime validation rejects snapshots that would persist nutrients without a basis.
+
+## Dashboard Analytics Architecture
+
+Dashboard intelligence is intentionally separated from React:
+- `src/lib/domain/analytics/types.ts`
+- `src/lib/domain/analytics/aggregate-meals.ts`
+- `src/lib/domain/analytics/insights.ts`
+- `src/lib/domain/analytics/quality.ts`
+- `src/lib/domain/analytics/dashboard-view-model.ts`
+
+The API route is `GET /api/dashboard`.
+
+`/api/dashboard`:
+- reads recent saved meals through `src/lib/notion/meals-query.ts`;
+- maps Notion meal summaries into analytics meals;
+- builds and returns a stable `DashboardViewModel`;
+- accepts optional target query params: `calories`, `protein`, `fiber`, and `sodium`;
+- does not call OpenAI.
+
+`DashboardViewModel` includes:
+- generated timestamp;
+- today totals, targets, target progress, meal count, and average quality;
+- 7-day totals, daily averages, meal count, trend labels, and average quality;
+- rule-based insights;
+- recent meals;
+- best recent meal and highest-opportunity recent meal.
+
+Aggregation rules:
+- missing values remain `null`;
+- zero is preserved as a known value;
+- totals only include nutrients that are present;
+- functions are deterministic and unit tested.
+
+Targets are configurable in the dashboard UI for calories, protein, fiber, and sodium. Current target settings are client-side only through `localStorage` and query params to `/api/dashboard`; there is no server-side user settings persistence yet.
+
+Meal quality v1 is a rule-based 0-100 score using protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. If exact nutrition is unavailable, legacy Analysis Framework scorecards can provide read-time quality backfill. No predictive coaching, ML, or household-level analytics are implemented.
 
 ## Planned Provider Abstraction
 
@@ -129,17 +189,19 @@ Reason to defer:
 - Current MVP has one AI provider and one storage provider.
 - Abstraction now would add ceremony before requirements stabilize.
 
-## Planned Auth Architecture
+## Auth And Tenancy Architecture
 
-Auth is deferred.
+Current beta-safe stance:
+- The app is private by default through `PRIVATE_DEPLOYMENT_MODE`.
+- If `APP_AUTH_TOKEN` is set, middleware and guarded API routes require `Authorization: Bearer`, `x-app-auth-token`, or an `app_auth_token` cookie matching it.
+- If `PRIVATE_DEPLOYMENT_MODE=false` and no `APP_AUTH_TOKEN` exists, routes return 503 instead of running as a public app.
 
-Likely future options:
-- Clerk or Auth.js for household login.
-- Server-side session checks in API routes.
-- Per-household storage partitioning.
-- Later migration away from a single shared Notion workspace if needed.
-
-Auth requirements must be designed before storing multi-household data.
+Tenancy:
+- Current deployment assumes one private household/workspace and one set of Notion databases.
+- Records can now carry `householdId`, `createdBy`, `visibility`, and `schemaVersion` from private deployment config.
+- Notion writes project this metadata when compatible properties exist.
+- Meals reads filter by configured `householdId` when a compatible `Household ID` rich_text property exists.
+- True multi-household auth/RBAC is not implemented yet. Do not operate this as a public multi-tenant app until login identity and authorization are enforced.
 
 ## Planned Data Model Evolution
 
@@ -205,6 +267,35 @@ Target:
 
 No `vercel.json` is currently required.
 
+Manual Vercel deployment checklist:
+1. Confirm `npm run test`, `npm run typecheck`, `npm run lint`, and `npm run build` pass locally.
+2. Commit and push from the local machine when ready.
+3. Confirm required environment variables in Vercel.
+4. Trigger or wait for deployment from `main`.
+5. Smoke test `/`, `/analyze`, `/dashboard`, `/api/dashboard`, and `/api/analyze-meal`.
+6. If token/private deployment guardrails are enabled, verify the production access header/token behavior.
+
+## Notion Schema Policy
+
+The app does not create or mutate Notion schema automatically.
+
+Meal-level nutrition persistence writes only compatible existing Notion properties:
+- calories;
+- protein;
+- carbs;
+- fat;
+- fiber;
+- sodium;
+- sugar;
+- nutrition confidence/provenance/source;
+- explicit analysis scores;
+- meal quality score.
+
+Legacy backfill is read-time only:
+- exact nutrition totals are not invented for old meals;
+- quality can be inferred from existing scorecards in Notes;
+- there is no Notion write-back migration job yet.
+
 ## Security Considerations
 
 Current rules:
@@ -216,4 +307,6 @@ Current rules:
 - Detailed API failures are logged server-side only.
 
 Known security gap:
-- No authentication yet, so a deployed public URL exposes app workflows to anyone with the URL. Add auth before broader sharing or multi-user use.
+- Token auth is available, but user accounts and household-level authorization are not implemented.
+- In-memory rate limiting is beta-safe for a single runtime but not enough for distributed production abuse protection.
+- Recipe URL intake uses HTTPS-only URLs, DNS preflight, redirect revalidation, timeouts, response size caps, and content-type checks. The current Fetch-based implementation cannot guarantee socket-level IP pinning in this runtime, so it should not be described as complete SSRF protection.

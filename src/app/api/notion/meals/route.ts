@@ -1,49 +1,42 @@
 import { NextResponse } from "next/server";
-import { getNotionMealsEnv } from "@/src/lib/env";
-import { mapNotionPageToMealSummary } from "@/src/lib/notion/meal-summary";
-import { getNotionClient } from "@/src/lib/notion/client";
+import { queryMealSummaries } from "@/src/lib/notion/meals-query";
+import { guardApiRequest } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    typeof database === "object" &&
-    database !== null &&
-    "data_sources" in database &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    typeof database.data_sources[0]?.id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
+function parseListParams(request: Request) {
+  const url = new URL(request.url);
+  const pageSize = Math.min(
+    Math.max(Number(url.searchParams.get("pageSize") ?? 25), 1),
+    100
+  );
 
-  throw new Error("Meals database did not return a queryable data source.");
+  return {
+    pageSize,
+    cursor: url.searchParams.get("cursor") ?? undefined,
+    search: url.searchParams.get("search")?.trim().toLowerCase() ?? ""
+  };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "notion-meals-list",
+    rateLimit: 60
+  });
+
+  if (guardResponse) {
+    return guardResponse;
+  }
+
   try {
-    const { NOTION_API_KEY, NOTION_MEALS_DATABASE_ID } = getNotionMealsEnv();
-    const notion = getNotionClient(NOTION_API_KEY);
-    const database = await notion.databases.retrieve({
-      database_id: NOTION_MEALS_DATABASE_ID
+    const params = parseListParams(request);
+    const result = await queryMealSummaries(params);
+
+    return NextResponse.json({
+      meals: result.meals,
+      nextCursor: result.nextCursor,
+      hasMore: result.hasMore
     });
-    const dataSourceId = getPrimaryDataSourceId(database);
-
-    const response = await notion.dataSources.query({
-      data_source_id: dataSourceId,
-      sorts: [
-        {
-          timestamp: "created_time",
-          direction: "descending"
-        }
-      ]
-    });
-
-    const meals = response.results
-      .map(mapNotionPageToMealSummary)
-      .filter((meal) => meal !== null);
-
-    return NextResponse.json({ meals });
   } catch (error) {
     console.error("Notion meals query failure", error);
 

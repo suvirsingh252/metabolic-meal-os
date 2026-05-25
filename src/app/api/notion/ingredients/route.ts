@@ -3,6 +3,7 @@ import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoint
 import { getNotionIngredientsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import { mapIngredientPageToSummary } from "@/src/lib/notion/ingredient-summary";
+import { guardApiRequest } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
@@ -57,8 +58,32 @@ function isFullPage(page: unknown): page is PageObjectResponse {
   return isRecord(page) && isRecord(page.properties);
 }
 
-export async function GET() {
+function parseListParams(request: Request) {
+  const url = new URL(request.url);
+  const pageSize = Math.min(
+    Math.max(Number(url.searchParams.get("pageSize") ?? 50), 1),
+    100
+  );
+
+  return {
+    pageSize,
+    cursor: url.searchParams.get("cursor") ?? undefined,
+    search: url.searchParams.get("search")?.trim().toLowerCase() ?? ""
+  };
+}
+
+export async function GET(request: Request) {
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "notion-ingredients-list",
+    rateLimit: 60
+  });
+
+  if (guardResponse) {
+    return guardResponse;
+  }
+
   try {
+    const params = parseListParams(request);
     const { NOTION_API_KEY, NOTION_INGREDIENTS_DATABASE_ID } =
       getNotionIngredientsEnv();
     const notion = getNotionClient(NOTION_API_KEY);
@@ -70,36 +95,30 @@ export async function GET() {
       data_source_id: dataSourceId
     });
     const titlePropertyName = getTitlePropertyName(dataSource);
-    const ingredients = [];
-    let startCursor: string | undefined;
+    const response = await notion.dataSources.query({
+      data_source_id: dataSourceId,
+      page_size: params.pageSize,
+      start_cursor: params.cursor
+    });
 
-    do {
-      const response = await notion.dataSources.query({
-        data_source_id: dataSourceId,
-        page_size: 100,
-        start_cursor: startCursor
-      });
-
-      for (const page of response.results) {
-        if (!isFullPage(page)) {
-          continue;
-        }
-
-        const ingredient = mapIngredientPageToSummary(page, titlePropertyName);
-
-        if (ingredient) {
-          ingredients.push(ingredient);
-        }
-      }
-
-      startCursor = response.has_more
-        ? response.next_cursor ?? undefined
-        : undefined;
-    } while (startCursor);
+    const ingredients = response.results
+      .filter(isFullPage)
+      .map((page) => mapIngredientPageToSummary(page, titlePropertyName))
+      .filter((ingredient) => ingredient !== null)
+      .filter((ingredient) =>
+        params.search
+          ? ingredient.name.toLowerCase().includes(params.search) ||
+            (ingredient.category ?? "").toLowerCase().includes(params.search)
+          : true
+      );
 
     ingredients.sort((a, b) => a.name.localeCompare(b.name));
 
-    return NextResponse.json({ ingredients });
+    return NextResponse.json({
+      ingredients,
+      nextCursor: response.next_cursor,
+      hasMore: response.has_more
+    });
   } catch (error) {
     console.error("Notion ingredients list failure", error);
 

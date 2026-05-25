@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
+    "test": "node --import tsx --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "smoke:prod": "tsx scripts/smoke-test.ts",
     "smoke:prod:writes": "tsx scripts/smoke-test-writes.ts"

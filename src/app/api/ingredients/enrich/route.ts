@@ -8,6 +8,10 @@ import {
   type IngredientNutrientSnapshot
 } from "@/src/lib/integrations/food-data-central";
 import { getNotionClient } from "@/src/lib/notion/client";
+import {
+  guardApiRequest,
+  readJsonWithLimit
+} from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
@@ -44,6 +48,31 @@ const nutrientPropertyDefinitions: IngredientNutrientPropertyDefinition[] = [
     field: "Nutrient Confidence",
     expectedTypes: ["select", "rich_text"],
     getValue: (snapshot) => snapshot.confidence
+  },
+  {
+    field: "Nutrient Amount Basis",
+    expectedTypes: ["select", "rich_text"],
+    getValue: (snapshot) => snapshot.nutritionSnapshot.amountBasis
+  },
+  {
+    field: "Nutrient Basis Unit",
+    expectedTypes: ["select", "rich_text"],
+    getValue: (snapshot) => snapshot.nutritionSnapshot.basisUnit
+  },
+  {
+    field: "Nutrient Source ID",
+    expectedTypes: ["rich_text", "number"],
+    getValue: (snapshot) => snapshot.nutritionSnapshot.sourceId
+  },
+  {
+    field: "Matched Food State",
+    expectedTypes: ["select", "rich_text"],
+    getValue: (snapshot) => snapshot.nutritionSnapshot.matchedFoodState
+  },
+  {
+    field: "Raw/Cooked State",
+    expectedTypes: ["select", "rich_text"],
+    getValue: (snapshot) => snapshot.nutritionSnapshot.rawOrCookedState
   },
   {
     field: "Protein (g)",
@@ -199,8 +228,22 @@ function buildIngredientNutrientUpdate(
   const notionProperties: PageProperties = {};
   const updatedFields: string[] = [];
   const skippedFields: SkippedField[] = [];
+  const hasBasisProjection =
+    Boolean(properties["Nutrient Amount Basis"]) &&
+    Boolean(properties["Nutrient Basis Unit"]);
 
   for (const definition of nutrientPropertyDefinitions) {
+    const isPlainNutrientValue = /\((g|mg|kcal)\)$/.test(definition.field);
+
+    if (isPlainNutrientValue && !hasBasisProjection) {
+      skippedFields.push({
+        field: definition.field,
+        reason:
+          "Skipped because Notion schema lacks Nutrient Amount Basis and Nutrient Basis Unit fields"
+      });
+      continue;
+    }
+
     const property = properties[definition.field];
     const propertyType = getPropertyType(property);
 
@@ -287,12 +330,19 @@ async function lookupIngredientSnapshot(ingredientName: string) {
 }
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "ingredients-enrich",
+    rateLimit: 20
+  });
 
-  try {
-    body = await request.json();
-  } catch {
-    return validationError("Request body must be valid JSON.");
+  if (guardResponse) {
+    return guardResponse;
+  }
+
+  const body = await readJsonWithLimit(request, 24_000);
+
+  if (body instanceof NextResponse) {
+    return body;
   }
 
   const validatedRequest = validateRequest(body);

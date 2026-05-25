@@ -3,6 +3,10 @@ import { getNotionFeedbackEnv, getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import { mapMealFeedbackToNotionProperties } from "@/src/lib/notion/mappers";
 import {
+  guardApiRequest,
+  readJsonWithLimit
+} from "@/src/lib/server/request-guards";
+import {
   energyAfterOptions,
   hungerLaterOptions,
   type EnergyAfter,
@@ -188,12 +192,19 @@ function validateFeedback(body: unknown): MealFeedbackRequest | NextResponse {
 }
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "notion-log-feedback",
+    rateLimit: 30
+  });
 
-  try {
-    body = await request.json();
-  } catch {
-    return validationError("Request body must be valid JSON.");
+  if (guardResponse) {
+    return guardResponse;
+  }
+
+  const body = await readJsonWithLimit(request, 40_000);
+
+  if (body instanceof NextResponse) {
+    return body;
   }
 
   const feedback = validateFeedback(body);

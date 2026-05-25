@@ -9,6 +9,10 @@ import {
   normalizeIngredientListWithStats
 } from "@/src/lib/ingredients";
 import { getNotionClient } from "@/src/lib/notion/client";
+import {
+  guardApiRequest,
+  readJsonWithLimit
+} from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
@@ -378,12 +382,19 @@ function validateRequest(body: unknown) {
 }
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "notion-save-ingredients",
+    rateLimit: 30
+  });
 
-  try {
-    body = await request.json();
-  } catch {
-    return validationError("Request body must be valid JSON.");
+  if (guardResponse) {
+    return guardResponse;
+  }
+
+  const body = await readJsonWithLimit(request, 80_000);
+
+  if (body instanceof NextResponse) {
+    return body;
   }
 
   const validatedRequest = validateRequest(body);

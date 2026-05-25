@@ -158,17 +158,49 @@ function buildMatchText(options: IngredientContextOptions) {
     .toLowerCase();
 }
 
-function ingredientMatches(
-  ingredient: MealKnownIngredientContext,
-  normalizedMatchText: string
-) {
-  const key = normalizeIngredientKey(ingredient.ingredientName);
+function tokenizeNormalizedText(value: string) {
+  return normalizeIngredientKey(value)
+    .split(" ")
+    .filter((token) => token.length >= 2);
+}
+
+export function matchKnownIngredient(
+  ingredientName: string,
+  matchText: string
+): Pick<MealKnownIngredientContext, "matchConfidence" | "matchReason"> | null {
+  const key = normalizeIngredientKey(ingredientName);
 
   if (!key || key.length < 3) {
-    return false;
+    return null;
   }
 
-  return normalizedMatchText.includes(key);
+  const ingredientTokens = tokenizeNormalizedText(key);
+  const textTokens = tokenizeNormalizedText(matchText);
+  const textTokenSet = new Set(textTokens);
+
+  if (ingredientTokens.length === 0) {
+    return null;
+  }
+
+  if (ingredientTokens.every((token) => textTokenSet.has(token))) {
+    return {
+      matchConfidence: ingredientTokens.length > 1 ? "high" : "medium",
+      matchReason: "all normalized ingredient tokens appear in recipe text"
+    };
+  }
+
+  for (let index = 0; index <= textTokens.length - ingredientTokens.length; index += 1) {
+    const candidate = textTokens.slice(index, index + ingredientTokens.length).join(" ");
+
+    if (candidate === key) {
+      return {
+        matchConfidence: "high",
+        matchReason: "normalized ingredient phrase appears in recipe text"
+      };
+    }
+  }
+
+  return null;
 }
 
 function formatBooleanLabel(label: string, value: boolean | undefined) {
@@ -225,7 +257,7 @@ export async function getKnownIngredientContext(
     data_source_id: dataSourceId
   });
   const titlePropertyName = getTitlePropertyName(dataSource);
-  const normalizedMatchText = normalizeIngredientKey(buildMatchText(options));
+  const matchText = buildMatchText(options);
   const ingredients: MealKnownIngredientContext[] = [];
   let startCursor: string | undefined;
 
@@ -243,8 +275,15 @@ export async function getKnownIngredientContext(
 
       const ingredient = mapIngredientPage(page, titlePropertyName);
 
-      if (ingredient && ingredientMatches(ingredient, normalizedMatchText)) {
-        ingredients.push(ingredient);
+      if (ingredient) {
+        const match = matchKnownIngredient(ingredient.ingredientName, matchText);
+
+        if (match) {
+          ingredients.push({
+            ...ingredient,
+            ...match
+          });
+        }
       }
 
       if (ingredients.length >= (options.maxResults ?? defaultMaxResults)) {

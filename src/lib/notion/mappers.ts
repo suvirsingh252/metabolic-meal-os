@@ -1,4 +1,5 @@
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
+import { scoreMealQuality } from "@/src/lib/domain/analytics";
 import type { MealFeedbackRequest } from "@/src/lib/types/feedback";
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
 import { buildMealNotesSummary } from "@/src/lib/notion/meal-notes";
@@ -67,13 +68,43 @@ function date(start: string) {
   };
 }
 
+function number(value: number) {
+  return {
+    number: value
+  };
+}
+
 export interface MealSourcePropertySchema {
   sourceType?: { name: string; type: "select" | "rich_text" };
   sourceUrl?: { name: string; type: "url" | "rich_text" };
   sourceName?: { name: string; type: "select" | "rich_text" };
+  sourceClassification?: { name: string; type: "select" | "rich_text" };
+  sourceNotes?: { name: string; type: "rich_text" };
   importedAt?: { name: string; type: "date" };
   lastParsedAt?: { name: string; type: "date" };
   parserVersion?: { name: string; type: "select" | "rich_text" };
+  analysisVersion?: { name: string; type: "select" | "rich_text" };
+  analysisModel?: { name: string; type: "select" | "rich_text" };
+  householdId?: { name: string; type: "rich_text" | "select" };
+  createdBy?: { name: string; type: "rich_text" | "select" };
+  visibility?: { name: string; type: "select" | "rich_text" };
+  schemaVersion?: { name: string; type: "select" | "rich_text" };
+  calories?: { name: string; type: "number" };
+  proteinG?: { name: string; type: "number" };
+  carbohydratesG?: { name: string; type: "number" };
+  fatG?: { name: string; type: "number" };
+  fiberG?: { name: string; type: "number" };
+  sodiumMg?: { name: string; type: "number" };
+  sugarG?: { name: string; type: "number" };
+  nutritionConfidence?: { name: string; type: "select" | "rich_text" };
+  nutritionProvenance?: { name: string; type: "select" | "rich_text" };
+  nutritionSource?: { name: string; type: "select" | "rich_text" };
+  mealQualityScore?: { name: string; type: "number" };
+  metabolicScore?: { name: string; type: "number" };
+  proteinScore?: { name: string; type: "number" };
+  fiberScore?: { name: string; type: "number" };
+  satietyScoreNumeric?: { name: string; type: "number" };
+  bloodSugarRiskScore?: { name: string; type: "number" };
 }
 
 export function mapMealAnalysisToNotionProperties(
@@ -111,7 +142,26 @@ function applyMealSourceProperties(
 
   applyTextLikeProperty(properties, schema.sourceType, meal.sourceType);
   applyTextLikeProperty(properties, schema.sourceName, meal.sourceName);
+  applyTextLikeProperty(
+    properties,
+    schema.sourceClassification,
+    meal.sourceClassification
+  );
   applyTextLikeProperty(properties, schema.parserVersion, meal.parserVersion);
+  applyTextLikeProperty(
+    properties,
+    schema.analysisVersion,
+    meal.analysisVersion
+  );
+  applyTextLikeProperty(properties, schema.analysisModel, meal.analysisModel);
+  applyTextLikeProperty(properties, schema.householdId, meal.householdId);
+  applyTextLikeProperty(properties, schema.createdBy, meal.createdBy);
+  applyTextLikeProperty(properties, schema.visibility, meal.visibility);
+  applyTextLikeProperty(properties, schema.schemaVersion, meal.schemaVersion);
+
+  if (schema.sourceNotes && meal.sourceNotes?.length) {
+    properties[schema.sourceNotes.name] = richText(meal.sourceNotes.join("\n"));
+  }
 
   if (schema.sourceUrl && meal.sourceUrl) {
     properties[schema.sourceUrl.name] =
@@ -125,6 +175,97 @@ function applyMealSourceProperties(
   if (schema.lastParsedAt && meal.lastParsedAt) {
     properties[schema.lastParsedAt.name] = date(meal.lastParsedAt);
   }
+
+  if (meal.nutritionEstimate) {
+    applyNumberProperty(
+      properties,
+      schema.calories,
+      meal.nutritionEstimate.totals.calories
+    );
+    applyNumberProperty(
+      properties,
+      schema.proteinG,
+      meal.nutritionEstimate.totals.protein
+    );
+    applyNumberProperty(
+      properties,
+      schema.carbohydratesG,
+      meal.nutritionEstimate.totals.carbs
+    );
+    applyNumberProperty(properties, schema.fatG, meal.nutritionEstimate.totals.fat);
+    applyNumberProperty(
+      properties,
+      schema.fiberG,
+      meal.nutritionEstimate.totals.fiber
+    );
+    applyNumberProperty(
+      properties,
+      schema.sodiumMg,
+      meal.nutritionEstimate.totals.sodium
+    );
+    applyNumberProperty(
+      properties,
+      schema.sugarG,
+      meal.nutritionEstimate.totals.sugar
+    );
+    applyTextLikeProperty(
+      properties,
+      schema.nutritionConfidence,
+      meal.nutritionEstimate.confidence
+    );
+    applyTextLikeProperty(
+      properties,
+      schema.nutritionProvenance,
+      meal.nutritionEstimate.provenance
+    );
+    applyTextLikeProperty(
+      properties,
+      schema.nutritionSource,
+      meal.nutritionEstimate.source
+    );
+  }
+
+  applyNumberProperty(properties, schema.metabolicScore, meal.metabolicScore);
+  applyNumberProperty(properties, schema.proteinScore, meal.proteinScore);
+  applyNumberProperty(properties, schema.fiberScore, meal.fiberScore);
+  applyNumberProperty(
+    properties,
+    schema.satietyScoreNumeric,
+    meal.satietyScoreNumeric
+  );
+  applyNumberProperty(
+    properties,
+    schema.bloodSugarRiskScore,
+    meal.bloodSugarRiskScore
+  );
+
+  const quality = scoreMealQuality({
+    id: "pending",
+    name: meal.mealName,
+    loggedAt: new Date().toISOString(),
+    nutrition: meal.nutritionEstimate?.totals ?? {},
+    qualitySignals: {
+      metabolicScore: meal.metabolicScore,
+      proteinScore: meal.proteinScore,
+      fiberScore: meal.fiberScore,
+      satietyScoreNumeric: meal.satietyScoreNumeric,
+      bloodSugarRiskScore: meal.bloodSugarRiskScore
+    },
+    ingredientCount: meal.ingredientSuggestions.length
+  });
+  applyNumberProperty(properties, schema.mealQualityScore, quality.score);
+}
+
+function applyNumberProperty(
+  properties: PageProperties,
+  property: { name: string; type: "number" } | undefined,
+  value: number | null | undefined
+) {
+  if (!property || typeof value !== "number" || !Number.isFinite(value)) {
+    return;
+  }
+
+  properties[property.name] = number(value);
 }
 
 function applyTextLikeProperty(

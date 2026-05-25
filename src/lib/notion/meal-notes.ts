@@ -94,5 +94,8 @@ export function buildMealNotesSummary(meal: MealAnalysisResult): string {
     return summary;
   }
 
-  return summary.slice(0, NOTION_RICH_TEXT_LIMIT - 3) + "...";
+  return `${summary.slice(
+    0,
+    NOTION_RICH_TEXT_LIMIT - 48
+  )}\n[Truncated for Notion rich_text limit]`;
 }

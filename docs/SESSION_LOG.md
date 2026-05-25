@@ -1,5 +1,120 @@
 # Session Log
 
+## 2026-05-25 Session Closeout: Dashboard + Nutrition Persistence
+
+Instruction:
+- Close the current Metabolic Meal OS session.
+- Do not deploy, push, or make Vercel/Notion changes directly.
+
+Docs updated:
+- `docs/PM_HANDOVER.md`
+- `docs/HANDOFF.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/ROADMAP.md`
+- `docs/SOURCES.md`
+- `docs/SESSION_LOG.md`
+
+Documented final local state:
+- Beta hardening and audit work: private deployment/token guardrails, API request guards, rate limits, request size limits, recipe URL SSRF protections, strict meal validation, and canonical nutrition provenance.
+- Dashboard Behavioral Intelligence slice: analytics architecture, `/api/dashboard`, `DashboardViewModel`, daily/weekly aggregation, rule-based insights, recent meals, and dashboard UI.
+- Nutrition Persistence + Targets + Meal Quality v1: recipe JSON-LD nutrition extraction, editable nutrition totals in review flow, meal-level nutrition persistence, configurable dashboard targets, meal quality v1 scoring, and legacy scorecard read-time backfill.
+- Manual Vercel deployment checklist.
+- Manual Notion schema checklist and schema policy.
+- Known gaps and recommended next slice.
+
+Manual Vercel deployment checklist:
+- Confirm these pass locally: `npm run test`, `npm run typecheck`, `npm run lint`, `npm run build`.
+- Commit and push from the local machine when ready.
+- In Vercel, confirm required environment variables are present.
+- Trigger or wait for deployment from `main`.
+- Smoke test `/`, `/analyze`, `/dashboard`, `/api/dashboard`, and `/api/analyze-meal`.
+- If private deployment/token guardrails are enabled, verify required access header/token behavior in production.
+
+Manual Notion schema checklist:
+- The app does not create or mutate Notion schema automatically.
+- Nutrition and quality fields are written only when compatible properties already exist.
+- Ask the operator whether they want to add compatible Meals properties for calories, protein, carbs, fat, fiber, sodium, sugar, nutrition confidence/provenance/source, meal quality score, and explicit score fields.
+
+Known gaps:
+- Legacy meals may lack exact nutrition totals.
+- Legacy quality backfill is read-time only from scorecards.
+- No Notion write-back migration exists yet.
+- Dashboard targets are client-side only.
+- No household-level analytics yet.
+- No predictive coaching or ML yet.
+- Browser visual verification was not completed because the Browser plugin reported `iab` unavailable.
+
+Final verification:
+- `npm run test` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+
+Recommended next slice:
+- Add a Notion schema checklist/migration path for explicit nutrition and quality fields, then an operator-triggered backfill job for legacy score fields.
+
+## 2026-05-25 Dashboard Behavioral Intelligence Slice
+
+Goal:
+- Turn saved meal records into a first-pass behavioral intelligence dashboard without predictive coaching, ML, household analytics, or OpenAI-generated insights.
+
+Completed work:
+- Added a pure analytics domain layer for nutrition totals, 7-day windows, recent meal sorting, target progress, weekly consistency labels, and rule-based insights.
+- Added default nutrition targets for calories, protein, fiber, and sodium.
+- Added `/api/dashboard`, backed by the existing Notion meal list query path.
+- Refactored the Notion meal list query into a shared utility so `/api/notion/meals` and `/api/dashboard` use the same persistence read logic.
+- Extended meal summaries with `createdAt` and optional nutrition fields when compatible Notion number/formula properties exist.
+- Replaced the placeholder dashboard with daily snapshot cards, smart insights, weekly trend cards, and recent meals at `/` and `/dashboard`.
+- Added analytics unit tests for empty lists, missing nutrition, today aggregation, 7-day aggregation, low protein, high sodium, positive target-met insights, and recent meal sorting.
+
+Validation:
+- `npm run test` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Started local dev server at `http://localhost:3027`.
+
+Known limitations:
+- Existing meal persistence does not currently write recipe-level calories/macros by default. The dashboard maps optional compatible Notion properties if present and otherwise shows unknown nutrition values without breaking.
+- In-app browser verification could not run because the Browser plugin reported `iab` unavailable.
+
+Recommended next slice:
+- User-configurable nutrition targets and meal quality scoring.
+
+## 2026-05-25 Nutrition Persistence + Targets + Meal Quality v1
+
+Goal:
+- Make dashboard intelligence more reliable by ensuring saved meals can persist recipe-level nutrition totals, then add configurable nutrition targets and first-pass meal quality scoring.
+
+Completed work:
+- Added optional meal-level nutrition totals to the meal domain model: calories, protein, carbs, fat, fiber, sodium, sugar, confidence, provenance, and source.
+- Added JSON-LD recipe nutrition extraction for URL recipe pages that expose structured nutrition facts.
+- Added editable nutrition total fields to the meal review flow so manual or corrected recipe-level totals can be saved without asking the AI to invent exact macros.
+- Extended meal validation to accept optional nutrition totals safely and reject negative/non-finite values.
+- Extended Notion save mapping to persist nutrition totals and nutrition provenance when compatible Notion fields exist.
+- Extended Notion save mapping to persist explicit analysis score fields and meal quality score when compatible Notion number fields exist.
+- Extended saved meal reads to load nutrition totals, provenance, explicit scores, quality score, and fallback scorecard values parsed from legacy Notes.
+- Added configurable dashboard targets for calories, protein, fiber, and sodium, stored client-side and passed to `/api/dashboard`.
+- Added rule-based meal quality scoring using protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signals where available.
+- Added scorecard backfill quality scoring for existing saved meals when exact nutrition totals are unavailable.
+- Surfaced today average quality, weekly average quality, best recent meal, highest-opportunity recent meal, and per-meal quality on the dashboard.
+
+Validation:
+- `npm run test` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+
+Known limitations:
+- Existing saved meals generally do not contain exact nutrition totals unless nutrition facts were available from a recipe page or entered during review.
+- The app does not create or mutate Notion schema. Nutrition, score, and quality fields are written only when compatible fields already exist.
+- Backfill for legacy records is read-time and future-save oriented: legacy Notes scorecards can drive dashboard quality, but exact nutrition totals are not invented from qualitative analysis.
+
+Recommended next slice:
+- Notion schema migration/checklist for explicit nutrition and quality fields, followed by an operator-triggered backfill job for legacy score fields.
+
 ## 2026-05-24 Shared URL Intake Verification
 
 Mandatory documentation hygiene:
@@ -1466,3 +1581,76 @@ Blockers:
 Next recommended actions:
 - Add PWA/iPhone home-screen support.
 - Add meal-feedback relations.
+# 2026-05-25 AI Boundary And Analyze Refactor
+
+Goals:
+- Close the remaining beta risks that can be safely isolated without changing product behavior: complete AI extraction, make `/analyze` maintainable, add household ownership metadata, abstract rate limiting, and document SSRF socket-pinning limits.
+
+Completed work:
+- Moved meal-analysis v1 config, prompt, JSON schema, source context, request validation, recipe preparation, response parsing, fallback behavior, and service orchestration into `src/lib/ai/meal-analysis/v1`.
+- Reduced `src/app/api/analyze-meal/route.ts` to a thin guarded controller.
+- Added `analysisVersion` and `analysisModel` response metadata.
+- Split `/analyze` into `types.ts`, `reducer.ts`, `hooks/use-analyze-controller.ts`, and components for input, status, result panel, summary, source metadata, save section, and form fields.
+- Added configured household metadata with `householdId`, `createdBy`, `visibility`, and `schemaVersion`.
+- Projected household metadata to Notion when compatible fields exist and filtered meals reads by `Household ID` where supported.
+- Replaced direct in-memory rate-limit logic with `src/lib/server/rate-limit` provider interface and memory implementation.
+- Added tests for AI v1 parsing/fallback, analyze reducer transitions, household metadata validation/mapping, rate limiter behavior, and SSRF redirect rejection.
+- Documented that the current Fetch runtime cannot guarantee socket-level IP pinning; existing mitigations remain HTTPS-only, DNS preflight, redirect revalidation, timeout, content-type checks, and size caps.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm test` passed: 19/19 tests.
+- `npm run lint` passed.
+- `npm run build` passed.
+
+Remaining risks:
+- Full household auth/RBAC is still not implemented.
+- Rate limiting is still single-instance memory until a distributed provider is added.
+- SSRF socket-level IP pinning is not implemented.
+- Client search/pagination UI for Meals and Ingredients remains basic.
+
+Next recommended actions:
+- Add real auth and household ownership enforcement.
+- Add distributed rate-limit provider.
+- Add golden meal-analysis fixtures/evals that run without hitting OpenAI.
+- Continue splitting the large analysis result panel if future edits grow it.
+
+# 2026-05-25 Beta Hardening
+
+Goals:
+- Address the latest audit priorities around private deployment, validation, nutrition provenance, SSRF protection, Notion persistence, pagination, matching, AI versioning, and tests without changing product behavior unnecessarily.
+
+Completed work:
+- Added middleware and shared server request guards for private deployment mode, optional token authentication, request-size limits, and in-memory rate limiting.
+- Applied guards to meal analysis, Notion meal save, ingredient save, feedback save, meals/ingredients listing, and FoodData Central enrichment.
+- Hardened recipe URL fetching to require HTTPS, reject credentials, resolve DNS, block private/loopback/link-local/multicast/reserved IP ranges, and manually validate redirects.
+- Added canonical nutrition snapshot/provenance types and validation under `src/lib/domain/nutrition`.
+- Updated FoodData Central mapping to emit explicit per-100g basis, source ID, confidence, matched food state, raw/cooked state, nutrients, and `lastVerifiedAt`.
+- Updated enrichment persistence to skip plain nutrient values unless Notion has compatible basis fields.
+- Replaced lenient `save-meal` generated-field defaults with strict shared validation under `src/lib/domain/meal`.
+- Added source classification/source notes mapper support and explicit Notion Notes truncation marker.
+- Improved known Ingredient context matching from broad substring checks to normalized token/key matching with match confidence/reason.
+- Added `pageSize`, `cursor`, and `search` support to Meals and Ingredients APIs.
+- Added first versioned AI boundary under `src/lib/ai/meal-analysis/v1` for model config and response parsing.
+- Added `npm test` and focused Node tests for validation, ingredient normalization/matching, FoodData Central basis mapping, nutrition snapshot validation, and recipe URL security.
+- Updated architecture, decisions, handoff, known issues, roadmap, and this session log.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm test` passed: 9/9 tests.
+- `npm run lint` passed.
+- `npm run build` passed.
+
+Remaining risks:
+- Token/private mode is beta-safe but not full auth or household RBAC.
+- Household ownership fields are not persisted; current deployment remains single-household/private.
+- SSRF defense does DNS checks and manual redirect checks, but does not pin the actual socket IP.
+- AI prompt/schema are still mostly route-local; only config and response parsing were moved in this pass.
+- `/analyze` remains a large client component and still needs the reducer/component split.
+
+Next recommended actions:
+- Add real household auth and ownership fields before any public multi-user deployment.
+- Move meal-analysis prompt construction and JSON schema fully into versioned AI modules.
+- Extract Notion schema helpers into `src/lib/storage/notion`.
+- Wire client search/pagination UI more completely for Meals and Ingredients.
+- Continue splitting `/analyze` into reducer-backed review/save/edit components.

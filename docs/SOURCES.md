@@ -1,8 +1,10 @@
 # Sources and Health Guidance Foundation
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 This app has an evidence-aware foundation for meal analysis, nutrition enrichment, and grocery intelligence. The source registry and health-guidance principles are now wired into runtime meal analysis prompt context and output fields. It does not call external source APIs for this guidance and does not use USDA nutrient lookup during meal analysis.
+
+Meal-level nutrition totals are handled separately from ingredient nutrient snapshots. Recipe page JSON-LD nutrition facts and user-entered review totals can be persisted with confidence/provenance. The app does not ask OpenAI to invent exact meal calories or macros.
 
 ## Source Registry
 
@@ -170,3 +172,30 @@ The active Ingredients database has the household classification fields:
 - `Staple`
 
 Production schema diagnostics on 2026-05-24 confirmed the nutrient properties above exist. Enrichment still skips any missing or incompatible field safely if a future schema changes.
+
+## Meal-Level Nutrition Persistence
+
+Meal-level nutrition fields are part of the meal review/save path, not the FoodData Central ingredient enrichment path.
+
+Sources:
+- Recipe page structured data (`recipe-json-ld`) when exposed by the recipe site.
+- User-entered or user-corrected review values (`user-entered`).
+
+Persisted shape:
+- calories;
+- protein;
+- carbs;
+- fat;
+- fiber;
+- sodium;
+- sugar;
+- confidence;
+- provenance;
+- source.
+
+Rules:
+- Missing values remain unknown.
+- Zero is preserved as a known value.
+- Values must be non-negative finite numbers.
+- The app does not calculate meal totals from ingredient-level per-100g snapshots without quantities.
+- The app does not create Notion schema; compatible Meals properties must already exist.

@@ -1,4 +1,9 @@
-export type FoodDataCentralConfidence = "high" | "medium" | "low";
+import type {
+  NutritionConfidence,
+  NutritionSnapshot
+} from "@/src/lib/domain/nutrition";
+
+export type FoodDataCentralConfidence = NutritionConfidence;
 
 export interface FoodDataCentralSearchRequest {
   query: string;
@@ -17,6 +22,8 @@ export interface FoodDataCentralSearchFood {
   description: string;
   dataType?: string;
   brandOwner?: string;
+  servingSize?: number;
+  servingSizeUnit?: string;
   foodNutrients?: FoodDataCentralFoodNutrient[];
 }
 
@@ -47,5 +54,6 @@ export interface IngredientNutrientSnapshot {
     sodiumMg?: number;
     energyKcal?: number;
   };
+  nutritionSnapshot: NutritionSnapshot;
   notes: string[];
 }

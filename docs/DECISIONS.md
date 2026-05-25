@@ -1,6 +1,131 @@
 # Architectural Decisions
 
-Last updated: 2026-05-24 (Shared URL Intake)
+Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
+
+## 2026-05-25 — Dashboard Intelligence Uses A Stable View Model
+
+Decision: Build dashboard intelligence through a pure analytics domain layer and a stable `DashboardViewModel`, returned by `GET /api/dashboard`.
+
+Reasoning:
+- The dashboard needs deterministic daily/weekly aggregation, target progress, rule-based insights, recent meals, and quality summaries without embedding business logic in React.
+- `DashboardViewModel` gives the UI a stable contract while persistence and nutrition completeness evolve.
+- Dashboard insights must be rule-based in this slice and must not call OpenAI.
+
+Tradeoffs:
+- Charts, predictive coaching, household analytics, and ML remain deferred.
+- Missing nutrition values remain unknown, so early dashboards are only as complete as saved meal data.
+
+## 2026-05-25 — Meal Nutrition Totals Require Provenance Or Review
+
+Decision: Persist meal-level nutrition totals only when they come from recipe structured nutrition facts or user-entered review values, and keep confidence/provenance/source with those totals.
+
+Reasoning:
+- Existing ingredient-level FoodData Central snapshots are usually per-100g and cannot safely become recipe-level totals without quantities and serving logic.
+- OpenAI should not invent exact calories or macros.
+- The dashboard needs nutrition fields, but reliability matters more than filling every cell.
+
+Tradeoffs:
+- Legacy meals often lack exact nutrition totals.
+- JSON-LD nutrition varies by recipe site and may be incomplete.
+- Users may need to enter or correct totals manually in the review flow.
+
+## 2026-05-25 — Notion Schema Remains Operator-Controlled
+
+Decision: Continue to avoid automatic Notion schema creation or mutation. Nutrition, score, and quality fields are written only when compatible properties already exist.
+
+Reasoning:
+- Notion remains the operator-controlled source of truth.
+- Schema-aware writes avoid breaking existing databases and keep deployment safer.
+- Manual schema changes can be reviewed before production data starts filling new fields.
+
+Tradeoffs:
+- New persistence fields are inactive until the operator adds compatible Notion properties.
+- A future migration/checklist or write-back job is needed for legacy records.
+
+## 2026-05-25 — Meal Quality V1 Is Rule-Based And Backfillable
+
+Decision: Add a 0-100 meal quality score from nutrition density and simple food-pattern signals, with read-time fallback from legacy scorecards when exact nutrition totals are unavailable.
+
+Reasoning:
+- The dashboard needs a compact quality signal before richer coaching exists.
+- A rule-based score is explainable and testable.
+- Legacy scorecards in Notes should still provide useful quality ordering without inventing nutrients.
+
+Tradeoffs:
+- This is not predictive coaching, ML, medical scoring, or individualized diet advice.
+- Quality component fields such as sodium score, sugar score, diversity score, and processing score are not persisted yet.
+
+## 2026-05-25 — Meal Analysis V1 Is A Versioned Service Boundary
+
+Decision: Move meal-analysis prompt, JSON schema, model config, source context, request validation, recipe preparation, response parsing, fallback behavior, and OpenAI orchestration into `src/lib/ai/meal-analysis/v1`, leaving the API route as a thin controller.
+
+Reasoning:
+- Prompt/schema/model changes need versioned homes before adding evals or future model upgrades.
+- Route-local orchestration made safety and validation harder to test.
+- Response metadata should record the analysis version and model used.
+
+Tradeoffs:
+- Golden evals are still lightweight unit tests, not a full model-quality evaluation suite.
+
+## 2026-05-25 — Analyze Page Uses Reducer And Component Sections
+
+Decision: Split `/analyze` into a reducer, controller hook, and focused components without redesigning the household review UI.
+
+Reasoning:
+- The page had too many interleaved state transitions and view sections.
+- Reducer transitions are testable and make save/analyze/edit behavior easier to inspect.
+- Preserving copy and layout avoids destabilizing the MVP during hardening.
+
+Tradeoffs:
+- Component boundaries are now much better, but individual review sections can still be split further later.
+
+## 2026-05-25 — Ownership Metadata Is Config-Derived Until Real Auth Exists
+
+Decision: Add `householdId`, `createdBy`, `visibility`, and `schemaVersion` metadata using private deployment configuration, and project/filter it in Notion where supported.
+
+Reasoning:
+- Records need a migration path toward household ownership before full auth exists.
+- The app must not pretend to know a logged-in user when it only has private/token mode.
+
+Tradeoffs:
+- This is not multi-user auth or RBAC.
+- Notion filtering only applies when compatible properties exist.
+
+## 2026-05-25 — Beta Hardening Keeps Private Deployment As The Tenancy Boundary
+
+Decision: Add shared route guards, middleware token checks, bounded JSON parsing, and in-memory rate limiting while explicitly treating the current app as a private single-household deployment unless `APP_AUTH_TOKEN` is configured.
+
+Reasoning:
+- The current Notion persistence model has no durable household ownership field, so public multi-tenant deployment would be unsafe.
+- A token/private-mode gate is a pragmatic beta-safe guard while real auth and household partitioning are designed.
+- Request-size and rate limits reduce accidental abuse and runaway external API costs for meal analysis, URL intake, Notion writes, and FoodData Central enrichment.
+
+Tradeoffs:
+- This is not full user auth, RBAC, or distributed rate limiting.
+- Multi-household data separation remains a future migration.
+
+## 2026-05-25 — Nutrition Values Require Explicit Provenance And Basis
+
+Decision: Introduce canonical nutrition snapshots under `src/lib/domain/nutrition` and require FoodData Central mappings to carry `amountBasis`, `basisUnit`, `per100g`, source ID, confidence, matched food state, nutrients, and verification time.
+
+Reasoning:
+- Plain `Protein (g)` or `Fiber (g)` values are misleading without a per-100g or serving basis.
+- FoodData Central search results are useful reference data, but they must remain distinguishable from meal-level calculated nutrition.
+
+Tradeoffs:
+- Existing Notion schemas without basis fields will now skip plain nutrient writes rather than silently persisting ambiguous numbers.
+- Automatic nutrition use in analysis remains deferred.
+
+## 2026-05-25 — Save Meal Validation Is Strict For Generated Fields
+
+Decision: Replace lenient `save-meal` defaults with a shared domain validator that rejects missing v2/v3 required fields instead of defaulting scores to `0` or text/arrays to empty values.
+
+Reasoning:
+- Missing generated fields should be treated as malformed payloads, not plausible meal records.
+- Strict validation preserves the difference between absent, intentionally empty, and calculated values.
+
+Tradeoffs:
+- Very old clients or saved payload shapes may need to re-run analysis before saving.
 
 ## 2026-05-24 — Analyze Intake Classifies Shared URLs
 
