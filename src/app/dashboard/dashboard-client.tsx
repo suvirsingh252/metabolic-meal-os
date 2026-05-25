@@ -5,22 +5,31 @@ import {
   ArrowRight,
   CalendarDays,
   Flame,
+  Gauge,
   Loader2,
   RefreshCw,
   Salad,
   ShieldCheck,
   Utensils
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  MealCalloutCard,
+  MealQualityBadge,
+  MetricCard,
+  NutritionSignalChip,
+  RecentMealCard,
+  TargetProgressBar
+} from "@/src/app/dashboard/dashboard-components";
+import { getMealQualityState, getTargetProgressState } from "@/src/app/dashboard/dashboard-display";
 import type {
   DashboardInsight,
-  DashboardMealSummary,
   DashboardViewModel,
   NutritionTargets
 } from "@/src/lib/domain/analytics";
@@ -110,11 +119,8 @@ export function DashboardClient() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Behavioral intelligence"
-        title="Dashboard"
-        description="Daily nutrition, weekly patterns, and the next useful action from saved meal records."
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button disabled={isLoading} onClick={loadDashboard} variant="secondary">
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -131,6 +137,9 @@ export function DashboardClient() {
             </Button>
           </div>
         }
+        description="Daily nutrition, weekly patterns, and the next useful action from saved meal records."
+        eyebrow="Behavioral intelligence"
+        title="Dashboard"
       />
 
       {error ? <Alert>{error}</Alert> : null}
@@ -144,12 +153,13 @@ export function DashboardClient() {
 
       {dashboard ? (
         <>
-          <DailySnapshot dashboard={dashboard} />
+          <TodayOverview dashboard={dashboard} />
+          <TargetProgress dashboard={dashboard} />
           <TargetSettings targets={targets} onTargetsChange={setTargets} />
-          <QualitySnapshot dashboard={dashboard} />
+          <QualitySummary dashboard={dashboard} />
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
             <SmartInsights insights={dashboard.insights} />
-            <WeeklyTrends dashboard={dashboard} />
+            <WeeklySummary dashboard={dashboard} />
           </div>
           <RecentMeals meals={dashboard.recentMeals} />
         </>
@@ -164,33 +174,93 @@ function readStoredTarget(value: unknown, fallback: number) {
     : fallback;
 }
 
-function DailySnapshot({ dashboard }: { dashboard: DashboardViewModel }) {
+function TodayOverview({ dashboard }: { dashboard: DashboardViewModel }) {
   return (
-    <section className="grid gap-4 md:grid-cols-4">
-      <SnapshotCard
-        icon={Flame}
-        label="Calories"
-        value={formatNutrient(dashboard.today.totals.calories, "kcal")}
-        helper={formatProgress(dashboard.today.progress.caloriesPct)}
-      />
-      <SnapshotCard
-        icon={ShieldCheck}
-        label="Protein"
-        value={formatNutrient(dashboard.today.totals.protein, "g")}
-        helper={formatProgress(dashboard.today.progress.proteinPct)}
-      />
-      <SnapshotCard
-        icon={Salad}
-        label="Fiber"
-        value={formatNutrient(dashboard.today.totals.fiber, "g")}
-        helper={formatProgress(dashboard.today.progress.fiberPct)}
-      />
-      <SnapshotCard
-        icon={Utensils}
-        label="Meals"
-        value={String(dashboard.today.mealCount)}
+    <section className="space-y-3">
+      <SectionHeading
         helper={`Logged on ${formatDate(dashboard.today.date)}`}
+        title="Today overview"
       />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          helper={formatProgress(dashboard.today.progress.caloriesPct)}
+          icon={Flame}
+          label="Calories"
+          value={formatNutrient(dashboard.today.totals.calories, "kcal")}
+        />
+        <MetricCard
+          helper={formatProgress(dashboard.today.progress.proteinPct)}
+          icon={ShieldCheck}
+          label="Protein"
+          tone={dashboard.today.progress.proteinPct && dashboard.today.progress.proteinPct >= 100 ? "positive" : "neutral"}
+          value={formatNutrient(dashboard.today.totals.protein, "g")}
+        />
+        <MetricCard
+          helper={formatProgress(dashboard.today.progress.fiberPct)}
+          icon={Salad}
+          label="Fiber"
+          tone={dashboard.today.progress.fiberPct && dashboard.today.progress.fiberPct >= 100 ? "positive" : "neutral"}
+          value={formatNutrient(dashboard.today.totals.fiber, "g")}
+        />
+        <MetricCard
+          helper="Saved meals today"
+          icon={Utensils}
+          label="Meals"
+          value={String(dashboard.today.mealCount)}
+        />
+      </div>
+    </section>
+  );
+}
+
+function TargetProgress({ dashboard }: { dashboard: DashboardViewModel }) {
+  const targets = dashboard.today.targets;
+  const totals = dashboard.today.totals;
+
+  return (
+    <section className="space-y-3">
+      <SectionHeading
+        helper="Progress respects unknown nutrition values instead of filling blanks with zero."
+        title="Target progress"
+      />
+      <div className="grid gap-3 md:grid-cols-2">
+        <TargetProgressBar
+          state={getTargetProgressState({
+            intent: "range",
+            target: targets.calories,
+            unit: "kcal",
+            value: totals.calories
+          })}
+          title="Calories"
+        />
+        <TargetProgressBar
+          state={getTargetProgressState({
+            intent: "gain",
+            target: targets.protein,
+            unit: "g",
+            value: totals.protein
+          })}
+          title="Protein"
+        />
+        <TargetProgressBar
+          state={getTargetProgressState({
+            intent: "gain",
+            target: targets.fiber,
+            unit: "g",
+            value: totals.fiber
+          })}
+          title="Fiber"
+        />
+        <TargetProgressBar
+          state={getTargetProgressState({
+            intent: "limit",
+            target: targets.sodium,
+            unit: "mg",
+            value: totals.sodium
+          })}
+          title="Sodium"
+        />
+      </div>
     </section>
   );
 }
@@ -217,15 +287,14 @@ function TargetSettings({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Nutrition targets</CardTitle>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base">Nutrition targets</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-4">
+      <CardContent className="grid gap-3 p-4 pt-2 sm:grid-cols-2 lg:grid-cols-4">
         {(["calories", "protein", "fiber", "sodium"] as const).map((field) => (
           <label className="space-y-2 text-sm" key={field}>
             <span className="capitalize text-muted-foreground">{field}</span>
-            <input
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+            <Input
               min={1}
               onChange={(event) => updateTarget(field, event.target.value)}
               type="number"
@@ -238,75 +307,61 @@ function TargetSettings({
   );
 }
 
-function QualitySnapshot({ dashboard }: { dashboard: DashboardViewModel }) {
+function QualitySummary({ dashboard }: { dashboard: DashboardViewModel }) {
+  const todayState = getMealQualityState(dashboard.today.averageQualityScore);
+  const weekState = getMealQualityState(dashboard.week.averageQualityScore);
+
   return (
-    <section className="grid gap-4 md:grid-cols-4">
-      <SnapshotCard
-        icon={ShieldCheck}
-        label="Today quality"
-        value={formatScore(dashboard.today.averageQualityScore)}
-        helper="Average saved meal quality"
+    <section className="space-y-3">
+      <SectionHeading
+        helper="Quality uses the existing rule-based score and legacy scorecard fallback."
+        title="Quality summary"
       />
-      <SnapshotCard
-        icon={CalendarDays}
-        label="Weekly quality"
-        value={formatScore(dashboard.week.averageQualityScore)}
-        helper="7-day average quality"
-      />
-      <SnapshotCard
-        icon={Salad}
-        label="Best recent"
-        value={dashboard.quality.bestRecentMeal?.name ?? "Unknown"}
-        helper={formatScore(dashboard.quality.bestRecentMeal?.qualityScore ?? null)}
-      />
-      <SnapshotCard
-        icon={ArrowRight}
-        label="Opportunity"
-        value={dashboard.quality.highestOpportunityMeal?.name ?? "Unknown"}
-        helper={formatScore(
-          dashboard.quality.highestOpportunityMeal?.qualityScore ?? null
-        )}
-      />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          helper={<QualitySummaryText score={dashboard.today.averageQualityScore} />}
+          icon={Gauge}
+          label="Today quality"
+          tone={todayState === "strong" ? "positive" : todayState === "attention" ? "warning" : "neutral"}
+          value={formatScore(dashboard.today.averageQualityScore)}
+        />
+        <MetricCard
+          helper={<QualitySummaryText score={dashboard.week.averageQualityScore} />}
+          icon={CalendarDays}
+          label="Weekly quality"
+          tone={weekState === "strong" ? "positive" : weekState === "attention" ? "warning" : "neutral"}
+          value={formatScore(dashboard.week.averageQualityScore)}
+        />
+        <MealCalloutCard
+          description="Highest-scoring meal in the current dashboard data."
+          meal={dashboard.quality.bestRecentMeal}
+          title="Best recent meal"
+        />
+        <MealCalloutCard
+          description="Lowest-scoring meal with available quality data."
+          meal={dashboard.quality.highestOpportunityMeal}
+          title="Highest-opportunity meal"
+        />
+      </div>
     </section>
   );
 }
 
-function SnapshotCard({
-  icon: Icon,
-  label,
-  value,
-  helper
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  helper: string;
-}) {
+function QualitySummaryText({ score }: { score: number | null }) {
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="mt-2 text-2xl font-semibold">{value}</p>
-          </div>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-            <Icon className="h-5 w-5" />
-          </span>
-        </div>
-        <p className="mt-4 text-sm text-muted-foreground">{helper}</p>
-      </CardContent>
-    </Card>
+    <span className="inline-flex items-center gap-2">
+      <MealQualityBadge score={score} />
+    </span>
   );
 }
 
 function SmartInsights({ insights }: { insights: DashboardInsight[] }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Smart insights</CardTitle>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base">Smart insights</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 p-4 pt-2">
         {insights.length === 0 ? (
           <p className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
             No nutrition insights yet. Save meals with nutrition values to populate this view.
@@ -314,15 +369,12 @@ function SmartInsights({ insights }: { insights: DashboardInsight[] }) {
         ) : null}
 
         {insights.map((insight) => (
-          <div
-            className="rounded-md border bg-background p-4"
-            key={insight.id}
-          >
+          <div className="rounded-md border bg-background p-4" key={insight.id}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge className={insightClassName(insight.severity)}>
                 {insight.severity}
               </Badge>
-              {insight.metric ? <Badge>{insight.metric}</Badge> : null}
+              {insight.metric ? <NutritionSignalChip>{insight.metric}</NutritionSignalChip> : null}
             </div>
             <h2 className="mt-3 font-semibold">{insight.title}</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -338,92 +390,91 @@ function SmartInsights({ insights }: { insights: DashboardInsight[] }) {
   );
 }
 
-function WeeklyTrends({ dashboard }: { dashboard: DashboardViewModel }) {
+function WeeklySummary({ dashboard }: { dashboard: DashboardViewModel }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Weekly trends</CardTitle>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base">Weekly summary</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 p-4 pt-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <CalendarDays className="h-4 w-4" />
           {formatDate(dashboard.week.startDate)} to {formatDate(dashboard.week.endDate)}
         </div>
-        <TrendRow
-          label="Average protein"
-          value={formatNutrient(dashboard.week.dailyAverages.protein, "g/day")}
-        />
-        <TrendRow
-          label="Average fiber"
-          value={formatNutrient(dashboard.week.dailyAverages.fiber, "g/day")}
-        />
-        <TrendRow label="Meal count" value={String(dashboard.week.mealCount)} />
-        <TrendRow
-          label="Calorie variance"
-          value={dashboard.week.trends.calorieVariance}
-        />
+        <div className="grid gap-2">
+          <WeeklySignal
+            label="Average protein"
+            signal={dashboard.week.trends.proteinConsistency}
+            value={formatNutrient(dashboard.week.dailyAverages.protein, "g/day")}
+          />
+          <WeeklySignal
+            label="Average fiber"
+            signal={dashboard.week.trends.fiberConsistency}
+            value={formatNutrient(dashboard.week.dailyAverages.fiber, "g/day")}
+          />
+          <WeeklySignal
+            label="Calorie variance"
+            signal={dashboard.week.trends.calorieVariance}
+            value={dashboard.week.trends.calorieVariance}
+          />
+          <WeeklySignal
+            label="Meal count"
+            signal="logged"
+            value={String(dashboard.week.mealCount)}
+          />
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function TrendRow({ label, value }: { label: string; value: string }) {
+function WeeklySignal({
+  label,
+  signal,
+  value
+}: {
+  label: string;
+  signal: string;
+  value: string;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-md border bg-background px-4 py-3 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2.5 text-sm">
+      <div className="min-w-0">
+        <p className="text-muted-foreground">{label}</p>
+        <p className="mt-1 font-medium">{value}</p>
+      </div>
+      <NutritionSignalChip tone={signal === "unknown" ? "unavailable" : "steady"}>
+        {signal}
+      </NutritionSignalChip>
     </div>
   );
 }
 
-function RecentMeals({ meals }: { meals: DashboardMealSummary[] }) {
+function RecentMeals({ meals }: { meals: DashboardViewModel["recentMeals"] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent meals</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {meals.length === 0 ? (
-          <p className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
-            No saved meals found yet.
-          </p>
-        ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {meals.map((meal) => (
-              <RecentMealCard key={meal.id} meal={meal} />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <section className="space-y-3">
+      <SectionHeading helper="Most recent saved meal records." title="Recent meals" />
+      {meals.length === 0 ? (
+        <p className="rounded-md border bg-card p-4 text-sm text-muted-foreground">
+          No saved meals found yet.
+        </p>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {meals.map((meal) => (
+            <RecentMealCard key={meal.id} meal={meal} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
-function RecentMealCard({ meal }: { meal: DashboardMealSummary }) {
+function SectionHeading({ helper, title }: { helper: string; title: string }) {
   return (
-    <div className="rounded-md border bg-background p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="font-semibold">{meal.name}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatDateTime(meal.loggedAt)}
-          </p>
-        </div>
-        {meal.url ? (
-          <Button asChild size="sm" variant="secondary">
-            <a href={meal.url} rel="noreferrer" target="_blank">
-              Open
-            </a>
-          </Button>
-        ) : null}
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Badge>{formatNutrient(meal.calories, "kcal")}</Badge>
-        <Badge>{formatNutrient(meal.protein, "g protein")}</Badge>
-        <Badge>
-          {meal.confidence ?? meal.provenance ?? "nutrition not persisted"}
-        </Badge>
-        <Badge>{formatScore(meal.qualityScore)} quality</Badge>
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h2 className="text-lg font-semibold tracking-normal">{title}</h2>
+        <p className="text-sm text-muted-foreground">{helper}</p>
       </div>
     </div>
   );
@@ -431,7 +482,7 @@ function RecentMealCard({ meal }: { meal: DashboardMealSummary }) {
 
 function formatNutrient(value: number | null, unit: string) {
   if (typeof value !== "number") {
-    return "Unknown";
+    return "Unavailable";
   }
 
   return `${Math.round(value).toLocaleString()} ${unit}`;
@@ -442,7 +493,7 @@ function formatProgress(value: number | null) {
 }
 
 function formatScore(value: number | null) {
-  return value === null ? "Unknown" : `${value}/100`;
+  return value === null ? "Unavailable" : `${value}/100`;
 }
 
 function formatDate(value: string) {
@@ -450,21 +501,6 @@ function formatDate(value: string) {
     month: "short",
     day: "numeric"
   }).format(new Date(`${value}T00:00:00.000Z`));
-}
-
-function formatDateTime(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Date unknown";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(date);
 }
 
 function insightClassName(severity: DashboardInsight["severity"]) {
