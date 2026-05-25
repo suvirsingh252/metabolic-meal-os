@@ -114,6 +114,13 @@ curl -X POST http://localhost:3011/api/analyze-meal \
 
 This endpoint requires `OPENAI_API_KEY` in `.env.local`.
 
+Nutrition behavior:
+
+- Recipe pages with schema.org JSON-LD nutrition facts populate structured meal-level nutrition when available.
+- Manual/free-text meals can receive conservative estimated calories, protein, and fiber for a small set of common foods.
+- Sodium, sugar, fat, and carbs remain blank unless structured data or review edits provide them.
+- Estimated nutrition is labeled and editable before save; user edits become `user-entered` provenance.
+
 ## Manual Integration Test
 
 1. Copy the example environment file:

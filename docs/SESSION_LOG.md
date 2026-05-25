@@ -1,5 +1,27 @@
 # Session Log
 
+## 2026-05-25 Good Enough Nutrition Estimation v1
+
+Goal:
+- Improve dashboard usefulness for common manual/free-text meals without pretending to provide clinical-grade nutrition.
+
+Completed work:
+- Added `src/lib/domain/nutrition/free-text-estimator.ts`, a deterministic rule set for common household components: paratha/parantha, gobi/cauliflower, butter, eggs, chicken breast, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, and salad/vegetables.
+- Wired manual/free-text meal preparation to produce `nutritionEstimate.source: estimated` only when enough recognizable food detail exists.
+- Limited automatic estimates to calories, protein, and fiber. Carbs, fat, sodium, and sugar remain `null` unless structured nutrition or user review provides them.
+- Preserved structured recipe JSON-LD precedence over estimates.
+- Updated the `/analyze` nutrition review panel to label estimates with: `Estimated from meal description. Review before saving.`
+- Kept all nutrition fields editable; review edits convert source to `user-entered` and append edit provenance while preserving blank/null fields.
+- Added tests for `gobi parantha with butter`, `grilled chicken breast with salad`, vague input, structured JSON-LD precedence, review-edit provenance, and Notion null-field mapping.
+
+Validation:
+- `npm test` passed.
+
+Known limitations:
+- Estimates are conservative household assumptions, not full nutrition science.
+- Coverage is intentionally incomplete and only fills dashboard-critical calories/protein/fiber.
+- Dashboard totals may include saved estimates, so provenance/source must remain visible and reviewable.
+
 ## 2026-05-25 Session Closeout: Dashboard + Nutrition Persistence
 
 Instruction:

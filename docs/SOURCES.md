@@ -4,7 +4,7 @@ Last updated: 2026-05-25
 
 This app has an evidence-aware foundation for meal analysis, nutrition enrichment, and grocery intelligence. The source registry and health-guidance principles are now wired into runtime meal analysis prompt context and output fields. It does not call external source APIs for this guidance and does not use USDA nutrient lookup during meal analysis.
 
-Meal-level nutrition totals are handled separately from ingredient nutrient snapshots. Recipe page JSON-LD nutrition facts and user-entered review totals can be persisted with confidence/provenance. The app does not ask OpenAI to invent exact meal calories or macros.
+Meal-level nutrition totals are handled separately from ingredient nutrient snapshots. Recipe page JSON-LD nutrition facts, limited free-text estimates, and user-entered review totals can be persisted with confidence/provenance. The app does not ask OpenAI to invent exact meal calories or macros.
 
 ## Source Registry
 
@@ -179,6 +179,7 @@ Meal-level nutrition fields are part of the meal review/save path, not the FoodD
 
 Sources:
 - Recipe page structured data (`recipe-json-ld`) when exposed by the recipe site.
+- Conservative free-text meal estimates (`estimated`) for recognized manual meal components. These currently cover calories, protein, and fiber only.
 - User-entered or user-corrected review values (`user-entered`).
 
 Persisted shape:
@@ -197,5 +198,7 @@ Rules:
 - Missing values remain unknown.
 - Zero is preserved as a known value.
 - Values must be non-negative finite numbers.
+- Free-text estimates leave sodium, sugar, fat, and carbs unknown unless another source or user review supplies them.
+- Structured recipe nutrition takes precedence over free-text estimates, and user edits override estimates.
 - The app does not calculate meal totals from ingredient-level per-100g snapshots without quantities.
 - The app does not create Notion schema; compatible Meals properties must already exist.

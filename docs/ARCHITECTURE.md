@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
+Last updated: 2026-05-25 (Good Enough Nutrition Estimation v1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -78,7 +78,9 @@ Recipe extraction:
 - Fallback extraction uses accessible title/site metadata, OpenGraph description, likely recipe snippets, and a bounded page excerpt.
 - Social/video pages only use accessible HTML/OpenGraph metadata. The app does not use browser automation, video downloads, paid scraping, or platform bypasses.
 - If a social/video link or blocked page does not expose enough recipe detail, `/api/analyze-meal` returns a clear fallback asking the user to paste the caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
-- If a recipe page exposes schema.org JSON-LD nutrition facts, the parser carries meal-level totals forward with provenance. The AI prompt still does not ask OpenAI to calculate calories or exact macros.
+- If a recipe page exposes schema.org JSON-LD nutrition facts, the parser carries meal-level totals forward with provenance. Structured recipe nutrition takes precedence over any estimate.
+- For manual/free-text meals without structured nutrition, `src/lib/domain/nutrition/free-text-estimator.ts` can add conservative dashboard-critical estimates for calories, protein, and fiber only. Sodium, sugar, fat, and carbs remain `null` unless they came from structured data or user review.
+- The AI prompt still does not ask OpenAI to calculate calories or exact macros.
 
 Structured output is used so the review screen receives predictable fields.
 
@@ -139,6 +141,8 @@ Nutrition provenance:
 - Canonical nutrition snapshot types live in `src/lib/domain/nutrition`.
 - FoodData Central mappings emit explicit `amountBasis`, `basisUnit`, `per100g`, source ID, confidence, food state, nutrients, and `lastVerifiedAt`.
 - Runtime validation rejects snapshots that would persist nutrients without a basis.
+- Free-text meal estimates use `nutritionEstimate.source: estimated`, low/medium confidence, and provenance that names the matched components and conservative household serving assumptions.
+- User edits in the review panel convert the nutrition source to `user-entered` and append review-edit provenance. Blank fields remain blank/null, not zero.
 
 ## Dashboard Analytics Architecture
 
@@ -170,6 +174,7 @@ Aggregation rules:
 - missing values remain `null`;
 - zero is preserved as a known value;
 - totals only include nutrients that are present;
+- estimated calories/protein/fiber can contribute to dashboard totals when saved, but provenance/source distinguish them from structured recipe facts;
 - functions are deterministic and unit tested.
 
 Targets are configurable in the dashboard UI for calories, protein, fiber, and sodium. Current target settings are client-side only through `localStorage` and query params to `/api/dashboard`; there is no server-side user settings persistence yet.
@@ -290,6 +295,13 @@ Meal-level nutrition persistence writes only compatible existing Notion properti
 - nutrition confidence/provenance/source;
 - explicit analysis scores;
 - meal quality score.
+
+Nutrition source precedence for new analyses:
+1. structured recipe nutrition such as recipe JSON-LD;
+2. Notion backfill on saved/read records where applicable;
+3. conservative free-text estimate for manual meal descriptions;
+4. unavailable state;
+5. user-entered review override after edits.
 
 Legacy backfill is read-time only:
 - exact nutrition totals are not invented for old meals;

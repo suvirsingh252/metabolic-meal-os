@@ -86,17 +86,42 @@ export function getNutritionTotalsDisplayState(
       ? "Recipe page"
       : nutritionEstimate.source === "notion-backfill"
         ? "Notion backfill"
-        : "Manual";
+        : nutritionEstimate.source === "estimated"
+          ? "Estimated"
+          : "Manual";
 
   return {
     mode:
       nutritionEstimate.source === "user-entered"
         ? ("manual" as const)
-        : ("structured" as const),
+        : nutritionEstimate.source === "estimated"
+          ? ("estimated" as const)
+          : ("structured" as const),
     estimate: nutritionEstimate,
     hasAnyNutritionValue: hasValue,
     hasSourceNutrition: true,
     sourceLabel
+  };
+}
+
+export function applyNutritionReviewEdit(
+  estimate: NutritionEstimate,
+  previousProvenance: string | null | undefined,
+  field: NutritionField,
+  value: number | null
+): NutritionEstimate {
+  return {
+    ...estimate,
+    source: "user-entered",
+    provenance:
+      previousProvenance &&
+      !previousProvenance.includes("edited during meal review")
+        ? `${previousProvenance}; edited during meal review`
+        : (previousProvenance ?? "Entered during meal review"),
+    totals: {
+      ...estimate.totals,
+      [field]: value
+    }
   };
 }
 
@@ -255,20 +280,12 @@ function NutritionTotalsSection({
 
     onAnalysisChange({
       ...analysis,
-      nutritionEstimate: {
-        ...estimate,
-        source: "user-entered",
-        provenance:
-          analysis.nutritionEstimate?.provenance &&
-          !analysis.nutritionEstimate.provenance.includes("edited during meal review")
-            ? `${analysis.nutritionEstimate.provenance}; edited during meal review`
-            : (analysis.nutritionEstimate?.provenance ??
-              "Entered during meal review"),
-        totals: {
-          ...estimate.totals,
-          [field]: numericValue
-        }
-      }
+      nutritionEstimate: applyNutritionReviewEdit(
+        estimate,
+        analysis.nutritionEstimate?.provenance,
+        field,
+        numericValue
+      )
     });
   }
 
@@ -310,6 +327,15 @@ function NutritionTotalsSection({
               <p className="text-sm text-muted-foreground">
                 {nutritionUnavailableMessage}
               </p>
+            ) : mode === "estimated" ? (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Estimated from meal description. Review before saving.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {estimate.provenance}
+                </p>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 {estimate.provenance}

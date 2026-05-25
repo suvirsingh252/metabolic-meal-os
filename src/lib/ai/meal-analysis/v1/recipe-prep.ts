@@ -4,6 +4,7 @@ import {
   isProbablyUrl
 } from "@/src/lib/integrations/recipe-parser";
 import type { MealAnalysisRequest } from "@/src/lib/types/meal";
+import { estimateFreeTextNutrition } from "@/src/lib/domain/nutrition";
 import {
   defaultManualRecipeSource,
   manualParserVersion
@@ -56,6 +57,6 @@ export async function prepareRecipeForMealAnalysis(
     importedAt: new Date().toISOString(),
     lastParsedAt: null,
     parserVersion: request.sourceType === "url" ? null : manualParserVersion,
-    nutritionEstimate: null
+    nutritionEstimate: estimateFreeTextNutrition(request.recipeText)
   };
 }

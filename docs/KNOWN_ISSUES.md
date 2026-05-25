@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
+Last updated: 2026-05-25 (Good Enough Nutrition Estimation v1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -30,6 +30,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Known Ingredient context is best-effort token/key matched. It should be reviewed with real household meals before relying on it heavily.
 - [ ] FoodData Central matching is improved but still heuristic. Variety-specific staples such as basmati rice may still use branded fallback when USDA does not return a suitable generic match; review `matchedDescription`, `matching`, notes, and `confidence`.
 - [ ] Meal-level nutrition persistence depends on compatible existing Notion fields. The app does not create or mutate Notion schema.
+- [ ] Free-text nutrition estimation is intentionally incomplete and not clinical-grade. It currently covers only a small list of common meal components and only estimates calories, protein, and fiber.
 - [ ] Legacy meals may lack exact nutrition totals. Quality can backfill from legacy scorecards at read time, but no Notion write-back migration exists yet.
 - [ ] Dashboard targets are client-side only through `localStorage`; they are not persisted server-side and are not household/user-scoped.
 
@@ -59,8 +60,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Pantry support is type-only; there is no pantry UI, storage, or grocery-list deduction.
 - [ ] AI-generated analysis/enrichment has a separate type foundation, but is not persisted as a separate record yet.
 - [ ] Evidence-aware guidance is now source/principle-ID linked in analysis output, but still uses static guidance context rather than live source retrieval.
-- [ ] Meal analysis can now read matching known Ingredients from Notion as lightweight context, but it does not calculate meal calories, exact macros, or serving-level nutrition.
-- [ ] Meal review can persist entered or recipe-page nutrition totals, but the app still does not calculate serving-level totals from ingredient quantities.
+- [ ] Meal analysis can now read matching known Ingredients from Notion as lightweight context, but it does not calculate serving-level nutrition from ingredient quantities.
+- [ ] Meal review can persist entered, recipe-page, or limited free-text estimated nutrition totals, but the app still does not calculate full macros from ingredient quantities.
 - [ ] FoodData Central nutrient snapshots are not automatically persisted to Notion ingredients. Enrichment remains explicit/manual through Settings or direct API calls.
 - [ ] FoodData Central plain nutrient values are skipped unless compatible Notion basis fields exist, so some existing schemas will report skipped nutrient fields until updated.
 - [ ] Household metadata projection/filtering depends on optional Notion properties. Existing databases without those properties still operate as single-household private stores.

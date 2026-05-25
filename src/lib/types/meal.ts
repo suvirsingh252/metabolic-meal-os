@@ -71,7 +71,7 @@ export interface MealNutritionEstimate {
   totals: MealNutritionTotals;
   confidence: "high" | "medium" | "low";
   provenance: string;
-  source: "recipe-json-ld" | "user-entered" | "notion-backfill";
+  source: "recipe-json-ld" | "user-entered" | "notion-backfill" | "estimated";
 }
 
 export type MealSourceClassification =

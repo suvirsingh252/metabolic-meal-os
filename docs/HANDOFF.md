@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
+Last updated: 2026-05-25 (Good Enough Nutrition Estimation v1)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -49,14 +49,15 @@ Implemented:
 - Structured ingredient foundation: `RecipeIngredient` supports raw text, parsed name, quantity, unit, preparation, optional flag, and category while preserving string ingredient compatibility.
 - Adapter directories exist for future Open Food Facts, nutrition, recipe parser, grocery prices, and weather integrations.
 - Recipe/shared URL analysis support: `/analyze` accepts normal recipe URLs, shortened/shared URLs, TikTok links, Instagram Reels, YouTube Shorts, and pasted text in the existing input. `/api/analyze-meal` classifies the source, fetches safely server-side through the recipe-parser adapter, prefers Recipe JSON-LD when present, falls back to bounded metadata/page text, and returns source metadata plus source notes with the analysis.
-- Recipe JSON-LD nutrition extraction: when a recipe page exposes structured nutrition facts, the parser carries meal-level totals into `nutritionEstimate` with confidence and provenance.
+- Recipe JSON-LD nutrition extraction: when a recipe page exposes structured nutrition facts, the parser carries meal-level totals into `nutritionEstimate` with confidence and provenance. Structured nutrition remains preferred over estimates.
+- Good Enough Nutrition Estimation v1: manual/free-text meal descriptions with recognizable components can produce conservative `nutritionEstimate.source: estimated` values for calories, protein, and fiber only. Sodium, sugar, fat, and carbs stay blank/null unless a structured source or user review supplies them.
 - Social/video link handling: the parser only uses accessible HTML/OpenGraph metadata and does not bypass platform protections. If TikTok, Instagram, YouTube Shorts, or similar links do not expose enough recipe-like detail, the API returns a clear fallback asking for a caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
 - Household recipe feedback, AI analysis, pantry item, operational tag, and localization types are present for future workflows.
 - Evidence-aware foundation: static approved source registry and safe health-guidance principles for diabetes-aware, PCOS-aware, and Canada's Food Guide-aligned future analysis.
 - Evidence-Aware Analysis v3: runtime meal analysis now uses the approved source registry and health-guidance principles to produce evidence notes, confidence notes, a safety disclaimer, and source/principle-linked guidance basis. V3 fields are production-active, editable in `/analyze`, and summarized into Notion Notes without schema changes.
 - Ingredient-aware analysis context: `/api/analyze-meal` now does a best-effort read of matching known Ingredients from Notion before the OpenAI call and adds a compact "Known household ingredient context" block when matches exist. This can include household flags, nutrient confidence, FDC description, and ingredient-level protein/fiber/carbohydrate/energy hints already stored in Notion.
 - USDA FoodData Central ingredient lookup foundation: server-side `/api/ingredients/lookup` route, scoped `FDC_API_KEY`, normalized nutrient snapshot mapper, and Settings diagnostics panel.
-- Meal-level nutrition persistence v1: reviewed meals can carry calories, protein, carbs, fat, fiber, sodium, sugar, confidence, provenance, and source. `/analyze` exposes editable nutrition totals in the review flow, and `save-meal` writes compatible Notion properties when they already exist.
+- Meal-level nutrition persistence v1: reviewed meals can carry calories, protein, carbs, fat, fiber, sodium, sugar, confidence, provenance, and source. `/analyze` exposes editable nutrition totals in the review flow, labels free-text estimates for review, and `save-meal` writes compatible Notion properties when they already exist.
 - Meal quality v1: rule-based quality scoring considers protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. Existing meals without exact nutrition can receive read-time quality backfill from legacy scorecards in Notion Notes.
 - Explicit USDA -> Notion ingredient enrichment endpoint: `/api/ingredients/enrich` can lookup only or lookup and update an Ingredient page when compatible Notion properties already exist.
 - FoodData Central matching quality improvements: lookup now fetches preferred generic USDA data types more robustly, ranks Foundation/SR Legacy/Survey ahead of Experimental and Branded where suitable, penalizes prepared/flavored/plain-staple mismatches, adds limited query expansion for paneer and atta, and returns optional match metadata explaining the selected data type and fallback reason.
@@ -77,7 +78,7 @@ Not implemented yet:
 - Full pantry management.
 - Live Open Food Facts, nutrition, grocery price, flyer, or weather API integrations.
 - Persistence for structured ingredients, pantry items, household preferences, or separate AI analysis records beyond current safe Notion meal-source writes.
-- Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not invent exact meal totals from ingredient context without serving quantities.
+- Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not calculate serving-level totals from ingredient context without quantities; the only automatic free-text estimate is the limited deterministic calories/protein/fiber path.
 - Automatic USDA lookup/enrichment during meal analysis or ingredient suggestion persistence.
 - Multi-household Notion partitioning.
 
@@ -104,7 +105,7 @@ Code organization:
 - `src/lib/integrations/*`: future API adapter boundaries. `recipe-parser` has a basic URL parser; the other adapters are currently stubs only.
 - `src/lib/integrations/food-data-central/*`: server-side USDA FoodData Central client, types, and nutrient snapshot mapper.
 - `src/lib/domain/meal`: shared meal validation.
-- `src/lib/domain/nutrition`: canonical nutrition snapshot/provenance types and validation.
+- `src/lib/domain/nutrition`: canonical nutrition snapshot/provenance types, validation, and the small free-text calories/protein/fiber estimator.
 - `src/lib/domain/analytics`: dashboard view-model, aggregation, insight, target-progress, and meal-quality scoring logic.
 - `src/lib/ai/meal-analysis/v1`: first versioned AI config/response parser boundary.
 - `src/lib/ai/meal-analysis/v1`: full versioned meal-analysis service boundary: config, prompt, schema, source context, request validation, recipe prep, parser, fallback, and service.
@@ -155,14 +156,16 @@ Pages:
   - Uses a shared request-size limit and rate limit.
   - Blocks local/private/reserved URL hosts using hostname checks plus DNS resolution before fetches and after redirects. Redirects are followed manually through the same checks.
   - Returns `analysisVersion` and `analysisModel`.
-  - Carries recipe-page JSON-LD nutrition facts through to `nutritionEstimate` when present. It still does not ask OpenAI to calculate exact calories or macros.
+  - Carries recipe-page JSON-LD nutrition facts through to `nutritionEstimate` when present.
+  - For manual/free-text meals without structured nutrition, runs the deterministic free-text estimator only when the description has enough recognizable food detail. Current coverage includes paratha/parantha, gobi/cauliflower, butter, eggs, chicken breast, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, and salad/vegetables.
+  - Free-text estimates fill calories/protein/fiber only, leave sodium/sugar/fat/carbs null, and include provenance naming matched components and conservative serving assumptions. It still does not ask OpenAI to calculate exact calories or macros.
 
 - `GET /api/dashboard`
   - Queries recent saved Meals through the shared Notion Meals read utility.
   - Builds and returns a `DashboardViewModel`.
   - Accepts optional query params for dashboard targets: `calories`, `protein`, `fiber`, and `sodium`.
   - Does not call OpenAI.
-  - Uses persisted meal-level nutrition where available, and falls back to legacy scorecard parsing for quality only.
+  - Uses persisted meal-level nutrition where available, including saved estimates, and falls back to legacy scorecard parsing for quality only. Provenance/source distinguish estimated values from structured facts.
 
 - `POST /api/ingredients/lookup`
   - Input: `{ ingredient: string }`
@@ -211,6 +214,7 @@ Pages:
   - Defaults current saves to `sourceType: manual`, `importedAt: now`, and `parserVersion: manual-v1`.
   - Writes optional source tracking fields only if compatible Notion Meals properties already exist.
   - Writes optional nutrition totals, nutrition confidence/provenance/source, explicit analysis scores, and meal quality score only if compatible Notion Meals properties already exist.
+  - User edits to nutrition totals convert the source to `user-entered` and append review-edit provenance. Blank nutrition fields remain null and are not written as zero.
   - Does not create Notion properties or relations.
 
 - `POST /api/notion/save-ingredients`

@@ -130,7 +130,8 @@ function readNutritionEstimate(
   const source =
     value.source === "recipe-json-ld" ||
     value.source === "user-entered" ||
-    value.source === "notion-backfill"
+    value.source === "notion-backfill" ||
+    value.source === "estimated"
       ? value.source
       : null;
 

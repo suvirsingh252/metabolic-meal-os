@@ -67,3 +67,8 @@ export function validateNutritionSnapshot(value: NutritionSnapshot) {
     errors
   };
 }
+
+export {
+  estimateFreeTextNutrition,
+  freeTextNutritionEstimateRuleLabels
+} from "@/src/lib/domain/nutrition/free-text-estimator";

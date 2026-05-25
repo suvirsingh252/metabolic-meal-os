@@ -63,3 +63,31 @@ test("validateMealAnalysisResult accepts complete meal payload", () => {
   assert.equal(result.success, true);
   assert.equal(result.data?.mealName, "Dal and rice");
 });
+
+test("validateMealAnalysisResult accepts estimated nutrition without zero-filling blanks", () => {
+  const result = validateMealAnalysisResult({
+    ...validMeal,
+    nutritionEstimate: {
+      totals: {
+        calories: 330,
+        protein: 8,
+        carbs: null,
+        fat: null,
+        fiber: 6,
+        sodium: null,
+        sugar: null
+      },
+      confidence: "medium",
+      provenance:
+        "Estimated from free-text meal description using conservative component assumptions: 1 paratha/parantha + small butter serving.",
+      source: "estimated"
+    }
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.nutritionEstimate?.source, "estimated");
+  assert.equal(result.data?.nutritionEstimate?.totals.carbs, null);
+  assert.equal(result.data?.nutritionEstimate?.totals.fat, null);
+  assert.equal(result.data?.nutritionEstimate?.totals.sodium, null);
+  assert.equal(result.data?.nutritionEstimate?.totals.sugar, null);
+});

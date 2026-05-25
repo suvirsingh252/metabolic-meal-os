@@ -518,7 +518,7 @@ export function classifyRecipeUrl(
   return previousClassification === "short-link" ? "short-link" : "unknown-url";
 }
 
-function parseRecipeJsonLd(
+export function parseRecipeJsonLd(
   html: string,
   url: URL,
   sourceClassification: RecipeSourceClassification

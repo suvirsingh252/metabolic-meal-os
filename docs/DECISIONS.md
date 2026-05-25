@@ -1,6 +1,20 @@
 # Architectural Decisions
 
-Last updated: 2026-05-25 (Session Closeout: Dashboard + Nutrition Persistence)
+Last updated: 2026-05-25 (Good Enough Nutrition Estimation v1)
+
+## 2026-05-25 — Free-Text Nutrition Estimation Is Conservative And Limited
+
+Decision: Add a deterministic free-text estimate path for manual meal descriptions that have enough recognizable food detail, filling only calories, protein, and fiber with `nutritionEstimate.source: estimated`.
+
+Reasoning:
+- Many real household entries are short free-text meals such as `gobi parantha with butter`, and dashboards are less useful when these common meals have no calories/protein/fiber.
+- A small internal rule set is safer and more testable than asking OpenAI to invent exact nutrition.
+- Sodium, sugar, fat, and carbs are more likely to create false precision in this slice, so they remain `null` unless structured nutrition or user review provides them.
+
+Tradeoffs:
+- Estimates are intentionally incomplete, conservative, and not clinical-grade.
+- Serving assumptions are coarse household portions and must be reviewable before save.
+- Coverage is limited to common components such as paratha/parantha, gobi/cauliflower, butter, eggs, chicken breast, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, and salad/vegetables.
 
 ## 2026-05-25 — Dashboard Intelligence Uses A Stable View Model
 
@@ -17,17 +31,18 @@ Tradeoffs:
 
 ## 2026-05-25 — Meal Nutrition Totals Require Provenance Or Review
 
-Decision: Persist meal-level nutrition totals only when they come from recipe structured nutrition facts or user-entered review values, and keep confidence/provenance/source with those totals.
+Decision: Persist meal-level nutrition totals only when they come from recipe structured nutrition facts, conservative free-text estimates, or user-entered review values, and keep confidence/provenance/source with those totals.
 
 Reasoning:
 - Existing ingredient-level FoodData Central snapshots are usually per-100g and cannot safely become recipe-level totals without quantities and serving logic.
-- OpenAI should not invent exact calories or macros.
+- OpenAI should not invent exact calories or macros. The estimate path is deterministic code, not model-generated nutrition.
 - The dashboard needs nutrition fields, but reliability matters more than filling every cell.
 
 Tradeoffs:
 - Legacy meals often lack exact nutrition totals.
 - JSON-LD nutrition varies by recipe site and may be incomplete.
-- Users may need to enter or correct totals manually in the review flow.
+- Free-text estimates cover only calories/protein/fiber and are labeled as estimates.
+- Users may need to enter or correct totals manually in the review flow; user edits override estimated provenance.
 
 ## 2026-05-25 — Notion Schema Remains Operator-Controlled
 
