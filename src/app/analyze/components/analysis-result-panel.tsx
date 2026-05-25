@@ -94,6 +94,9 @@ export function getNutritionTotalsDisplayState(
   }
 
   const hasValue = hasAnyNutritionValue(nutritionEstimate.totals);
+  const hasManualReviewEdit =
+    nutritionEstimate.source === "user-entered" &&
+    /edited during meal review/i.test(nutritionEstimate.provenance);
   const sourceLabel =
     nutritionEstimate.source === "recipe-json-ld"
       ? "Recipe page"
@@ -101,13 +104,17 @@ export function getNutritionTotalsDisplayState(
         ? "Notion backfill"
         : nutritionEstimate.source === "estimated"
           ? "Estimated"
-          : nutritionEstimate.assumptions
-            ? "Reviewed estimate"
+          : hasManualReviewEdit
+            ? "User-edited estimate"
+            : nutritionEstimate.assumptions
+              ? "Reviewed estimate"
           : "Manual";
 
   return {
     mode:
-      nutritionEstimate.assumptions
+      hasManualReviewEdit
+        ? ("manual" as const)
+        : nutritionEstimate.assumptions
         ? ("estimated" as const)
         : nutritionEstimate.source === "user-entered"
         ? ("manual" as const)
@@ -144,16 +151,23 @@ export function applyNutritionReviewEdit(
 
 function appendReviewProvenance(
   previousProvenance: string | null | undefined,
-  reviewNote: string
+  reviewNote: string,
+  replacePattern?: RegExp
 ) {
-  const base = previousProvenance?.trim() || "Entered during meal review";
+  const base = (previousProvenance?.trim() || "Entered during meal review")
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !replacePattern?.test(part))
+    .join("; ");
 
   return base.includes(reviewNote) ? base : `${base}; ${reviewNote}`;
 }
 
 export function applyEstimatedServingMultiplier(
   estimate: NutritionEstimate,
-  multiplier: number
+  multiplier: number,
+  options?: { recordProvenance?: boolean }
 ): NutritionEstimate {
   const baseTotals = estimate.assumptions?.baseTotals ?? estimate.totals;
   const totals: NutritionTotals = {
@@ -169,10 +183,14 @@ export function applyEstimatedServingMultiplier(
   return {
     ...estimate,
     source: "user-entered",
-    provenance: appendReviewProvenance(
-      estimate.provenance,
-      `reviewed during meal review: serving multiplier set to ${multiplier}x`
-    ),
+    provenance:
+      options?.recordProvenance === false
+        ? estimate.provenance
+        : appendReviewProvenance(
+            estimate.provenance,
+            `reviewed during meal review: serving multiplier set to ${multiplier}x`,
+            /reviewed during meal review: serving multiplier set to .+x/i
+          ),
     totals,
     assumptions: estimate.assumptions
       ? {
@@ -199,6 +217,8 @@ export function applyEstimatedButterAdjustment(
           : null
   };
   const servingMultiplier = estimate.assumptions?.servingMultiplier ?? 1;
+  const shouldRecordServingReview =
+    servingMultiplier !== 1 || /serving multiplier set to/i.test(estimate.provenance);
   const adjustedEstimate: NutritionEstimate = {
     ...estimate,
     assumptions: estimate.assumptions
@@ -228,13 +248,20 @@ export function applyEstimatedButterAdjustment(
       : undefined
   };
 
+  const servingAdjustedEstimate = applyEstimatedServingMultiplier(
+    adjustedEstimate,
+    servingMultiplier,
+    { recordProvenance: shouldRecordServingReview }
+  );
+
   return {
-    ...applyEstimatedServingMultiplier(adjustedEstimate, servingMultiplier),
+    ...servingAdjustedEstimate,
     provenance: appendReviewProvenance(
-      estimate.provenance,
+      servingAdjustedEstimate.provenance,
       includeButter
         ? "reviewed during meal review: butter added"
-        : "reviewed during meal review: butter removed"
+        : "reviewed during meal review: butter removed",
+      /reviewed during meal review: butter (?:added|removed)/i
     )
   };
 }
@@ -432,9 +459,9 @@ function NutritionTotalsSection({
       description="Meal-level totals used by the dashboard. Leave unknown values blank."
       title="Nutrition totals"
     >
-      <div className="space-y-5">
-        <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
+      <div className="space-y-4 sm:space-y-5">
+        <div className="flex flex-col gap-4 rounded-md border bg-muted/30 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
+          <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 className={
@@ -447,7 +474,7 @@ function NutritionTotalsSection({
                   ? `${estimate.confidence} confidence`
                   : "Unavailable"}
               </Badge>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm leading-5 text-muted-foreground">
                 Source: {hasSourceNutrition ? sourceLabel : "none detected"}
               </span>
             </div>
@@ -457,15 +484,15 @@ function NutritionTotalsSection({
               </p>
             ) : mode === "estimated" ? (
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
-                  Estimated from meal description. Review before saving.
+                <p className="text-sm font-medium leading-5 text-foreground">
+                  Estimated from meal description; review serving assumptions before saving.
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="break-words text-sm leading-6 text-muted-foreground">
                   {estimate.provenance}
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="break-words text-sm leading-6 text-muted-foreground">
                 {estimate.provenance}
               </p>
             )}
@@ -533,41 +560,50 @@ function EstimateAssumptionsSection({
   );
 
   return (
-    <div className="space-y-3 rounded-md border bg-background p-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
+    <div className="space-y-4 rounded-md border bg-background p-3 sm:p-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-2">
           <h4 className="text-sm font-medium">Estimate assumptions</h4>
           {assumptions?.matchedComponents.length ? (
             <div className="flex flex-wrap gap-2">
               {assumptions.matchedComponents.map((component) => (
-                <Badge key={component}>{component}</Badge>
+                <Badge className="whitespace-normal text-left leading-5" key={component}>
+                  {component}
+                </Badge>
               ))}
             </div>
           ) : null}
           {assumptions?.servingSizeAssumptions.length ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm leading-6 text-muted-foreground">
               {assumptions.servingSizeAssumptions.join("; ")}
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {estimatedServingMultipliers.map((multiplier) => (
-            <Button
-              aria-pressed={selectedMultiplier === multiplier}
-              key={multiplier}
-              onClick={() => onServingMultiplierChange(multiplier)}
-              size="sm"
-              type="button"
-              variant={selectedMultiplier === multiplier ? "default" : "secondary"}
-            >
-              {multiplier}x
-            </Button>
-          ))}
+        <div className="w-full space-y-2 lg:w-auto">
+          <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+            Serving size
+          </p>
+          <div className="grid grid-cols-4 gap-2 lg:flex lg:flex-wrap">
+            {estimatedServingMultipliers.map((multiplier) => (
+              <Button
+                aria-pressed={selectedMultiplier === multiplier}
+                className="min-h-11 px-3"
+                key={multiplier}
+                onClick={() => onServingMultiplierChange(multiplier)}
+                size="sm"
+                type="button"
+                variant={selectedMultiplier === multiplier ? "default" : "secondary"}
+              >
+                {multiplier}x
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         {butterMentioned || assumptions ? (
           <Button
+            className="min-h-11 w-full sm:w-auto"
             onClick={() =>
               onButterIncludedChange(!assumptions?.butterInferred)
             }
@@ -578,7 +614,7 @@ function EstimateAssumptionsSection({
             {assumptions?.butterInferred ? "Remove butter" : "Add butter"}
           </Button>
         ) : null}
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs leading-5 text-muted-foreground">
           {assumptions?.reviewBeforeSave ??
             "Review estimated serving assumptions before saving."}
         </span>

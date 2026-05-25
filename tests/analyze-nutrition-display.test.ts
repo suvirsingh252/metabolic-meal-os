@@ -122,6 +122,10 @@ test("manual edits convert estimated nutrition to user-entered provenance", asyn
   assert.equal(edited.totals.carbs, null);
   assert.match(edited.provenance, /free-text/i);
   assert.match(edited.provenance, /edited during meal review/i);
+
+  const displayState = getNutritionTotalsDisplayState(edited);
+  assert.equal(displayState.mode, "manual");
+  assert.equal(displayState.sourceLabel, "User-edited estimate");
 });
 
 test("serving multiplier utility preserves null fields", async () => {
@@ -148,6 +152,23 @@ test("serving multiplier utility preserves null fields", async () => {
   assert.equal(displayState.sourceLabel, "Reviewed estimate");
 });
 
+test("repeated serving multiplier changes replace stale provenance notes", async () => {
+  const prepared = await prepareRecipeForMealAnalysis({
+    recipeText: "gobi parantha with butter"
+  });
+  const estimate = prepared.nutritionEstimate;
+
+  assert.ok(estimate);
+
+  const firstEdit = applyEstimatedServingMultiplier(estimate, 1.5);
+  const secondEdit = applyEstimatedServingMultiplier(firstEdit, 2);
+
+  assert.equal(secondEdit.totals.calories, 660);
+  assert.equal(secondEdit.assumptions?.servingMultiplier, 2);
+  assert.doesNotMatch(secondEdit.provenance, /1.5x/);
+  assert.match(secondEdit.provenance, /serving multiplier set to 2x/);
+});
+
 test("reviewed butter adjustment updates provenance and estimate base", async () => {
   const prepared = await prepareRecipeForMealAnalysis({
     recipeText: "gobi parantha without butter"
@@ -165,4 +186,49 @@ test("reviewed butter adjustment updates provenance and estimate base", async ()
   assert.equal(edited.totals.carbs, null);
   assert.equal(edited.assumptions?.butterInferred, true);
   assert.match(edited.provenance, /butter added/i);
+});
+
+test("reviewed butter removal after serving adjustment keeps provenance concise", async () => {
+  const prepared = await prepareRecipeForMealAnalysis({
+    recipeText: "gobi parantha with butter"
+  });
+  const estimate = prepared.nutritionEstimate;
+
+  assert.ok(estimate);
+
+  const larger = applyEstimatedServingMultiplier(estimate, 1.5);
+  const withoutButter = applyEstimatedButterAdjustment(larger, false);
+
+  assert.equal(withoutButter.totals.calories, 427.5);
+  assert.equal(withoutButter.assumptions?.butterInferred, false);
+  assert.equal(
+    withoutButter.assumptions?.matchedComponents.some((component) =>
+      /butter/i.test(component)
+    ),
+    false
+  );
+  assert.match(withoutButter.provenance, /serving multiplier set to 1.5x/);
+  assert.match(withoutButter.provenance, /butter removed/);
+  assert.doesNotMatch(withoutButter.provenance, /butter added/);
+});
+
+test("clearing estimated values preserves null-safe user-entered nutrition", async () => {
+  const prepared = await prepareRecipeForMealAnalysis({
+    recipeText: "rice and chicken"
+  });
+  const estimate = prepared.nutritionEstimate;
+
+  assert.ok(estimate);
+
+  const edited = applyNutritionReviewEdit(
+    estimate,
+    estimate.provenance,
+    "calories",
+    null
+  );
+
+  assert.equal(edited.source, "user-entered");
+  assert.equal(edited.totals.calories, null);
+  assert.equal(edited.totals.protein, 35);
+  assert.equal(hasAnyNutritionValue(edited.totals), true);
 });

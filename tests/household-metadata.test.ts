@@ -107,15 +107,108 @@ test("mapMealAnalysisToNotionProperties persists nutrition totals when schema su
     {
       calories: { name: "Calories", type: "number" },
       proteinG: { name: "Protein (g)", type: "number" },
+      carbohydratesG: { name: "Carbs (g)", type: "number" },
+      fatG: { name: "Fat (g)", type: "number" },
       fiberG: { name: "Fiber (g)", type: "number" },
-      nutritionConfidence: { name: "Nutrition Confidence", type: "select" }
+      sodiumMg: { name: "Sodium (mg)", type: "number" },
+      sugarG: { name: "Sugar (g)", type: "number" },
+      nutritionConfidence: { name: "Nutrition Confidence", type: "select" },
+      nutritionProvenance: {
+        name: "Nutrition Provenance",
+        type: "rich_text"
+      },
+      nutritionSource: { name: "Nutrition Source", type: "select" }
     }
   );
 
   assert.deepEqual(properties.Calories, { number: 650 });
   assert.deepEqual(properties["Protein (g)"], { number: 35 });
+  assert.deepEqual(properties["Carbs (g)"], { number: 70 });
+  assert.deepEqual(properties["Fat (g)"], { number: 18 });
   assert.deepEqual(properties["Fiber (g)"], { number: 12 });
+  assert.deepEqual(properties["Sodium (mg)"], { number: 900 });
+  assert.deepEqual(properties["Sugar (g)"], { number: 8 });
   assert.deepEqual(properties["Nutrition Confidence"], {
     select: { name: "medium" }
+  });
+  assert.deepEqual(properties["Nutrition Provenance"], {
+    rich_text: [
+      {
+        text: {
+          content: "Recipe page structured nutrition facts"
+        }
+      }
+    ]
+  });
+  assert.deepEqual(properties["Nutrition Source"], {
+    select: { name: "recipe-json-ld" }
+  });
+});
+
+test("mapMealAnalysisToNotionProperties leaves unavailable nutrition blank", () => {
+  const properties = mapMealAnalysisToNotionProperties(
+    {
+      ...meal,
+      nutritionEstimate: null
+    },
+    {
+      calories: { name: "Calories", type: "number" },
+      proteinG: { name: "Protein (g)", type: "number" },
+      nutritionConfidence: { name: "Nutrition Confidence", type: "select" },
+      nutritionProvenance: {
+        name: "Nutrition Provenance",
+        type: "rich_text"
+      },
+      nutritionSource: { name: "Nutrition Source", type: "select" }
+    }
+  );
+
+  assert.equal("Calories" in properties, false);
+  assert.equal("Protein (g)" in properties, false);
+  assert.equal("Nutrition Confidence" in properties, false);
+  assert.equal("Nutrition Provenance" in properties, false);
+  assert.equal("Nutrition Source" in properties, false);
+});
+
+test("mapMealAnalysisToNotionProperties persists partial manual overrides without zero filling", () => {
+  const properties = mapMealAnalysisToNotionProperties(
+    {
+      ...meal,
+      nutritionEstimate: {
+        totals: {
+          calories: null,
+          protein: 35,
+          carbs: null,
+          fat: null,
+          fiber: 5,
+          sodium: null,
+          sugar: null
+        },
+        confidence: "low",
+        provenance:
+          "Estimated from free-text meal description; edited during meal review",
+        source: "user-entered"
+      }
+    },
+    {
+      calories: { name: "Calories", type: "number" },
+      proteinG: { name: "Protein (g)", type: "number" },
+      fiberG: { name: "Fiber (g)", type: "number" },
+      sodiumMg: { name: "Sodium (mg)", type: "number" },
+      nutritionConfidence: { name: "Nutrition Confidence", type: "select" },
+      nutritionProvenance: {
+        name: "Nutrition Provenance",
+        type: "rich_text"
+      },
+      nutritionSource: { name: "Nutrition Source", type: "select" }
+    }
+  );
+
+  assert.equal("Calories" in properties, false);
+  assert.deepEqual(properties["Protein (g)"], { number: 35 });
+  assert.deepEqual(properties["Fiber (g)"], { number: 5 });
+  assert.equal("Sodium (mg)" in properties, false);
+  assert.deepEqual(properties["Nutrition Source"], {
+    select: { name: "user-entered" }
   });
 });

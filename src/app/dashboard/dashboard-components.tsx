@@ -35,7 +35,7 @@ export function MetricCard({
             <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               {label}
             </p>
-            <p className="mt-2 truncate text-2xl font-semibold leading-tight">{value}</p>
+            <p className="mt-2 break-words text-2xl font-semibold leading-tight">{value}</p>
           </div>
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
             <Icon className="h-4 w-4" />
@@ -55,9 +55,9 @@ export function TargetProgressBar({
   title: string;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <div className="rounded-md border bg-card p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="font-medium">{title}</p>
           <p className="mt-1 text-sm text-muted-foreground">{state.detail}</p>
         </div>
@@ -101,7 +101,7 @@ export function NutritionSignalChip({
   tone?: TargetProgressTone;
 }) {
   return (
-    <Badge className={cn("whitespace-nowrap", signalToneClassName(tone))}>
+    <Badge className={cn("whitespace-normal text-left leading-5 sm:whitespace-nowrap", signalToneClassName(tone))}>
       {children}
     </Badge>
   );
@@ -113,7 +113,7 @@ export function RecentMealCard({ meal }: { meal: DashboardMealSummary }) {
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate font-semibold leading-tight">{meal.name}</h3>
+            <h3 className="break-words font-semibold leading-tight">{meal.name}</h3>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
               {formatDateTime(meal.loggedAt)}
@@ -127,7 +127,7 @@ export function RecentMealCard({ meal }: { meal: DashboardMealSummary }) {
             </Button>
           ) : null}
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap items-start gap-2">
           <NutritionSignalChip>{formatNutrient(meal.calories, "kcal")}</NutritionSignalChip>
           <NutritionSignalChip>{formatNutrient(meal.protein, "g protein")}</NutritionSignalChip>
           <NutritionSignalChip tone={meal.confidence || meal.provenance ? "steady" : "unavailable"}>
@@ -170,14 +170,14 @@ export function MealCalloutCard({
             <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               {title}
             </p>
-            <h3 className="mt-2 truncate text-lg font-semibold leading-tight">{meal.name}</h3>
+            <h3 className="mt-2 break-words text-lg font-semibold leading-tight">{meal.name}</h3>
           </div>
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
             <ArrowUpRight className="h-4 w-4" />
           </span>
         </div>
         <p className="mt-3 text-sm leading-5 text-muted-foreground">{description}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap items-start gap-2">
           <MealQualityBadge label={meal.qualityLabel} score={meal.qualityScore} />
           <NutritionSignalChip>{formatNutrient(meal.calories, "kcal")}</NutritionSignalChip>
           <NutritionSignalChip>{formatNutrient(meal.protein, "g protein")}</NutritionSignalChip>

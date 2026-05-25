@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-25 (Serving Size Controls v1)
+Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -88,6 +88,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add meal-level nutrition persistence v1 for recipe JSON-LD nutrition facts and user-entered review totals.
 - [x] Add Good Enough Nutrition Estimation v1 for manual/free-text meals, covering conservative calories/protein/fiber only with estimated provenance.
 - [x] Add Serving Size Controls v1 for estimated manual/free-text meals, including deterministic quantity parsing, assumption provenance, and coarse pre-save review controls.
+- [x] Harden estimate review UX on mobile with clearer source labels, wrapping assumption badges/chips, larger serving controls, and concise provenance transitions.
+- [x] Expand household shorthand fixture coverage for common meals such as rotis and dal, paneer wraps, rice and chicken, egg bhurji with toast, oats with yogurt, chicken salad, leftover curry and rice, paneer bowls, and eggs/toast with butter.
 - [x] Add editable nutrition totals in the `/analyze` review flow.
 - [x] Add meal quality v1 scoring and dashboard quality surfaces.
 - [x] Add legacy scorecard read-time quality backfill for saved meals without exact nutrition totals.
@@ -97,6 +99,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
 - [x] Review evidence-aware guidance quality on representative real household meals and tune the first household answer.
+- [x] Audit estimate review/dashboard nutrition surfaces for clarity, mobile readability, and supportive tone.
 - [ ] Audit remaining household UX flows for clarity, mobile readability, and supportive tone.
 - [x] Harden recipe parser robustness for first-pass representative recipe and social/shared URL intake.
 - [ ] Continue real-world recipe/social URL testing and record domains that are blocked, login-gated, or script-rendered.
@@ -115,6 +118,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Decide first-pass FoodData Central nutrient provenance model with explicit per-100g basis and source metadata.
 - [ ] Add optional Meals Notion source fields manually or document the exact schema setup.
 - [ ] Add optional Meals Notion nutrition and quality fields manually, then verify `/api/dashboard` and new saves use them.
+- [ ] Run an on-device iPhone Safari pass against the deployed app for `/analyze` estimate review and `/dashboard` cards.
 - [ ] Add a richer household recipe feedback UI/database slice using `HouseholdRecipeFeedback`.
 - [ ] Simplify `/feedback`, `/meals`, and `/settings` flows after the `/analyze` hierarchy pass.
 - [ ] Add a persisted household preferences source before adding multi-household support.
@@ -162,3 +166,4 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Dashboard targets are client-side only and need persisted user/household settings later.
 - [ ] Legacy nutrition and quality backfill is read-time only; no Notion write-back migration exists yet.
 - [ ] Free-text nutrition estimation and serving controls are deliberately narrow, coarse, and beta-grade; they should not be treated as clinical-grade nutrition science.
+- [ ] Browser/device visual coverage is still manual; add lightweight visual regression or scripted mobile checks if the UI surface grows.

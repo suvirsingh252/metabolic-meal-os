@@ -1,6 +1,20 @@
 # Architectural Decisions
 
-Last updated: 2026-05-25 (Serving Size Controls v1)
+Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
+
+## 2026-05-25 — Estimate Review Hardening Prioritizes Clarity Over Precision
+
+Decision: Harden the estimate review UI, mobile wrapping, provenance transitions, and household shorthand fixtures without expanding into advanced nutrition modeling.
+
+Reasoning:
+- Beta reliability now depends on users understanding whether nutrition is structured, estimated, reviewed, manually edited, or unavailable.
+- Real household entries are short and varied, so deterministic fixture coverage for common shorthand is more valuable than adding many precise nutrients.
+- Provenance should stay traceable after repeated serving changes, butter toggles, and manual edits without accumulating stale notes.
+
+Tradeoffs:
+- The estimator remains intentionally incomplete and only fills calories, protein, and fiber.
+- No Notion schema changes were added; existing nutrition source/provenance/confidence fields already carry reviewed estimate and manual override context.
+- Mobile improvements use existing Tailwind/UI primitives, not a new design dependency.
 
 ## 2026-05-25 — Serving Size Controls Stay Coarse And Reviewable
 
@@ -28,7 +42,7 @@ Reasoning:
 Tradeoffs:
 - Estimates are intentionally incomplete, conservative, and not clinical-grade.
 - Serving assumptions are coarse household portions and must be reviewable before save.
-- Coverage is limited to common components such as paratha/parantha, gobi/cauliflower, butter, eggs, chicken breast, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, and salad/vegetables.
+- Coverage is limited to common components such as paratha/parantha, gobi/cauliflower, butter, eggs, chicken, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, salad/vegetables, toast, wraps/rolls, and leftover curry/sabzi.
 
 ## 2026-05-25 — Dashboard Intelligence Uses A Stable View Model
 

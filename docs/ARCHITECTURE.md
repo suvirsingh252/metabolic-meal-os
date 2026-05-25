@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-05-25 (Serving Size Controls v1)
+Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -79,7 +79,7 @@ Recipe extraction:
 - Social/video pages only use accessible HTML/OpenGraph metadata. The app does not use browser automation, video downloads, paid scraping, or platform bypasses.
 - If a social/video link or blocked page does not expose enough recipe detail, `/api/analyze-meal` returns a clear fallback asking the user to paste the caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
 - If a recipe page exposes schema.org JSON-LD nutrition facts, the parser carries meal-level totals forward with provenance. Structured recipe nutrition takes precedence over any estimate.
-- For manual/free-text meals without structured nutrition, `src/lib/domain/nutrition/free-text-estimator.ts` can add conservative dashboard-critical estimates for calories, protein, and fiber only. It now parses coarse serving signals such as numeric quantities, `half bowl`, `one bowl`, `large`, `small`, `extra butter`, `with butter`, and `without butter`. Sodium, sugar, fat, and carbs remain `null` unless they came from structured data or user review.
+- For manual/free-text meals without structured nutrition, `src/lib/domain/nutrition/free-text-estimator.ts` can add conservative dashboard-critical estimates for calories, protein, and fiber only. It now parses coarse household shorthand such as `2 rotis and dal`, `paneer wrap`, `rice and chicken`, `egg bhurji and toast`, `oats with yogurt`, `leftover curry and rice`, `half bowl dal`, `small paneer bowl`, `large chicken salad`, and butter inclusion/exclusion. Sodium, sugar, fat, and carbs remain `null` unless they came from structured data or user review.
 - The AI prompt still does not ask OpenAI to calculate calories or exact macros.
 
 Structured output is used so the review screen receives predictable fields.
@@ -142,8 +142,9 @@ Nutrition provenance:
 - FoodData Central mappings emit explicit `amountBasis`, `basisUnit`, `per100g`, source ID, confidence, food state, nutrients, and `lastVerifiedAt`.
 - Runtime validation rejects snapshots that would persist nutrients without a basis.
 - Free-text meal estimates use `nutritionEstimate.source: estimated`, low/medium confidence, optional assumption metadata, and provenance that names matched components, serving-size assumptions, quantity multipliers, confidence, and review-before-save guidance.
-- The `/analyze` review panel shows estimate assumptions only for estimated/reviewed-estimate nutrition, not structured recipe JSON-LD nutrition. Users can apply coarse serving multipliers (`0.5x`, `1x`, `1.5x`, `2x`) and add/remove inferred butter before saving.
-- User edits in the review panel convert the nutrition source to `user-entered` and append review-edit or reviewed-estimate provenance. Blank fields remain blank/null, not zero.
+- The `/analyze` review panel distinguishes structured recipe nutrition, estimated nutrition, reviewed estimates, user-edited estimate values, manual values, and unavailable nutrition. Estimate assumptions are shown only for estimated/reviewed-estimate nutrition, not structured recipe JSON-LD nutrition.
+- Users can apply coarse serving multipliers (`0.5x`, `1x`, `1.5x`, `2x`) and add/remove inferred butter before saving. Repeated serving or butter changes replace stale review notes so provenance stays concise.
+- User edits in the review panel convert the nutrition source to `user-entered` and append review-edit provenance. Blank fields remain blank/null, not zero.
 
 ## Dashboard Analytics Architecture
 
@@ -176,6 +177,7 @@ Aggregation rules:
 - zero is preserved as a known value;
 - totals only include nutrients that are present;
 - estimated or reviewed-estimate calories/protein/fiber can contribute to dashboard totals when saved, but provenance/source distinguish them from structured recipe facts and user-entered values;
+- dashboard cards and chips are designed to preserve unknown nutrition states without forcing zeroes and now wrap labels more reliably on mobile;
 - functions are deterministic and unit tested.
 
 Targets are configurable in the dashboard UI for calories, protein, fiber, and sodium. Current target settings are client-side only through `localStorage` and query params to `/api/dashboard`; there is no server-side user settings persistence yet.

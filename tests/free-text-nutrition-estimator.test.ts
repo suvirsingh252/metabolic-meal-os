@@ -71,6 +71,118 @@ test("free-text nutrition estimator handles half bowl dal with rice", () => {
   assert.match(estimate?.provenance ?? "", /0.5x for dal\/lentils serving/i);
 });
 
+test("free-text nutrition estimator handles common household shorthand fixtures", () => {
+  const fixtures: {
+    text: string;
+    calories: number;
+    protein: number;
+    fiber: number;
+    components: RegExp[];
+    confidence: "low" | "medium";
+  }[] = [
+    {
+      text: "2 rotis and dal",
+      calories: 420,
+      protein: 20,
+      fiber: 14,
+      components: [/2 x 1 roti\/chapati/i, /dal\/lentils serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "paneer wrap",
+      calories: 430,
+      protein: 19,
+      fiber: 3,
+      components: [/paneer serving/i, /wrap\/roti roll serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "rice and chicken",
+      calories: 370,
+      protein: 35,
+      fiber: 1,
+      components: [/cooked chicken serving/i, /cooked rice serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "egg bhurji and toast",
+      calories: 150,
+      protein: 9,
+      fiber: 2,
+      components: [/1 egg/i, /toast serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "oats with yogurt",
+      calories: 250,
+      protein: 13,
+      fiber: 4,
+      components: [/oats serving/i, /plain yogurt\/curd serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "salad with chicken",
+      calories: 205,
+      protein: 33,
+      fiber: 3,
+      components: [/salad\/vegetables serving/i, /cooked chicken serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "leftover curry and rice",
+      calories: 385,
+      protein: 10,
+      fiber: 5,
+      components: [/leftover curry serving/i, /cooked rice serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "small paneer bowl",
+      calories: 195,
+      protein: 10.5,
+      fiber: 0,
+      components: [/0.8 x paneer serving/i],
+      confidence: "low"
+    },
+    {
+      text: "large chicken salad",
+      calories: 307.5,
+      protein: 49.5,
+      fiber: 4.5,
+      components: [/1.5 x cooked chicken serving/i, /1.5 x salad\/vegetables serving/i],
+      confidence: "medium"
+    },
+    {
+      text: "2 eggs and toast with butter",
+      calories: 265,
+      protein: 15,
+      fiber: 2,
+      components: [/2 x 1 egg/i, /toast serving/i, /small butter serving/i],
+      confidence: "medium"
+    }
+  ];
+
+  for (const fixture of fixtures) {
+    const estimate = estimateFreeTextNutrition(fixture.text);
+
+    assert.equal(estimate?.totals.calories, fixture.calories, fixture.text);
+    assert.equal(estimate?.totals.protein, fixture.protein, fixture.text);
+    assert.equal(estimate?.totals.fiber, fixture.fiber, fixture.text);
+    assert.equal(estimate?.confidence, fixture.confidence, fixture.text);
+    assert.equal(estimate?.totals.carbs, null, fixture.text);
+    assert.equal(estimate?.totals.fat, null, fixture.text);
+    assert.equal(estimate?.totals.sodium, null, fixture.text);
+
+    for (const component of fixture.components) {
+      assert.match(
+        estimate?.assumptions?.matchedComponents.join(" | ") ?? "",
+        component,
+        fixture.text
+      );
+    }
+  }
+});
+
 test("recipe JSON-LD structured nutrition remains available ahead of estimates", () => {
   const parsed = parseRecipeJsonLd(
     `<html><head><script type="application/ld+json">

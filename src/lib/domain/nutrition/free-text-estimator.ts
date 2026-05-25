@@ -53,9 +53,9 @@ const freeTextNutritionRules: FreeTextNutritionRule[] = [
   },
   {
     id: "chicken-breast",
-    label: "cooked chicken breast serving",
-    patterns: [/\bchicken breast\b/i, /\bgrilled chicken\b/i],
-    quantityPatterns: [/\bchicken breasts?\b/i, /\bgrilled chicken\b/i],
+    label: "cooked chicken serving",
+    patterns: [/\bchicken(?:\s+breast)?\b/i, /\bgrilled chicken\b/i],
+    quantityPatterns: [/\bchicken(?:\s+breasts?)?\b/i, /\bgrilled chicken\b/i],
     calories: 165,
     protein: 31,
     fiber: 0,
@@ -130,6 +130,36 @@ const freeTextNutritionRules: FreeTextNutritionRule[] = [
     protein: 2,
     fiber: 3,
     primaryFood: true
+  },
+  {
+    id: "toast",
+    label: "toast serving",
+    patterns: [/\btoast\b/i],
+    quantityPatterns: [/\btoast\b/i],
+    calories: 80,
+    protein: 3,
+    fiber: 2,
+    primaryFood: true
+  },
+  {
+    id: "wrap",
+    label: "wrap/roti roll serving",
+    patterns: [/\bwraps?\b/i, /\brolls?\b/i],
+    quantityPatterns: [/\bwraps?\b/i, /\brolls?\b/i],
+    calories: 170,
+    protein: 5,
+    fiber: 3,
+    primaryFood: true
+  },
+  {
+    id: "curry",
+    label: "leftover curry serving",
+    patterns: [/\bcurr(?:y|ies)\b/i, /\bsabzi\b/i, /\bsubzi\b/i],
+    quantityPatterns: [/\bcurr(?:y|ies)\b/i, /\bsabzi\b/i, /\bsubzi\b/i],
+    calories: 180,
+    protein: 6,
+    fiber: 4,
+    primaryFood: true
   }
 ];
 
@@ -160,7 +190,7 @@ const numberWords: Record<string, number> = {
 function findQuantityBeforeTerm(description: string, termPattern: RegExp) {
   const source = termPattern.source.replace(/^\\b/, "");
   const quantityPattern = new RegExp(
-    `\\b(?:(half|one|two|three|four|five)|(\\d+(?:\\.\\d+)?))\\s+(?:a\\s+|an\\s+)?(?:small\\s+|large\\s+)?(?:bowl\\s+of\\s+)?(?:[a-z-]+\\s+){0,2}${source}`,
+    `\\b(?:(half|one|two|three|four|five)|(\\d+(?:\\.\\d+)?))\\s+(?:a\\s+|an\\s+)?(?:small\\s+|large\\s+)?(?:bowl\\s+of\\s+)?(?:(?!(?:and|with|plus)\\b)[a-z-]+\\s+){0,2}${source}`,
     "i"
   );
   const match = description.match(quantityPattern);

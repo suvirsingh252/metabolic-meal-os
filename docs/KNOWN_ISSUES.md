@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-05-25 (Serving Size Controls v1)
+Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -30,13 +30,14 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Known Ingredient context is best-effort token/key matched. It should be reviewed with real household meals before relying on it heavily.
 - [ ] FoodData Central matching is improved but still heuristic. Variety-specific staples such as basmati rice may still use branded fallback when USDA does not return a suitable generic match; review `matchedDescription`, `matching`, notes, and `confidence`.
 - [ ] Meal-level nutrition persistence depends on compatible existing Notion fields. The app does not create or mutate Notion schema.
-- [ ] Free-text nutrition estimation is intentionally incomplete and not clinical-grade. It currently covers only a small list of common meal components, parses only coarse serving-size signals, and only estimates calories, protein, and fiber.
+- [ ] Free-text nutrition estimation is intentionally incomplete and not clinical-grade. It covers a small tested list of common household meal components and shorthand, parses only coarse serving-size signals, and only estimates calories, protein, and fiber.
 - [ ] Legacy meals may lack exact nutrition totals. Quality can backfill from legacy scorecards at read time, but no Notion write-back migration exists yet.
 - [ ] Dashboard targets are client-side only through `localStorage`; they are not persisted server-side and are not household/user-scoped.
 
 ## UX Problems
 
-- [ ] `/analyze` review has household-first hierarchy and tone tuning, but save, meals, feedback, and settings flows are still functional and plain.
+- [ ] `/analyze` review has household-first hierarchy, tone tuning, and a mobile hardening pass for nutrition estimates, but save, meals, feedback, and settings flows are still functional and plain.
+- [ ] Estimate review controls are intentionally coarse. They handle serving multipliers and butter toggles, but do not support detailed ingredient quantities, cooking fat amounts, or serving-by-weight workflows.
 - [ ] Meals and Ingredients APIs support pagination/search, but client pages only have basic existing UX and should be wired more fully.
 - [ ] `/analyze` is now reducer/component based, but the result panel can still be split into smaller section files if it grows again.
 - [ ] Ingredient -> Meal relation writes now work when the active Ingredients data source has a compatible Meals relation property; missing or incompatible relation schema still produces a safe non-blocking warning.

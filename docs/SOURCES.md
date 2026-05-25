@@ -179,7 +179,7 @@ Meal-level nutrition fields are part of the meal review/save path, not the FoodD
 
 Sources:
 - Recipe page structured data (`recipe-json-ld`) when exposed by the recipe site.
-- Conservative free-text meal estimates (`estimated`) for recognized manual meal components. These currently cover calories, protein, and fiber only, with coarse serving-size assumptions for simple quantities, bowl phrases, large/small portions, and butter inclusion/exclusion.
+- Conservative free-text meal estimates (`estimated`) for recognized manual meal components. These currently cover calories, protein, and fiber only, with coarse serving-size assumptions for simple quantities, bowl phrases, large/small portions, household shorthand, and butter inclusion/exclusion.
 - User-entered, user-corrected, or user-reviewed estimate values (`user-entered`).
 
 Persisted shape:
@@ -200,7 +200,8 @@ Rules:
 - Values must be non-negative finite numbers.
 - Free-text estimates leave sodium, sugar, fat, and carbs unknown unless another source or user review supplies them.
 - Estimated provenance names matched components, serving-size assumptions, quantity multipliers, confidence, and review-before-save guidance.
-- The review UI can adjust estimated meals with coarse serving multipliers (`0.5x`, `1x`, `1.5x`, `2x`) and add/remove butter where relevant. These controls are intentionally beta-grade and not clinical macro modeling.
+- The review UI can adjust estimated meals with coarse serving multipliers (`0.5x`, `1x`, `1.5x`, `2x`) and add/remove butter where relevant. Repeated review actions replace stale serving/butter notes so the saved provenance stays concise. These controls are intentionally beta-grade and not clinical macro modeling.
 - Structured recipe nutrition takes precedence over free-text estimates, and user edits override estimates.
+- No new Notion schema is required for serving-adjusted provenance or user-entered override tracking. The existing nutrition source, provenance, confidence, and nullable nutrient fields are sufficient for the current dashboard and save workflow.
 - The app does not calculate meal totals from ingredient-level per-100g snapshots without quantities.
 - The app does not create Notion schema; compatible Meals properties must already exist.

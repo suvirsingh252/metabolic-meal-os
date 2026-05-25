@@ -1,5 +1,30 @@
 # Session Log
 
+## 2026-05-25 Visual + Mobile Review Hardening and Household Fixture Expansion
+
+Goal:
+- Harden the estimate review experience, mobile readability, household shorthand reliability, and provenance edge cases before expanding nutrition rules further.
+
+Completed work:
+- Expanded the deterministic free-text estimator to cover generic chicken, toast, wraps/rolls, and leftover curry/sabzi while keeping estimates limited to calories, protein, and fiber.
+- Added household shorthand fixtures for `2 rotis and dal`, `paneer wrap`, `rice and chicken`, `egg bhurji and toast`, `oats with yogurt`, `salad with chicken`, `leftover curry and rice`, `small paneer bowl`, `large chicken salad`, and `2 eggs and toast with butter`.
+- Hardened quantity parsing so a quantity before one component does not cross conjunctions and incorrectly multiply a later component.
+- Improved `/analyze` nutrition review clarity: structured, estimated, reviewed estimate, user-edited estimate/manual, and unavailable states are more distinct.
+- Made estimate assumption badges wrap, serving multiplier buttons easier to tap on mobile, provenance text more readable, and dashboard chips/cards less prone to truncating important labels.
+- Changed repeated serving multiplier and butter review actions to replace stale provenance notes instead of accumulating conflicting notes.
+- Added tests for serving adjustments, butter removal after serving adjustment, clearing estimated values, partial manual overrides, unavailable nutrition persistence, and Notion null-safe behavior.
+
+Validation:
+- `npm test` passed.
+
+Notion review:
+- No Notion schema/workflow update is required for this slice. Serving-adjusted provenance, estimate source tracking, and user-entered override tracking already fit the existing optional `Nutrition Source`, `Nutrition Provenance`, `Nutrition Confidence`, and nullable nutrition number fields. Dashboard compatibility is preserved because totals remain numeric-or-null and source/provenance remain strings.
+
+Known limitations:
+- Estimates remain conservative, incomplete, and not clinical-grade.
+- No micronutrients, detailed cooking-fat amounts, ingredient-weight parsing, or advanced nutrition model expansion was added.
+- On-device mobile Safari review is still recommended before production promotion.
+
 ## 2026-05-25 Good Enough Nutrition Estimation v1
 
 Goal:
