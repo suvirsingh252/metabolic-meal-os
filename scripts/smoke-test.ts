@@ -1,5 +1,7 @@
 type HttpMethod = "GET" | "POST";
 
+export {};
+
 interface SmokeCheck {
   name: string;
   method: HttpMethod;

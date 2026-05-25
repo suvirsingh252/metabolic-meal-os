@@ -3,7 +3,7 @@ import type {
   CreatePageParameters,
   PageObjectResponse
 } from "@notionhq/client/build/src/api-endpoints";
-import { getNotionIngredientsEnv } from "@/src/lib/env";
+import { getNotionIngredientsEnv, getNotionMealsEnv } from "@/src/lib/env";
 import {
   normalizeIngredientKey,
   normalizeIngredientListWithStats
@@ -20,6 +20,19 @@ interface IngredientDatabaseSchema {
   sourceMealPropertyName: string | null;
   sourceMealPropertyType: "rich_text" | "select" | null;
   createdDatePropertyName: string | null;
+  mealRelationPropertyName: string | null;
+}
+
+interface ExistingIngredientRecord {
+  key: string;
+  pageId: string;
+  relationIds: string[];
+  relationHasMore: boolean;
+}
+
+interface RelationTarget {
+  databaseId: string | null;
+  dataSourceId: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -70,6 +83,12 @@ function date(start: string) {
   };
 }
 
+function relation(pageIds: string[]) {
+  return {
+    relation: pageIds.map((id) => ({ id }))
+  };
+}
+
 function getPrimaryDataSourceId(database: unknown) {
   if (
     isRecord(database) &&
@@ -100,7 +119,68 @@ function getPropertyType(property: unknown) {
   return null;
 }
 
-function getIngredientDatabaseSchema(database: unknown): IngredientDatabaseSchema {
+function getRelationTarget(property: unknown): RelationTarget | null {
+  if (
+    isRecord(property) &&
+    property.type === "relation" &&
+    isRecord(property.relation)
+  ) {
+    return {
+      databaseId:
+        typeof property.relation.database_id === "string"
+          ? property.relation.database_id
+          : null,
+      dataSourceId:
+        typeof property.relation.data_source_id === "string"
+          ? property.relation.data_source_id
+          : null
+    };
+  }
+
+  return null;
+}
+
+function isRelationTargetCompatible(
+  property: unknown,
+  mealDatabaseId: string,
+  mealDataSourceId: string
+) {
+  const target = getRelationTarget(property);
+
+  return Boolean(
+    target &&
+      (target.databaseId === mealDatabaseId ||
+        target.dataSourceId === mealDataSourceId)
+  );
+}
+
+function findMealRelationPropertyName(
+  properties: Record<string, unknown>,
+  mealDatabaseId: string,
+  mealDataSourceId: string
+) {
+  const preferredRelation = ["Meal", "Meals"]
+    .map((name) => [name, properties[name]] as const)
+    .find(([, property]) =>
+      isRelationTargetCompatible(property, mealDatabaseId, mealDataSourceId)
+    );
+
+  if (preferredRelation) {
+    return preferredRelation[0];
+  }
+
+  const compatibleRelation = Object.entries(properties).find(([, property]) =>
+    isRelationTargetCompatible(property, mealDatabaseId, mealDataSourceId)
+  );
+
+  return compatibleRelation?.[0] ?? null;
+}
+
+function getIngredientDatabaseSchema(
+  database: unknown,
+  mealDatabaseId: string | null,
+  mealDataSourceId: string | null
+): IngredientDatabaseSchema {
   const properties = getProperties(database);
   const entries = Object.entries(properties);
   const titleEntry = entries.find(([, property]) => getPropertyType(property) === "title");
@@ -136,7 +216,11 @@ function getIngredientDatabaseSchema(database: unknown): IngredientDatabaseSchem
     titlePropertyName: titleEntry[0],
     sourceMealPropertyName: sourceMealEntry?.[0] ?? null,
     sourceMealPropertyType,
-    createdDatePropertyName: createdDateEntry?.[0] ?? null
+    createdDatePropertyName: createdDateEntry?.[0] ?? null,
+    mealRelationPropertyName:
+      mealDatabaseId && mealDataSourceId
+        ? findMealRelationPropertyName(properties, mealDatabaseId, mealDataSourceId)
+        : null
   };
 }
 
@@ -145,7 +229,8 @@ function describeSchema(schema: IngredientDatabaseSchema) {
     titlePropertyName: schema.titlePropertyName,
     sourceMealPropertyName: schema.sourceMealPropertyName,
     sourceMealPropertyType: schema.sourceMealPropertyType,
-    createdDatePropertyName: schema.createdDatePropertyName
+    createdDatePropertyName: schema.createdDatePropertyName,
+    mealRelationPropertyName: schema.mealRelationPropertyName
   };
 }
 
@@ -164,12 +249,30 @@ function isFullPage(page: unknown): page is PageObjectResponse {
   return isRecord(page) && isRecord(page.properties);
 }
 
-async function listExistingIngredientKeys(
+function readRelationIds(property: NotionProperty | undefined) {
+  if (!property || property.type !== "relation") {
+    return {
+      relationIds: [],
+      relationHasMore: false
+    };
+  }
+
+  return {
+    relationIds: property.relation.map((item) => item.id),
+    relationHasMore:
+      "has_more" in property && typeof property.has_more === "boolean"
+        ? property.has_more
+        : false
+  };
+}
+
+async function listExistingIngredientRecords(
   notion: ReturnType<typeof getNotionClient>,
   dataSourceId: string,
-  titlePropertyName: string
+  titlePropertyName: string,
+  mealRelationPropertyName: string | null
 ) {
-  const existingKeys = new Set<string>();
+  const existingRecords = new Map<string, ExistingIngredientRecord>();
   let startCursor: string | undefined;
 
   do {
@@ -188,7 +291,16 @@ async function listExistingIngredientKeys(
       const key = normalizeIngredientKey(titleValue);
 
       if (key) {
-        existingKeys.add(key);
+        const relationState = mealRelationPropertyName
+          ? readRelationIds(page.properties[mealRelationPropertyName])
+          : { relationIds: [], relationHasMore: false };
+
+        existingRecords.set(key, {
+          key,
+          pageId: page.id,
+          relationIds: relationState.relationIds,
+          relationHasMore: relationState.relationHasMore
+        });
       }
     }
 
@@ -197,13 +309,14 @@ async function listExistingIngredientKeys(
       : undefined;
   } while (startCursor);
 
-  return existingKeys;
+  return existingRecords;
 }
 
 function buildIngredientProperties(
   ingredientName: string,
   mealName: string,
-  schema: IngredientDatabaseSchema
+  schema: IngredientDatabaseSchema,
+  mealPageId: string | null
 ): PageProperties {
   const properties: PageProperties = {
     [schema.titlePropertyName]: title(ingredientName)
@@ -223,7 +336,22 @@ function buildIngredientProperties(
     properties[schema.createdDatePropertyName] = date(new Date().toISOString());
   }
 
+  if (schema.mealRelationPropertyName && mealPageId) {
+    properties[schema.mealRelationPropertyName] = relation([mealPageId]);
+  }
+
   return properties;
+}
+
+function buildUpdatedRelationIds(
+  record: ExistingIngredientRecord,
+  mealPageId: string | null
+) {
+  if (!mealPageId || record.relationIds.includes(mealPageId)) {
+    return null;
+  }
+
+  return [...record.relationIds, mealPageId];
 }
 
 function validateRequest(body: unknown) {
@@ -241,7 +369,11 @@ function validateRequest(body: unknown) {
 
   return {
     mealName: body.mealName.trim(),
-    ingredients: body.ingredients
+    ingredients: body.ingredients,
+    mealPageId:
+      typeof body.mealPageId === "string" && body.mealPageId.trim()
+        ? body.mealPageId.trim()
+        : null
   };
 }
 
@@ -270,6 +402,8 @@ export async function POST(request: Request) {
       success: true,
       createdCount: 0,
       skippedCount: normalizedList.duplicateCount,
+      duplicateCount: normalizedList.duplicateCount,
+      relatedCount: 0,
       malformedCount: normalizedList.malformedCount
     });
   }
@@ -285,43 +419,114 @@ export async function POST(request: Request) {
     const dataSource = await notion.dataSources.retrieve({
       data_source_id: dataSourceId
     });
-    const schema = getIngredientDatabaseSchema(dataSource);
+    let mealsDatabaseId: string | null = null;
+    let mealDataSourceId: string | null = null;
+
+    if (validatedRequest.mealPageId) {
+      const { NOTION_MEALS_DATABASE_ID } = getNotionMealsEnv();
+      const mealsDatabase = await notion.databases.retrieve({
+        database_id: NOTION_MEALS_DATABASE_ID
+      });
+      mealsDatabaseId = NOTION_MEALS_DATABASE_ID;
+      mealDataSourceId = getPrimaryDataSourceId(mealsDatabase);
+    }
+
+    const schema = getIngredientDatabaseSchema(
+      dataSource,
+      mealsDatabaseId,
+      mealDataSourceId
+    );
     console.info("Notion save ingredients schema", describeSchema(schema));
-    const existingKeys = await listExistingIngredientKeys(
+    const existingRecords = await listExistingIngredientRecords(
       notion,
       dataSourceId,
-      schema.titlePropertyName
+      schema.titlePropertyName,
+      schema.mealRelationPropertyName
     );
 
     let createdCount = 0;
     let skippedCount = normalizedList.duplicateCount;
+    let duplicateCount = normalizedList.duplicateCount;
+    let relatedCount = 0;
+    let relationWarning: string | undefined;
+
+    if (validatedRequest.mealPageId && !schema.mealRelationPropertyName) {
+      console.info("Ingredients relation property not found", {
+        ingredientsDatabaseId: NOTION_INGREDIENTS_DATABASE_ID,
+        mealsDatabaseId,
+        mealDataSourceId
+      });
+      relationWarning =
+        "Ingredients -> Meals relation property is missing. Ingredients were saved without a Meal relation.";
+    }
 
     for (const ingredient of ingredients) {
-      if (existingKeys.has(ingredient.key)) {
+      const existingRecord = existingRecords.get(ingredient.key);
+
+      if (existingRecord) {
         skippedCount += 1;
+        duplicateCount += 1;
+
+        const updatedRelationIds = buildUpdatedRelationIds(
+          existingRecord,
+          schema.mealRelationPropertyName ? validatedRequest.mealPageId : null
+        );
+
+        if (schema.mealRelationPropertyName && updatedRelationIds) {
+          if (existingRecord.relationHasMore) {
+            relationWarning =
+              "At least one Ingredient relation has more linked pages than the Notion page payload returned, so it was not updated to avoid overwriting existing relations.";
+          } else {
+            await notion.pages.update({
+              page_id: existingRecord.pageId,
+              properties: {
+                [schema.mealRelationPropertyName]: relation(updatedRelationIds)
+              }
+            });
+            existingRecord.relationIds = updatedRelationIds;
+            relatedCount += 1;
+          }
+        }
+
         continue;
       }
 
-      await notion.pages.create({
+      const page = await notion.pages.create({
         parent: {
           database_id: NOTION_INGREDIENTS_DATABASE_ID
         },
         properties: buildIngredientProperties(
           ingredient.name,
           validatedRequest.mealName,
-          schema
+          schema,
+          validatedRequest.mealPageId
         )
       });
 
-      existingKeys.add(ingredient.key);
+      existingRecords.set(ingredient.key, {
+        key: ingredient.key,
+        pageId: page.id,
+        relationIds:
+          schema.mealRelationPropertyName && validatedRequest.mealPageId
+            ? [validatedRequest.mealPageId]
+            : [],
+        relationHasMore: false
+      });
       createdCount += 1;
+
+      if (schema.mealRelationPropertyName && validatedRequest.mealPageId) {
+        relatedCount += 1;
+      }
     }
 
     return NextResponse.json({
       success: true,
       createdCount,
       skippedCount,
-      malformedCount: normalizedList.malformedCount
+      duplicateCount,
+      relatedCount,
+      malformedCount: normalizedList.malformedCount,
+      relationWarning
     });
   } catch (error) {
     console.error("Notion save ingredients API failure", error);

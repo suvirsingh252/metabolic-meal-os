@@ -40,6 +40,10 @@ interface NotionSchemaDatabase {
   properties: Array<{
     name: string;
     type: string;
+    relationTarget?: {
+      databaseId: string | null;
+      dataSourceId: string | null;
+    };
   }>;
 }
 
@@ -914,14 +918,24 @@ function SchemaSummaryCard({
 
       <div className="mt-4 space-y-2">
         {database.properties.map((property) => (
-          <div
-            className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-sm"
-            key={property.name}
-          >
-            <span className="min-w-0 truncate font-medium">{property.name}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {property.type}
-            </span>
+          <div className="rounded-md border bg-card px-3 py-2 text-sm" key={property.name}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate font-medium">
+                {property.name}
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {property.type}
+              </span>
+            </div>
+            {property.relationTarget ? (
+              <div className="mt-2 space-y-1 break-all text-xs text-muted-foreground">
+                <p>Target database: {property.relationTarget.databaseId ?? "unknown"}</p>
+                <p>
+                  Target data source:{" "}
+                  {property.relationTarget.dataSourceId ?? "unknown"}
+                </p>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

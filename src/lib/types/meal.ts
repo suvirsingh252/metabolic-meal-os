@@ -55,6 +55,14 @@ export interface MealKnownIngredientContext {
   energyKcal?: number | null;
 }
 
+export type MealSourceClassification =
+  | "recipe-page"
+  | "social-video"
+  | "video-page"
+  | "short-link"
+  | "unknown-url"
+  | "manual-text";
+
 export interface MealAnalysisRequest {
   recipeText: string;
   sourceType?: "manual" | "url" | "ai" | "family";
@@ -107,6 +115,8 @@ export interface MealAnalysisResult {
   sourceType?: "manual" | "url" | "ai" | "family";
   sourceUrl?: string | null;
   sourceName?: string | null;
+  sourceClassification?: MealSourceClassification | null;
+  sourceNotes?: string[] | null;
   importedAt?: string | null;
   lastParsedAt?: string | null;
   parserVersion?: string | null;

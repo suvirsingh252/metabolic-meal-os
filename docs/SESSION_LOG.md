@@ -1,5 +1,252 @@
 # Session Log
 
+## 2026-05-24 Shared URL Intake Verification
+
+Mandatory documentation hygiene:
+- Read `docs/PM_HANDOVER.md` first.
+- Then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, `docs/DECISIONS.md`, `docs/SESSION_LOG.md`, `docs/SOURCES.md`, and `docs/ARCHITECTURE.md`.
+
+Goal:
+- Prepare the shared URL intake work for manual deployment and production testing.
+- Make only small correctness or safety fixes if verification found clear bugs.
+
+Finding and fix:
+- Found a server-side bare URL detection bug: `tiktok.com/@creator/video/...` was treated as manual text because the bare URL helper rejected any `@` character before classifying the host.
+- Fixed `parseBareSharedUrl` so `@` is allowed in the path for known shared hosts while email-like host/userinfo input remains rejected.
+- Added a validation case for bare TikTok creator video paths.
+
+Validation:
+- `npx tsx scripts/validate-recipe-intake.ts` passed 7 local classification/normalization cases after running outside the sandbox because `tsx` needed an IPC pipe.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Local production API checks against `http://localhost:3025` passed:
+  - plain pasted chana masala text returned 200 analysis and preserved `manual-text`.
+  - normal Allrecipes recipe URL returned 200 analysis with `recipe-page`, JSON-LD source notes, and `recipe-parser-shared-url-v2`.
+  - same Allrecipes URL with tracking parameters returned 200 analysis and clean source URL.
+  - TikTok URL returned 400 with the caption/transcript fallback message when metadata lacked recipe detail.
+  - bare TikTok creator URL without protocol returned 400 with the same fallback message instead of being treated as manual text.
+  - Instagram Reel-style link returned 400 with the caption/transcript fallback message.
+  - YouTube Shorts link returned 400 with the caption/transcript fallback message.
+  - local/private `127.0.0.1` URL returned 400 `Recipe URL host is not allowed.`
+
+Known limitations:
+- Production deployment and production smoke testing remain manual and were not completed in this session.
+- Browser visual verification was not attempted because previous session had `iab` unavailable; command-line API checks covered the behavior.
+
+## 2026-05-24 Shared URL Intake For `/analyze`
+
+Mandatory documentation hygiene:
+- Read `docs/PM_HANDOVER.md` first.
+- Then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, `docs/DECISIONS.md`, `docs/SESSION_LOG.md`, `docs/SOURCES.md`, and `docs/ARCHITECTURE.md`.
+
+Goal:
+- Make `/analyze` a more reliable intake tool for shared recipe and social food links without adding scraping services, browser automation, video downloads, auth, Notion schema changes, exact calorie/macro tracking, or medicalized claims.
+
+Files changed:
+- `src/lib/integrations/recipe-parser/index.ts`
+- `src/lib/types/recipe.ts`
+- `src/lib/types/meal.ts`
+- `src/app/api/analyze-meal/route.ts`
+- `src/app/analyze/page.tsx`
+- `scripts/validate-recipe-intake.ts`
+- Documentation files listed in the end-of-session requirements.
+
+Completed work:
+- Added lightweight source classification: `manual-text`, `recipe-page`, `social-video`, `video-page`, `short-link`, and `unknown-url`.
+- Improved URL acceptance for trimmed protocol URLs and common bare shared hosts such as TikTok, Instagram, YouTube, `youtu.be`, and TikTok short hosts.
+- Stripped common tracking parameters such as `utm_*`, `fbclid`, `igsh`, and `si` before source storage/fetch use.
+- Preserved obvious local/private host blocking before fetch and added a second blocked-host check after redirects.
+- Kept Recipe JSON-LD extraction as the highest-confidence recipe/blog path.
+- Improved fallback extraction with title/site metadata, OpenGraph description, likely recipe snippets, and a bounded page excerpt.
+- Added social/video handling that uses accessible HTML/OpenGraph metadata only. If metadata is not recipe-like enough, the API returns a clear fallback asking for captions, transcripts, ingredients, or spoken summaries and does not call OpenAI.
+- Returned `sourceClassification` and `sourceNotes` in analysis responses and displayed them in `/analyze` source details.
+- Updated `/analyze` fallback UI so failed link extraction is not a dead end: the original URL remains in the textarea, and the user is told what text to paste next.
+
+Validation:
+- `npx tsx scripts/validate-recipe-intake.ts` passed 6 local classification/normalization cases after running outside the sandbox because `tsx` needed an IPC pipe.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Local production API checks against `http://localhost:3024` passed:
+  - plain pasted chana masala text returned 200 analysis and preserved `manual-text`.
+  - normal Allrecipes recipe URL returned 200 analysis with `recipe-page`, JSON-LD source notes, and `recipe-parser-shared-url-v2`.
+  - same Allrecipes URL with tracking parameters returned 200 analysis and clean source URL.
+  - TikTok-style link returned 400 with the caption/transcript fallback message when metadata lacked recipe detail.
+  - Instagram Reel-style link returned 400 with the caption/transcript fallback message.
+  - YouTube Shorts link returned 400 with the caption/transcript fallback message when metadata lacked recipe detail.
+  - local/private `127.0.0.1` URL returned 400 `Recipe URL host is not allowed.`
+
+Known limitations:
+- TikTok, Instagram, YouTube Shorts, and similar platforms may block captions/transcripts or render them client-side. Users still need to paste captions/transcripts/ingredients when accessible metadata is insufficient.
+- No DNS-level private-IP SSRF check was added; current protection remains hostname/IP-pattern based before and after redirects.
+- No full Readability parser dependency was added.
+- In-app browser visual verification could not run because the Browser plugin reported `iab` unavailable; API and build checks covered the slice.
+
+## 2026-05-24 Ingredient -> Meal Relation Verification
+
+Goal:
+- Re-run local safety checks for schema-aware Ingredient -> Meal relation writes before manual deployment.
+- Produce exact manual deploy and production smoke-test instructions.
+
+Finding:
+- The schema diagnostics API already returned relation target database/data-source IDs, but the `/settings` UI only displayed property name and type. That was not enough to visually confirm whether the Ingredients relation targets Meals from the Settings screen.
+
+Completed work:
+- Updated `/settings` schema diagnostics to show relation target database and data-source IDs for relation properties.
+- No Notion schema creation/mutation, structured ingredient persistence, USDA automation, auth, or broad UI redesign was added.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Local `POST /api/notion/save-ingredients` checks passed:
+  - empty ingredient list returned success with all counts at zero
+  - legacy request without `mealPageId` returned success with `createdCount: 1` and `relatedCount: 0`
+  - new synthetic Ingredient with a Meal page ID returned `createdCount: 1` and `relatedCount: 1`
+  - duplicate synthetic Ingredient with the same Meal page ID returned `duplicateCount: 1` and `relatedCount: 0`
+  - duplicate synthetic Ingredient with a different Meal page ID returned `duplicateCount: 1` and `relatedCount: 1`
+- Local schema diagnostics confirmed Ingredients has a `Meals` relation targeting the configured Meals database/data source.
+- Missing-relation warning behavior was not triggered locally because the active schema has a compatible relation; absence of `relationWarning` with the compatible schema is expected.
+
+Known limitations:
+- In-app browser visual verification was not available in this session because no callable Browser tool was exposed; API checks and `typecheck`/`lint`/`build` covered the verification path.
+
+## 2026-05-24 Ingredient -> Meal Relations
+
+Mandatory documentation hygiene:
+- Read `docs/PM_HANDOVER.md` first.
+- Then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, `docs/DECISIONS.md`, `docs/SESSION_LOG.md`, `docs/SOURCES.md`, and `docs/ARCHITECTURE.md`.
+- Confirmed the previous session implemented the narrow `/analyze` household-tone and mobile hierarchy slice.
+
+Goal:
+- Add schema-aware Ingredient -> Meal relation support without creating or mutating Notion schema.
+- Preserve current behavior: meal save remains primary, ingredient persistence is non-blocking, duplicate detection remains intact, and empty ingredient lists still succeed.
+
+Files changed:
+- `src/app/api/notion/save-ingredients/route.ts`
+- `src/app/analyze/page.tsx`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/DECISIONS.md`
+- `docs/SESSION_LOG.md`
+- `docs/ARCHITECTURE.md`
+
+Completed work:
+- Extended `POST /api/notion/save-ingredients` to accept optional `mealPageId`.
+- Added schema-aware relation detection on the active Ingredients data source.
+- Relation selection prefers compatible properties named `Meal` or `Meals`, then falls back to any compatible relation targeting the configured Meals database or primary Meals data source.
+- New Ingredient pages include the saved Meal relation when compatible.
+- Duplicate Ingredient pages are skipped for creation but updated to include the saved Meal relation when it is compatible and not already present.
+- Existing Ingredient relations are preserved when adding a new Meal relation.
+- If no compatible relation exists, ingredients still save and the response returns a non-blocking `relationWarning`.
+- `/analyze` now passes the saved Meal page ID from `save-meal` into `save-ingredients`.
+- `/analyze` can display related-count metadata and relation warnings from ingredient persistence.
+- Schema diagnostics already expose relation target database/data source IDs, so no diagnostics route change was required.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Local schema diagnostics confirmed the active Ingredients data source has a `Meals` relation targeting the configured Meals database/data source.
+- Local `POST /api/notion/save-ingredients` checks passed:
+  - empty ingredient list returned success with zero counts
+  - legacy request without `mealPageId` returned success and did not require relation metadata
+  - new synthetic Ingredient with a Meal page ID returned `createdCount: 1` and `relatedCount: 1`
+  - duplicate synthetic Ingredient with the same Meal page ID returned `duplicateCount: 1` and `relatedCount: 0`
+  - duplicate synthetic Ingredient with a different Meal page ID returned `duplicateCount: 1` and `relatedCount: 1`
+- Direct Notion readback confirmed the synthetic Ingredient had both Meal relation IDs.
+
+Known limitations:
+- Missing-relation warning path was not locally triggered because the active Ingredients schema already has a compatible `Meals` relation. The route now has the safe warning path, and production should verify it only if the deployed schema differs.
+- `/analyze` browser end-to-end save was not run through the in-app browser; the save flow was validated through direct local API calls because browser form filling has a known virtual clipboard limitation.
+- Relation support still does not implement structured ingredient persistence, quantities, units, USDA enrichment during analysis, or write-flow smoke automation.
+
+Recommended next slice:
+- Deploy and verify Ingredient -> Meal relation writes in production, then move to structured ingredient persistence or write-flow smoke tests.
+
+## 2026-05-24 Analyze Tone + Mobile Flow
+
+Mandatory documentation hygiene:
+- Read `docs/PM_HANDOVER.md` first.
+- Then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, `docs/DECISIONS.md`, `docs/SESSION_LOG.md`, `docs/SOURCES.md`, and `docs/ARCHITECTURE.md`.
+- Confirmed the previous session was documentation/PM handover prep only and no product behavior/backend feature code had changed.
+
+Product review completed before coding:
+- Reviewed current production capabilities, blockers, technical debt, product risks, and next recommended slice.
+- Ran representative `/api/analyze-meal` outputs before implementation for Indian vegetarian paneer/lentils, chana bowl, Atlantic Canadian comfort meal, mixed weeknight wraps, high-carb pasta, and a recipe URL import example.
+- Findings: safety boundaries and no exact macro/calorie behavior were good, but output sometimes sounded clinical, evidence notes were a little dense, and Indian rice meals overused brown-rice/whole-grain swap suggestions.
+- Confirmed with the user that the implementation priority was a narrow `/analyze` household-tone and mobile hierarchy tuning slice before data-model or persistence work.
+
+Files changed:
+- `src/app/api/analyze-meal/route.ts`
+- `src/app/analyze/page.tsx`
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/DECISIONS.md`
+- `docs/SESSION_LOG.md`
+
+Completed work:
+- Tuned the analysis prompt so first-screen fields prefer plain household language and avoid clinical terms such as glycemic response, metabolic health, post-meal glucose, and reproductive health.
+- Added prompt guidance to prefer same-dish, smaller-nudge suggestions before ingredient replacement.
+- Added culturally realistic Indian rice/starch guidance: smaller basmati mound, more dal/chana/beans, cucumber/yogurt/kachumber first, extra sabzi or salad, half rice/half veg, and keeping basmati while adjusting portion and pairing.
+- Added Atlantic Canadian comfort guidance to preserve comfort-food identity before suggesting replacements.
+- Added high-refined-carb guidance to prefer tiny protein/fiber add-ons such as canned beans/lentils or frozen vegetables before changing the meal.
+- Shortened and simplified evidence/confidence note instructions.
+- Added post-analysis scroll/focus to the review result on `/analyze`.
+- Tightened the household summary spacing, badge layout, and mobile copy density while preserving all existing editable fields.
+- Preserved existing OpenAI schema, Notion payload shape, save behavior, Ingredient persistence behavior, and backend persistence routes.
+
+Validation:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- Manual local API checks against the rebuilt app passed for:
+  - palak paneer + masoor dal + basmati rice
+  - chana bowl + rice/yogurt/pickle
+  - Atlantic Canadian fish cakes with potatoes
+  - mixed household weeknight wraps
+  - high-carb pasta + garlic bread
+- Final checks showed no exact calorie/macro claims, no flagged clinical phrases in first-screen fields, and known Ingredient context used where expected for Paneer, Basmati Rice, Chickpeas, and Chicken.
+- Indian rice meals kept basmati and suggested dal/chana/yogurt/kachumber/portion nudges rather than brown-rice swaps.
+
+Known limitations:
+- In-app browser form filling failed because the virtual clipboard was unavailable, so generated-result mobile scroll/focus could not be fully browser-tested in the in-app browser.
+- Output quality remains model-generated and should be periodically reviewed on real household meals.
+
+Recommended next slice:
+- Continue household UX simplification in `/meals`, `/feedback`, and `/settings`, or move to Ingredient -> Meal relations if the product priority shifts back to persistence structure.
+
+## 2026-05-24 PM Handover Prep
+
+Goal:
+- Prepare a concise, high-signal handover package for a new PM/chat with no prior conversation context.
+- Do not add product features.
+
+Docs reviewed:
+- `docs/HANDOFF.md`
+- `docs/ROADMAP.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/DECISIONS.md`
+- `docs/SESSION_LOG.md`
+- `docs/SOURCES.md`
+- `docs/ARCHITECTURE.md`
+
+Stale or contradictory docs found:
+- `docs/ARCHITECTURE.md` still reflected the early two-entity MVP and omitted newer production architecture: recipe URL parsing, USDA lookup/enrichment, Ingredients APIs, schema diagnostics, known Ingredient context, Evidence-Aware Analysis v3, ingredient persistence, and the `/analyze` household hierarchy pass.
+- The other current-state docs were broadly consistent; they needed only a start-here pointer to the new PM handover.
+
+Completed work:
+- Added `docs/PM_HANDOVER.md` as the recommended first read for a new PM/chat.
+- Updated `HANDOFF`, `ROADMAP`, and `KNOWN_ISSUES` to point new PM/chats to `PM_HANDOVER.md`.
+- Updated `ARCHITECTURE` to reflect current routes, USDA/enrichment flows, known Ingredient context, Notion database usage, schema diagnostics, ingredient persistence, and the current UX state.
+- No product behavior or backend feature code was changed.
+
+Recommended next slice:
+- Use the PM handover to start a fresh product-priority conversation, then choose between real-meal tone review and remaining household UX simplification.
+
 ## 2026-05-24 UX Simplification & Household Experience Audit
 
 Mandatory documentation hygiene:

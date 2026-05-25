@@ -1,6 +1,14 @@
 export const recipeSourceTypes = ["manual", "url", "ai", "family"] as const;
+export const recipeSourceClassifications = [
+  "recipe-page",
+  "social-video",
+  "video-page",
+  "short-link",
+  "unknown-url",
+  "manual-text"
+] as const;
 export const manualParserVersion = "manual-v1";
-export const urlParserVersion = "recipe-parser-basic-v1";
+export const urlParserVersion = "recipe-parser-shared-url-v2";
 
 export const operationalRecipeTags = [
   "weeknight",
@@ -18,12 +26,16 @@ export const operationalRecipeTags = [
 ] as const;
 
 export type RecipeSourceType = (typeof recipeSourceTypes)[number];
+export type RecipeSourceClassification =
+  (typeof recipeSourceClassifications)[number];
 export type OperationalRecipeTag = (typeof operationalRecipeTags)[number];
 
 export interface RecipeSourceMetadata {
   sourceType: RecipeSourceType;
   sourceUrl?: string | null;
   sourceName?: string | null;
+  sourceClassification?: RecipeSourceClassification | null;
+  sourceNotes?: string[] | null;
   importedAt?: string | null;
   lastParsedAt?: string | null;
   parserVersion?: string | null;

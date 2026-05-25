@@ -1,6 +1,8 @@
 # Roadmap
 
-Last updated: 2026-05-24 (Analyze UX Simplification)
+Last updated: 2026-05-24 (Shared URL Intake)
+
+For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
 ## Completed
 
@@ -23,7 +25,7 @@ Last updated: 2026-05-24 (Analyze UX Simplification)
 - [x] Add route-scoped environment validation helpers.
 - [x] Add saved-meal selection to feedback logging.
 - [x] Add PWA manifest, app metadata, placeholder icons, and iPhone layout polish.
-- [x] Save ingredient suggestions to Notion Ingredients without relations.
+- [x] Save ingredient suggestions to Notion Ingredients with duplicate prevention and optional schema-aware Meal relation writes.
 - [x] Add Notion schema diagnostics for active databases.
 - [x] Add safe Meal Feedback -> Meals relation write support with fallback warning.
 - [x] Analysis Framework v2: expanded OpenAI schema with numeric scores, minimal-change framing, cultural notes, shopping additions, prep notes, meal pairings, and cautions.
@@ -65,25 +67,28 @@ Last updated: 2026-05-24 (Analyze UX Simplification)
 - [x] Add richer FoodData Central matching notes and optional matching metadata.
 - [x] Validate staple lookup cases: paneer, chickpeas, basmati rice, lentils, yogurt, atta flour, and whole wheat flour.
 - [x] Simplify `/analyze` review UI with a household-first summary and progressive disclosure for editable details.
+- [x] Add `docs/PM_HANDOVER.md` as a concise start-here package for a new PM/chat.
+- [x] Tune `/analyze` first-screen meal guidance toward plain household language, culturally preserving same-dish nudges, shorter evidence/confidence notes, and mobile scroll/focus to the result.
+- [x] Add schema-aware Ingredient -> Meal relation support during ingredient suggestion persistence, including duplicate Ingredient relation updates and non-blocking missing-schema warnings.
+- [x] Harden `/analyze` shared URL intake with source classification, tracking-param cleanup, short/social/video link handling, bounded metadata/page-text extraction, and clear caption/transcript fallback messages.
 
 ## Current Sprint
 
 - [ ] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
-- [ ] Review evidence-aware guidance quality on real household meals.
+- [x] Review evidence-aware guidance quality on representative real household meals and tune the first household answer.
 - [ ] Audit remaining household UX flows for clarity, mobile readability, and supportive tone.
-- [ ] Harden recipe parser robustness for representative recipe sites.
+- [x] Harden recipe parser robustness for first-pass representative recipe and social/shared URL intake.
+- [ ] Continue real-world recipe/social URL testing and record domains that are blocked, login-gated, or script-rendered.
 - [ ] If optional source properties are added to Notion Meals, confirm manual saves populate them.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
 
 ## Next Up
 
-- [ ] Add relation from Ingredients to Meals.
 - [ ] Add structured ingredient persistence behind the current ingredient suggestion flow.
 - [ ] Add meal detail view.
-- [ ] Harden Recipe URL analysis after real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, improve SSRF protection with DNS checks, and record blocked/problematic domains.
-- [ ] Review Evidence-Aware Analysis v3 output quality on representative Indian, Atlantic Canadian, and mixed household meals.
+- [ ] Harden Recipe URL analysis further after more real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, improve SSRF protection with DNS checks, and record blocked/problematic domains.
 - [ ] Review whether known Ingredient context improves protein/fiber and blood-sugar reasoning without becoming too numeric.
 - [ ] Decide how FoodData Central nutrient snapshots should relate to normalized ingredients without changing Notion schema prematurely.
 - [ ] Add optional Meals Notion source fields manually or document the exact schema setup.
@@ -123,6 +128,6 @@ Last updated: 2026-05-24 (Analyze UX Simplification)
 - [ ] Notion Notes field has a 2000-character hard limit; buildMealNotesSummary truncates at 1997 chars with ellipsis as a safety measure.
 - [ ] Integration adapter interfaces are intentionally stubbed and may evolve once real providers are selected.
 - [ ] Structured ingredient parsing is not implemented yet; only the compatible type/helper foundation exists.
-- [ ] Recipe parser remains dependency-free/basic and is not robust across every recipe site.
+- [ ] Recipe parser remains dependency-free. It now handles shared/social intake more gracefully, but it is still not as robust as a full Readability parser and cannot access blocked captions/transcripts.
 - [ ] FoodData Central matching is improved but remains heuristic and needs ongoing quality review.
 - [ ] The `/analyze` review UI has a first hierarchy pass, but the rest of the app still needs household UX simplification.

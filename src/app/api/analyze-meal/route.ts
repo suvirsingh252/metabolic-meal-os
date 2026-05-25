@@ -76,25 +76,32 @@ ${principleLines}
 const systemPrompt = `
 You analyze household recipes and return practical structured JSON for a meal review screen.
 
-Core principle: minimal-change improvement. Suggest the smallest realistic changes that meaningfully improve protein, fiber, or satiety — without westernizing, moralizing, or removing the dish's identity.
+Core principle: minimal-change improvement. Suggest the smallest realistic changes that meaningfully improve protein, fiber, or satiety without westernizing, moralizing, or removing the dish's identity.
 
 Guidelines:
 - Support insulin-sensitivity-friendly eating patterns.
 - Support possible PCOS-friendly dietary patterns.
-- Prioritize protein, fiber, satiety, and lower glycemic load.
+- Prioritize protein, fiber, satiety, steadier energy, and avoiding a spike-and-crash feeling.
 - Preserve Indian food context and Atlantic Canadian comfort food context when present.
 - Do not diagnose, treat, or claim to prevent medical conditions.
 - Avoid extreme dieting or keto by default unless the input explicitly asks for it.
 - Avoid moralizing food. Use neutral, practical language.
 - Produce family-friendly outputs that are realistic for household cooking.
 - Keep substitutions culturally respectful and avoid stripping the identity of the dish.
-- Never call foods "bad". Frame everything as "could support" or "worth watching".
-- Avoid calorie or macro obsession. Focus on protein, fiber, satiety, and blood sugar stability.
+- Prefer same-dish, smaller-nudge suggestions before ingredient replacement.
+- Never call foods "bad". Frame everything as "could help", "worth watching", or "an easy nudge".
+- Avoid calorie or macro obsession. Focus on protein, fiber, satiety, steadier energy, and how the meal feels.
 - Use the evidence-aware guidance context below to produce source-linked, non-medical food-pattern support.
 - Cite only sourceId and principleId values that appear in the context.
 - Do not use USDA nutrient lookup, calorie counting, macro tracking, medical targets, or automated nutrition enrichment in this analysis.
 - If known household ingredient context is provided, use it as lightweight background for protein/fiber guidance, blood-sugar impact reasoning, cultural preservation, and minimal-change suggestions.
 - Treat known household ingredient nutrient values as approximate ingredient-level context only. Do not calculate meal calories or exact meal macros.
+- If the input includes source notes saying the recipe came from social/video metadata or lower-confidence extraction, make confidenceNotes clearly say the link provided limited recipe detail and that pasted captions, transcripts, ingredients, or instructions would improve the analysis.
+- For first-screen fields (quickVerdict, minimalChangeVersion, whyThisHelps, culturalNotes), use plain household language. Avoid clinical terms unless truly necessary, including "glycemic response", "metabolic health", "post-meal glucose", and "reproductive health". Prefer phrases like "steadier energy", "more filling", "less of a spike-and-crash feeling", and "keeps the meal satisfying".
+- For Indian rice meals, do not default to brown rice or whole-grain swaps. First consider culturally realistic nudges such as a smaller rice mound, more dal/chana/beans, cucumber/yogurt/kachumber first, extra sabzi or salad, half rice and half veg, or keeping basmati while adjusting portion and pairing.
+- For Atlantic Canadian comfort meals, preserve the comfort-food identity first. Prefer small side, portion, vegetable, bean, fish, or bread/potato pairing nudges before replacing the meal.
+- For mostly refined-carb meals, prefer one tiny protein/fiber add-on such as canned beans or lentils, frozen vegetables, tuna/chicken, Greek yogurt, or a simple side vegetable before suggesting a different meal. Cheese can help satisfaction, but do not make extra cheese the main improvement unless the meal already has a stronger fiber/protein nudge.
+- Keep evidenceNotes and confidenceNotes short and plain. They are for backup context, not the main household answer. Avoid terms like "glycemic", "metabolic", "post-meal glucose", and "reproductive" in these notes too.
 
 Scoring (all scores 1–10):
 - metabolicScore: overall metabolic friendliness for insulin-resistance-supportive eating.
@@ -106,19 +113,19 @@ Scoring (all scores 1–10):
 Text fields:
 - quickVerdict: 1–2 sentence plain-language summary. What works, what could be nudged.
 - mainConcerns: up to 3 short concern strings. Neutral, not moralistic.
-- minimalChangeVersion: the smallest practical improvement. Keep the dish recognizable. 1–3 sentences.
-- supportiveVersion: a more intentional version that adds protein, fiber, or lowers glycemic load. Still realistic. 2–4 sentences.
+- minimalChangeVersion: the smallest practical improvement. Keep the dish recognizable. Prefer pairing, portion, or add-on nudges before replacement. 1–2 short sentences.
+- supportiveVersion: a more intentional version that adds protein, fiber, or steadier-energy support. Still realistic. 2–4 sentences.
 - plateStrategy: how to plate or portion this meal for better satiety. 1–2 sentences.
-- whyThisHelps: brief explanation of why the suggested changes support blood sugar and satiety. 1–2 sentences. No medical claims.
+- whyThisHelps: brief plain-language explanation of why the suggested changes help the meal feel steadier and more filling. 1–2 short sentences. No medical claims.
 - culturalNotes: only include if the meal has strong cultural identity. Acknowledge it. Keep it respectful and brief. Empty string if not applicable.
 - shoppingAdditions: 2–5 short ingredient strings to add next shopping trip that would support this meal pattern.
 - prepNotes: 1–3 short practical prep tips (timing, batch cooking, shortcuts).
-- mealPairings: 2–3 simple food or drink pairings that would complement this meal metabolically.
+- mealPairings: 2–3 simple food or drink pairings that would help the meal feel balanced and satisfying.
 - cautions: 0–2 short notes about things worth watching (e.g. portion size, high sodium, added sugar). Empty array if none.
 
 Evidence-aware v3 fields:
-- evidenceNotes: 2–4 short notes connecting the meal advice to general food-pattern principles. Use careful language such as "may support", "could help", or "worth watching".
-- confidenceNotes: 1–3 short uncertainty notes. Mention that individual responses, portions, product choices, and preparation can vary where relevant.
+- evidenceNotes: 2–3 short, plain notes connecting the advice to general food-pattern principles. Avoid clinical phrasing. Prefer "steadier energy", "more filling", "less spike-and-crash", and "balanced plate".
+- confidenceNotes: 1–2 short uncertainty notes. Mention that portions, product choices, and preparation can vary where relevant. Avoid clinical phrasing.
 - safetyDisclaimer: one concise sentence stating this is general food-pattern support, not diagnosis or individualized medical advice.
 - guidanceBasis: 2–5 objects. Each object must include a valid sourceId, a valid principleId, and a short relevance string explaining why that principle applies to this meal.
 
@@ -447,6 +454,8 @@ export async function POST(request: Request) {
       sourceType: preparedRecipe.sourceType,
       sourceUrl: preparedRecipe.sourceUrl,
       sourceName: preparedRecipe.sourceName,
+      sourceClassification: preparedRecipe.sourceClassification,
+      sourceNotes: preparedRecipe.sourceNotes,
       importedAt: preparedRecipe.importedAt,
       lastParsedAt: preparedRecipe.lastParsedAt,
       parserVersion: preparedRecipe.parserVersion,
@@ -506,6 +515,8 @@ async function prepareRecipeForAnalysis(request: MealAnalysisRequest) {
       sourceType: parsedRecipe.source.sourceType,
       sourceUrl: parsedRecipe.source.sourceUrl ?? null,
       sourceName: parsedRecipe.source.sourceName ?? null,
+      sourceClassification: parsedRecipe.source.sourceClassification ?? null,
+      sourceNotes: parsedRecipe.source.sourceNotes ?? null,
       importedAt: parsedRecipe.source.importedAt ?? new Date().toISOString(),
       lastParsedAt: parsedRecipe.source.lastParsedAt ?? new Date().toISOString(),
       parserVersion: parsedRecipe.source.parserVersion ?? null
@@ -517,6 +528,8 @@ async function prepareRecipeForAnalysis(request: MealAnalysisRequest) {
     sourceType: request.sourceType ?? defaultManualRecipeSource.sourceType,
     sourceUrl: request.sourceUrl ?? null,
     sourceName: request.sourceName ?? null,
+    sourceClassification: "manual-text",
+    sourceNotes: null,
     importedAt: new Date().toISOString(),
     lastParsedAt: null,
     parserVersion: request.sourceType === "url" ? null : manualParserVersion

@@ -7,7 +7,8 @@
     "build": "next build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "smoke:prod": "tsx scripts/smoke-test.ts"
+    "smoke:prod": "tsx scripts/smoke-test.ts",
+    "smoke:prod:writes": "tsx scripts/smoke-test-writes.ts"
   },
   "dependencies": {
     "@notionhq/client": "^5.22.0",

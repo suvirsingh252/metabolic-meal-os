@@ -1,8 +1,8 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-24 (Analyze UX Simplification)
+Last updated: 2026-05-24 (Shared URL Intake)
 
-This is the primary resume document for future Codex sessions. Keep it current.
+For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
 ## Current Project Status
 
@@ -15,6 +15,7 @@ Production verified:
 - Recipe URL analysis works in production.
 - `/analyze` save flow persists ingredient suggestions from the editable ingredient textarea.
 - `/api/notion/save-ingredients` works in production, including duplicate prevention.
+- Local validation confirms `/api/notion/save-ingredients` can write Ingredient -> Meal relations when the active Ingredients data source has a compatible relation property pointing to Meals.
 - Ingredients database nutrient properties exist.
 - USDA lookup works in production.
 - USDA enrichment works when a valid Ingredient page ID is provided.
@@ -35,7 +36,7 @@ Implemented:
 - Meals list loaded from the Notion Meals database.
 - Meal feedback logging to the Notion Meal Feedback database.
 - Saved-meal selection on feedback form, with manual entry fallback.
-- Ingredient suggestion persistence to Notion Ingredients after meal save, without relations. The production `/analyze` flow now saves from the editable ingredient textarea and duplicate detection works.
+- Ingredient suggestion persistence to Notion Ingredients after meal save. The production `/analyze` flow saves from the editable ingredient textarea, duplicate detection works, and the local code now relates new or duplicate Ingredients back to the saved Meal when a compatible Notion relation property exists.
 - Notion schema diagnostics for Meals, Ingredients, and Meal Feedback from Settings.
 - PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
 - Typed server-side environment configuration.
@@ -44,7 +45,8 @@ Implemented:
 - Recipe source metadata foundation: `sourceType`, `sourceUrl`, `sourceName`, `importedAt`, `lastParsedAt`, and `parserVersion`.
 - Structured ingredient foundation: `RecipeIngredient` supports raw text, parsed name, quantity, unit, preparation, optional flag, and category while preserving string ingredient compatibility.
 - Adapter directories exist for future Open Food Facts, nutrition, recipe parser, grocery prices, and weather integrations.
-- Recipe URL analysis support: `/analyze` accepts a recipe URL in the existing input, `/api/analyze-meal` fetches and parses it server-side through the recipe-parser adapter, prefers recipe JSON-LD when present, falls back to cleaned page text, and returns source metadata with the analysis.
+- Recipe/shared URL analysis support: `/analyze` accepts normal recipe URLs, shortened/shared URLs, TikTok links, Instagram Reels, YouTube Shorts, and pasted text in the existing input. `/api/analyze-meal` classifies the source, fetches safely server-side through the recipe-parser adapter, prefers Recipe JSON-LD when present, falls back to bounded metadata/page text, and returns source metadata plus source notes with the analysis.
+- Social/video link handling: the parser only uses accessible HTML/OpenGraph metadata and does not bypass platform protections. If TikTok, Instagram, YouTube Shorts, or similar links do not expose enough recipe-like detail, the API returns a clear fallback asking for a caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
 - Household recipe feedback, AI analysis, pantry item, operational tag, and localization types are present for future workflows.
 - Evidence-aware foundation: static approved source registry and safe health-guidance principles for diabetes-aware, PCOS-aware, and Canada's Food Guide-aligned future analysis.
 - Evidence-Aware Analysis v3: runtime meal analysis now uses the approved source registry and health-guidance principles to produce evidence notes, confidence notes, a safety disclaimer, and source/principle-linked guidance basis. V3 fields are production-active, editable in `/analyze`, and summarized into Notion Notes without schema changes.
@@ -55,10 +57,12 @@ Implemented:
 - Ingredient picker/enrichment UX: Settings loads existing Notion Ingredients, lets the user select an Ingredient by name, and enriches the selected page without manual Notion page ID copy/paste. Manual lookup-only mode remains available when no Ingredient is selected.
 - Production smoke-test script: `npm run smoke:prod` runs `scripts/smoke-test.ts` against `SMOKE_BASE_URL` and verifies read-only production health checks without OpenAI calls or Notion writes.
 - `/analyze` household review UX first pass: analysis results now start with a practical household summary, then keep editable details in progressively disclosed sections for guidance, quick edits, deeper tuning, shopping/prep, scores, evidence/safety, and advanced saved fields.
+- `/analyze` household-tone tuning: first-screen analysis fields now steer toward plain household language, same-dish minimal nudges, culturally realistic Indian rice/starch guidance, shorter evidence/confidence notes, and less clinical phrasing. After analysis completes, the client scrolls/focuses the review result and the household summary is slightly tighter on mobile.
+- PM handover package: `docs/PM_HANDOVER.md` is the concise start-here document for a new PM/chat.
 
 Not implemented yet:
 - Authentication.
-- Meal-to-ingredient relations.
+- Structured ingredient persistence beyond normalized suggestions.
 - Weekly planning workflows.
 - Meal template workflows.
 - Service worker/offline PWA support.
@@ -128,8 +132,9 @@ Pages:
   - Before calling OpenAI, performs a best-effort Notion Ingredients lookup against the prepared recipe text. Matching known Ingredients are included as lightweight household context only; failures are logged and analysis continues without that context.
   - Response metadata may include `knownIngredientContextUsed` and `knownIngredientContextNames` so `/analyze` can show a small indicator.
   - Accepts optional source metadata and returns source defaults for current manual paste flows.
-  - If `recipeText` starts with `http://` or `https://`, treats it as a recipe URL, fetches it server-side, parses JSON-LD recipe data when available, falls back to cleaned page text, and then analyzes the extracted text.
-  - Blocks obvious local/private URL hosts and returns a user-facing fallback error when pages cannot be fetched or parsed.
+  - If `recipeText` looks like a URL, including common bare shared hosts such as TikTok, Instagram, YouTube, or `youtu.be`, treats it as a URL, normalizes common tracking parameters, follows normal redirects, fetches it server-side, parses JSON-LD recipe data when available, falls back to metadata/page text, and then analyzes only when enough recipe detail is available.
+  - Classifies intake as `manual-text`, `recipe-page`, `social-video`, `video-page`, `short-link`, or `unknown-url` and returns `sourceClassification` plus `sourceNotes` in the response.
+  - Blocks obvious local/private URL hosts before and after redirects and returns a user-facing fallback error when pages cannot be fetched or parsed.
 
 - `POST /api/ingredients/lookup`
   - Input: `{ ingredient: string }`
@@ -174,11 +179,13 @@ Pages:
   - Does not create Notion properties or relations.
 
 - `POST /api/notion/save-ingredients`
-  - Input: `{ mealName: string, ingredients: string[] }`
+  - Input: `{ mealName: string, ingredients: string[], mealPageId?: string | null }`
   - Normalizes, deduplicates, and persists ingredient suggestions to Notion Ingredients.
   - Avoids creating duplicate ingredient pages by normalized ingredient title.
   - Saves source meal name and created date only when compatible Ingredients properties exist.
-  - Does not relate ingredients to meals yet.
+  - If `mealPageId` is present and Ingredients has a compatible relation property pointing to Meals, creates or updates the Ingredient relation to include the saved Meal.
+  - If no compatible relation exists, still saves ingredients and returns a non-blocking `relationWarning`.
+  - Returns `createdCount`, `skippedCount`, `duplicateCount`, `relatedCount`, `malformedCount`, and optional `relationWarning`.
 
 - `POST /api/notion/log-feedback`
   - Input: `MealFeedbackRequest`
@@ -210,7 +217,7 @@ Current route-scoped usage:
 - `/api/notion/ingredients`: `NOTION_API_KEY`, `NOTION_INGREDIENTS_DATABASE_ID`
 - `/api/notion/meals`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
 - `/api/notion/save-meal`: `NOTION_API_KEY`, `NOTION_MEALS_DATABASE_ID`
-- `/api/notion/save-ingredients`: `NOTION_API_KEY`, `NOTION_INGREDIENTS_DATABASE_ID`
+- `/api/notion/save-ingredients`: `NOTION_API_KEY`, `NOTION_INGREDIENTS_DATABASE_ID`, `NOTION_MEALS_DATABASE_ID`
 - `/api/notion/log-feedback`: `NOTION_API_KEY`, `NOTION_FEEDBACK_DATABASE_ID`
 
 Smoke test:
@@ -282,7 +289,7 @@ Reasoning:
 - FoodData Central lookup is not called during meal analysis or automatic ingredient persistence. Analysis can read already-saved Ingredient context from Notion as lightweight background.
 - FoodData Central matching is improved but still heuristic. Some culturally specific or variety-specific staples may still fall back to branded/product-specific records when no suitable generic result is returned.
 - Ingredient enrichment remains explicit/manual from Settings; it is not automatic during analysis or ingredient persistence.
-- Ingredient suggestions are saved as standalone records; there is no Ingredient -> Meal relation yet.
+- Ingredient suggestions are saved as normalized records; Ingredient -> Meal relations are now supported when the active Ingredients schema exposes a compatible Meals relation.
 - Structured ingredient persistence is not implemented yet.
 
 ## Immediate Next Tasks
@@ -290,7 +297,7 @@ Reasoning:
 1. Review FoodData Central matching quality on a larger household ingredient set and add targeted query expansions only where needed.
 2. Review Evidence-Aware Analysis v3 plus known Ingredient context output quality on real household meals and tighten prompt/schema language if it drifts into medical claims or over-precise nutrition claims.
 3. Continue the household experience audit across save, meals, feedback, and settings flows so the rest of the app matches the simplified `/analyze` hierarchy.
-4. Add Ingredient -> Meal relation work after confirming the desired Notion relation model.
+4. Add structured ingredient persistence after confirming the normalized Ingredient relation behavior in production.
 5. Add structured ingredient persistence behind the current string-compatible ingredient flow.
 6. Add meal detail view.
 7. Harden Recipe URL analysis after real-site testing.
@@ -431,8 +438,9 @@ Current Ingredients behavior:
 - Uses the active Ingredients data source title property for ingredient name.
 - Optional source meal property is used if named `Source Meal`, `Source Meal Name`, `Meal`, or `Meal Name` and typed as rich_text or select.
 - Optional created date property is used if named `Created`, `Created Date`, `Created At`, or `Added Date` and typed as date.
+- Optional Meal relation property is used when typed as relation and targeting the configured Meals database or primary Meals data source. The app prefers a compatible property named `Meal` or `Meals`, then falls back to any compatible relation.
 - Duplicate detection uses trimmed, lowercase, lightly singularized ingredient names.
-- Empty ingredient lists return `200`; local post-fix testing confirms a new ingredient can be created and the repeated request is skipped as a duplicate.
+- Empty ingredient lists return `200`; local relation testing confirmed a new ingredient can be created and related, a same-meal duplicate is skipped without duplicate relation writes, and a different-meal duplicate preserves the existing relation while adding the new Meal relation.
 
 # Mandatory Start-of-Session Procedure
 

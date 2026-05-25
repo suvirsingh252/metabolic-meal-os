@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useRef, useState } from "react";
 import {
   ChevronDown,
   ExternalLink,
@@ -72,6 +72,18 @@ function getErrorMessage(value: unknown) {
   return "Unable to analyze meal right now.";
 }
 
+function looksLikeSharedUrl(value: string) {
+  const trimmed = value.trim();
+
+  return (
+    /^https?:\/\//i.test(trimmed) ||
+    /^www\./i.test(trimmed) ||
+    /^(vm\.tiktok\.com|vt\.tiktok\.com|tiktok\.com|instagram\.com|youtu\.be|youtube\.com|m\.youtube\.com)\//i.test(
+      trimmed
+    )
+  );
+}
+
 interface SaveMealResponse {
   success: true;
   notionPageId: string;
@@ -82,7 +94,10 @@ interface SaveIngredientsResponse {
   success: true;
   createdCount: number;
   skippedCount: number;
+  duplicateCount?: number;
+  relatedCount?: number;
   malformedCount: number;
+  relationWarning?: string;
 }
 
 type IngredientPersistenceStatus =
@@ -93,12 +108,16 @@ type IngredientPersistenceStatus =
       state: "success";
       createdCount: number;
       skippedCount: number;
+      duplicateCount?: number;
+      relatedCount?: number;
       malformedCount: number;
+      relationWarning?: string;
     }
   | { state: "skipped" }
   | { state: "failed"; message: string };
 
 export default function AnalyzePage() {
+  const reviewResultRef = useRef<HTMLDivElement | null>(null);
   const [recipeText, setRecipeText] = useState("");
   const [analysis, setAnalysis] = useState<MealAnalysisResult | null>(null);
   const [ingredientText, setIngredientText] = useState("");
@@ -119,6 +138,7 @@ export default function AnalyzePage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const trimmedRecipeTextLength = recipeText.trim().length;
+  const inputLooksLikeUrl = looksLikeSharedUrl(recipeText);
   const isAnalyzeDisabled = isLoading || trimmedRecipeTextLength < 10;
 
   async function submitAnalysis() {
@@ -166,6 +186,13 @@ export default function AnalyzePage() {
       setEvidenceNotesText(result.evidenceNotes.join("\n"));
       setConfidenceNotesText(result.confidenceNotes.join("\n"));
       setGuidanceBasisText(formatGuidanceBasis(result.guidanceBasis));
+      window.requestAnimationFrame(() => {
+        reviewResultRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+        reviewResultRef.current?.focus({ preventScroll: true });
+      });
     } catch {
       setError("Unable to reach the analysis service. Try again.");
     } finally {
@@ -299,7 +326,7 @@ export default function AnalyzePage() {
       }
 
       setSavedMeal(data as SaveMealResponse);
-      void persistIngredientSuggestions(analysis);
+      void persistIngredientSuggestions(analysis, (data as SaveMealResponse).notionPageId);
     } catch {
       setSaveError("Unable to reach Notion saving service. Try again.");
     } finally {
@@ -307,7 +334,10 @@ export default function AnalyzePage() {
     }
   }
 
-  async function persistIngredientSuggestions(meal: MealAnalysisResult) {
+  async function persistIngredientSuggestions(
+    meal: MealAnalysisResult,
+    mealPageId: string
+  ) {
     const ingredients = normalizeIngredientSuggestionText(
       ingredientText,
       meal.ingredientSuggestions
@@ -328,7 +358,8 @@ export default function AnalyzePage() {
         },
         body: JSON.stringify({
           mealName: meal.mealName,
-          ingredients
+          ingredients,
+          mealPageId
         })
       });
 
@@ -347,7 +378,10 @@ export default function AnalyzePage() {
         state: "success",
         createdCount: result.createdCount,
         skippedCount: result.skippedCount,
-        malformedCount: result.malformedCount
+        duplicateCount: result.duplicateCount,
+        relatedCount: result.relatedCount,
+        malformedCount: result.malformedCount,
+        relationWarning: result.relationWarning
       });
     } catch {
       setIngredientPersistence({
@@ -366,7 +400,25 @@ export default function AnalyzePage() {
         description="Paste a recipe URL, recipe text, or meal idea. The review starts with the practical household answer, then keeps the details editable before saving."
       />
 
-      {error ? <Alert>{error}</Alert> : null}
+      {error ? (
+        <Alert>
+          <div className="space-y-2">
+            <p>{error}</p>
+            {inputLooksLikeUrl ? (
+              <>
+                <p>
+                  The link is still in the box. Paste any caption, transcript,
+                  ingredient list, or spoken recipe summary into the same box
+                  and run the analysis again.
+                </p>
+                <p className="break-all text-xs opacity-80">
+                  Source tried: {recipeText.trim()}
+                </p>
+              </>
+            ) : null}
+          </div>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <Card>
@@ -389,7 +441,7 @@ export default function AnalyzePage() {
                   onChange={(event) => {
                     setRecipeText(event.currentTarget.value);
                   }}
-                  placeholder="Paste a recipe URL, ingredients, instructions, servings, constraints, or a rough meal idea here."
+                  placeholder="Paste a recipe URL, TikTok/Reel/Shorts link, caption, transcript, ingredients, instructions, servings, constraints, or a rough meal idea here."
                   rows={16}
                   value={recipeText}
                 />
@@ -422,7 +474,11 @@ export default function AnalyzePage() {
           </CardHeader>
           <CardContent>
             {analysis ? (
-              <div className="space-y-6">
+              <div
+                className="space-y-5"
+                ref={reviewResultRef}
+                tabIndex={-1}
+              >
                 <HouseholdSummary analysis={analysis} />
 
                 <CollapsibleSection
@@ -854,30 +910,30 @@ function HouseholdSummary({ analysis }: { analysis: MealAnalysisResult }) {
   const answer = getHouseholdAnswer(analysis);
 
   return (
-    <div className="rounded-md border border-primary/20 bg-primary/5 p-4 sm:p-5">
-      <div className="space-y-4">
-        <div className="space-y-2">
+    <div className="rounded-md border border-primary/20 bg-primary/5 p-3 sm:p-4">
+      <div className="space-y-3">
+        <div className="space-y-1.5">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             Household answer
           </p>
-          <h3 className="text-xl font-semibold leading-snug text-foreground">
+          <h3 className="text-lg font-semibold leading-snug text-foreground sm:text-xl">
             {answer.headline}
           </h3>
-          <p className="text-sm leading-6 text-muted-foreground">
+          <p className="text-sm leading-5 text-muted-foreground">
             {analysis.quickVerdict}
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2">
           <SummaryBadge label="Protein" value={analysis.proteinLevel} />
           <SummaryBadge label="Satiety" value={analysis.satietyLevel} />
           <SummaryBadge
-            label="Blood sugar impact"
+            label="Energy"
             value={analysis.bloodSugarImpact}
           />
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-2">
           <SummaryBlock
             label="Smallest helpful change"
             value={analysis.minimalChangeVersion}
@@ -886,10 +942,14 @@ function HouseholdSummary({ analysis }: { analysis: MealAnalysisResult }) {
         </div>
 
         {analysis.culturalNotes.trim().length > 0 ? (
-          <SummaryBlock
-            label="Keep the dish itself"
-            value={analysis.culturalNotes}
-          />
+          <div className="rounded-md border bg-background p-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Keep the dish itself
+            </p>
+            <p className="mt-1.5 text-sm leading-5 text-foreground">
+              {analysis.culturalNotes}
+            </p>
+          </div>
         ) : null}
       </div>
     </div>
@@ -915,8 +975,10 @@ function getHouseholdAnswer(analysis: MealAnalysisResult) {
 
 function SummaryBadge({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-background px-3 py-2">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+    <div className="min-w-0 rounded-md border bg-background px-2 py-2 sm:px-3">
+      <p className="text-[11px] font-medium leading-4 text-muted-foreground sm:text-xs">
+        {label}
+      </p>
       <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
@@ -924,11 +986,11 @@ function SummaryBadge({ label, value }: { label: string; value: string }) {
 
 function SummaryBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-background p-3">
+    <div className="rounded-md border bg-background p-2.5 sm:p-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 text-sm leading-6 text-foreground">{value}</p>
+      <p className="mt-1.5 text-sm leading-5 text-foreground">{value}</p>
     </div>
   );
 }
@@ -977,9 +1039,19 @@ function SourceSummary({ analysis }: { analysis: MealAnalysisResult }) {
       <p className="font-medium">Recipe source</p>
       <div className="mt-2 space-y-1 text-muted-foreground">
         <p>Type: {analysis.sourceType}</p>
+        {analysis.sourceClassification ? (
+          <p>Classification: {analysis.sourceClassification}</p>
+        ) : null}
         {analysis.sourceName ? <p>Source: {analysis.sourceName}</p> : null}
         {analysis.parserVersion ? (
           <p>Parser: {analysis.parserVersion}</p>
+        ) : null}
+        {analysis.sourceNotes?.length ? (
+          <ul className="list-disc space-y-1 pl-5">
+            {analysis.sourceNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
         ) : null}
         {analysis.knownIngredientContextUsed ? (
           <p>
@@ -1048,14 +1120,22 @@ function IngredientPersistenceMessage({
   }
 
   return (
-    <p className="mt-3 text-primary">
-      Ingredient suggestions saved. Created {status.createdCount}; skipped{" "}
-      {status.skippedCount} existing
-      {status.malformedCount > 0
-        ? `; ignored ${status.malformedCount} malformed`
-        : ""}
-      .
-    </p>
+    <div className="mt-3 space-y-1 text-primary">
+      <p>
+        Ingredient suggestions saved. Created {status.createdCount}; skipped{" "}
+        {status.skippedCount} existing
+        {typeof status.relatedCount === "number"
+          ? `; related ${status.relatedCount} to this meal`
+          : ""}
+        {status.malformedCount > 0
+          ? `; ignored ${status.malformedCount} malformed`
+          : ""}
+        .
+      </p>
+      {status.relationWarning ? (
+        <p className="text-amber-800">{status.relationWarning}</p>
+      ) : null}
+    </div>
   );
 }
 

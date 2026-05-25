@@ -1,6 +1,52 @@
 # Architectural Decisions
 
-Last updated: 2026-05-24 (Analyze UX Simplification)
+Last updated: 2026-05-24 (Shared URL Intake)
+
+## 2026-05-24 — Analyze Intake Classifies Shared URLs
+
+Decision: Extend the existing dependency-free `recipe-parser` adapter so `/analyze` treats shared URLs as a first-class intake path. The adapter now classifies sources as `manual-text`, `recipe-page`, `social-video`, `video-page`, `short-link`, or `unknown-url`; strips common tracking parameters; follows normal redirects; re-checks obvious local/private hosts after redirects; prefers Recipe JSON-LD; and falls back to bounded metadata/page text. Social/video links only proceed to OpenAI when accessible title/description metadata contains enough recipe-like detail.
+
+Reasoning:
+- The product priority shifted toward robust intake for links families actually share: recipe blogs, TikToks, Instagram Reels, YouTube Shorts, and short links.
+- The app should accept valid-looking shared links and fail helpfully rather than silently treating them as poor manual text or returning generic parser errors.
+- TikTok, Instagram, and YouTube often hide captions/transcripts behind platform protections or client JavaScript; the app should not bypass those protections.
+- Keeping this inside the adapter preserves the existing `/api/analyze-meal` route and `/analyze` page flow.
+
+Tradeoffs:
+- This remains dependency-free and is still less robust than a full HTML Readability parser.
+- No browser automation, video download, external scraping service, or platform bypass was added.
+- Social/video analysis is intentionally low-confidence and only possible when accessible metadata itself contains enough recipe detail.
+- `sourceClassification` and `sourceNotes` are returned to `/analyze`, but no Notion schema changes were added.
+
+## 2026-05-24 — Ingredient Relations Are Schema-Aware And Non-Blocking
+
+Decision: Extend ingredient suggestion persistence so `/api/notion/save-ingredients` can relate new and existing Ingredient pages to the saved Meal when the active Ingredients data source has a compatible relation property pointing to the configured Meals database or primary Meals data source.
+
+Reasoning:
+- The app should improve Notion relational usefulness without creating or mutating schema.
+- Duplicate Ingredient detection remains important because Ingredients are household staples, not per-meal line items.
+- Existing Ingredients should accumulate Meal relations over time instead of being recreated.
+- Missing relation schema should not block saving Meals or Ingredients.
+
+Tradeoffs:
+- The route still saves normalized ingredient names only; structured quantities, units, and recipe-line persistence remain deferred.
+- Existing Ingredient relation updates depend on the relation values returned by the Notion page payload. If Notion reports a relation with more linked pages than the payload includes, the route skips that relation update to avoid overwriting existing links.
+- The active schema has been locally verified with a `Meals` relation, but production should still be checked after deploy.
+
+## 2026-05-24 — Analyze First Answer Uses Household Language
+
+Decision: Tune the `/api/analyze-meal` prompt and `/analyze` review flow so the first household answer prioritizes plain language, same-dish minimal nudges, culturally realistic starch guidance, and mobile movement to the generated result.
+
+Reasoning:
+- Real-meal review showed the core product value depends more on the first answer feeling practical and culturally preserving than on deeper persistence work.
+- Indian rice meals should not default to brown-rice or whole-grain swaps when smaller basmati portions, more dal/chana, kachumber, yogurt, extra sabzi, or half rice/half veg better preserve the meal.
+- Evidence and confidence notes should support trust without making the household screen feel clinical.
+- Mobile users should land on the generated review after analysis instead of having to hunt below the input.
+
+Tradeoffs:
+- Prompt tuning improves likely output quality but does not guarantee every model response will avoid clinical phrasing.
+- The schema and Notion payload remain unchanged, so deeper field-level separation of household guidance vs. evidence/admin details remains future work.
+- Browser automation could not complete a generated-result mobile test because the in-app browser virtual clipboard was unavailable; command-line API checks covered output quality.
 
 ## 2026-05-24 — Analyze Review Starts With Household Guidance
 
