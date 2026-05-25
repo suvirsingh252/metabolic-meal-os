@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,67 @@ import {
 } from "@/src/app/analyze/components/form-fields";
 import { SaveMealSection } from "@/src/app/analyze/components/save-meal-section";
 import { SourceSummary } from "@/src/app/analyze/components/source-evidence-section";
+
+const nutritionUnavailableMessage =
+  "Nutrition totals unavailable for this source. Add estimates manually if you want dashboard tracking.";
+
+type NutritionEstimate = NonNullable<MealAnalysisResult["nutritionEstimate"]>;
+type NutritionTotals = NutritionEstimate["totals"];
+type NutritionField = keyof NutritionTotals;
+
+const blankNutritionEstimate: NutritionEstimate = {
+  totals: {
+    calories: null,
+    protein: null,
+    carbs: null,
+    fat: null,
+    fiber: null,
+    sodium: null,
+    sugar: null
+  },
+  confidence: "medium",
+  provenance: "Entered during meal review",
+  source: "user-entered"
+};
+
+export function hasAnyNutritionValue(totals: NutritionTotals) {
+  return Object.values(totals).some(
+    (value) => typeof value === "number" && Number.isFinite(value)
+  );
+}
+
+export function getNutritionTotalsDisplayState(
+  nutritionEstimate: MealAnalysisResult["nutritionEstimate"]
+) {
+  if (!nutritionEstimate) {
+    return {
+      mode: "unavailable" as const,
+      estimate: blankNutritionEstimate,
+      hasAnyNutritionValue: false,
+      hasSourceNutrition: false,
+      sourceLabel: "none detected"
+    };
+  }
+
+  const hasValue = hasAnyNutritionValue(nutritionEstimate.totals);
+  const sourceLabel =
+    nutritionEstimate.source === "recipe-json-ld"
+      ? "Recipe page"
+      : nutritionEstimate.source === "notion-backfill"
+        ? "Notion backfill"
+        : "Manual";
+
+  return {
+    mode:
+      nutritionEstimate.source === "user-entered"
+        ? ("manual" as const)
+        : ("structured" as const),
+    estimate: nutritionEstimate,
+    hasAnyNutritionValue: hasValue,
+    hasSourceNutrition: true,
+    sourceLabel
+  };
+}
 
 export function AnalysisResultPanel({
   state,
@@ -143,23 +205,45 @@ function NutritionTotalsSection({
   analysis: MealAnalysisResult;
   onAnalysisChange: (analysis: MealAnalysisResult) => void;
 }) {
-  const estimate = analysis.nutritionEstimate ?? {
-    totals: {
-      calories: null,
-      protein: null,
-      carbs: null,
-      fat: null,
-      fiber: null,
-      sodium: null,
-      sugar: null
+  const nutritionState = getNutritionTotalsDisplayState(
+    analysis.nutritionEstimate
+  );
+  const {
+    estimate,
+    hasAnyNutritionValue,
+    hasSourceNutrition,
+    mode,
+    sourceLabel
+  } = nutritionState;
+
+  const nutritionGroups: {
+    title: string;
+    fields: { field: NutritionField; label: string; unit: string }[];
+  }[] = [
+    {
+      title: "Energy",
+      fields: [{ field: "calories", label: "Calories", unit: "kcal" }]
     },
-    confidence: "medium" as const,
-    provenance: "Entered during meal review",
-    source: "user-entered" as const
-  };
+    {
+      title: "Macros",
+      fields: [
+        { field: "protein", label: "Protein", unit: "g" },
+        { field: "carbs", label: "Carbs", unit: "g" },
+        { field: "fat", label: "Fat", unit: "g" }
+      ]
+    },
+    {
+      title: "Health Signals",
+      fields: [
+        { field: "fiber", label: "Fiber", unit: "g" },
+        { field: "sodium", label: "Sodium", unit: "mg" },
+        { field: "sugar", label: "Sugar", unit: "g" }
+      ]
+    }
+  ];
 
   function updateTotal(
-    field: keyof NonNullable<MealAnalysisResult["nutritionEstimate"]>["totals"],
+    field: NutritionField,
     value: string
   ) {
     const trimmed = value.trim();
@@ -173,12 +257,13 @@ function NutritionTotalsSection({
       ...analysis,
       nutritionEstimate: {
         ...estimate,
-        source:
-          analysis.nutritionEstimate?.source === "recipe-json-ld"
-            ? "recipe-json-ld"
-            : "user-entered",
+        source: "user-entered",
         provenance:
-          analysis.nutritionEstimate?.provenance ?? "Entered during meal review",
+          analysis.nutritionEstimate?.provenance &&
+          !analysis.nutritionEstimate.provenance.includes("edited during meal review")
+            ? `${analysis.nutritionEstimate.provenance}; edited during meal review`
+            : (analysis.nutritionEstimate?.provenance ??
+              "Entered during meal review"),
         totals: {
           ...estimate.totals,
           [field]: numericValue
@@ -187,9 +272,7 @@ function NutritionTotalsSection({
     });
   }
 
-  function updateConfidence(
-    value: NonNullable<MealAnalysisResult["nutritionEstimate"]>["confidence"]
-  ) {
+  function updateConfidence(value: NutritionEstimate["confidence"]) {
     onAnalysisChange({
       ...analysis,
       nutritionEstimate: {
@@ -204,74 +287,129 @@ function NutritionTotalsSection({
       description="Meal-level totals used by the dashboard. Leave unknown values blank."
       title="Nutrition totals"
     >
-      <div className="grid gap-4 md:grid-cols-4">
-        <NutritionInput
-          label="Calories"
-          onChange={(value) => updateTotal("calories", value)}
-          unit="kcal"
-          value={estimate.totals.calories}
-        />
-        <NutritionInput
-          label="Protein"
-          onChange={(value) => updateTotal("protein", value)}
-          unit="g"
-          value={estimate.totals.protein}
-        />
-        <NutritionInput
-          label="Carbs"
-          onChange={(value) => updateTotal("carbs", value)}
-          unit="g"
-          value={estimate.totals.carbs}
-        />
-        <NutritionInput
-          label="Fat"
-          onChange={(value) => updateTotal("fat", value)}
-          unit="g"
-          value={estimate.totals.fat}
-        />
-        <NutritionInput
-          label="Fiber"
-          onChange={(value) => updateTotal("fiber", value)}
-          unit="g"
-          value={estimate.totals.fiber}
-        />
-        <NutritionInput
-          label="Sodium"
-          onChange={(value) => updateTotal("sodium", value)}
-          unit="mg"
-          value={estimate.totals.sodium}
-        />
-        <NutritionInput
-          label="Sugar"
-          onChange={(value) => updateTotal("sugar", value)}
-          unit="g"
-          value={estimate.totals.sugar}
-        />
-        <div className="space-y-2">
-          <Label htmlFor="nutrition-confidence">Confidence</Label>
-          <select
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            id="nutrition-confidence"
-            onChange={(event) =>
-              updateConfidence(
-                event.target
-                  .value as NonNullable<
-                  MealAnalysisResult["nutritionEstimate"]
-                >["confidence"]
-              )
-            }
-            value={estimate.confidence}
-          >
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                className={
+                  hasAnyNutritionValue
+                    ? "bg-foreground text-background"
+                    : undefined
+                }
+              >
+                {hasAnyNutritionValue
+                  ? `${estimate.confidence} confidence`
+                  : "Unavailable"}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                Source: {hasSourceNutrition ? sourceLabel : "none detected"}
+              </span>
+            </div>
+            {!hasSourceNutrition ? (
+              <p className="text-sm text-muted-foreground">
+                {nutritionUnavailableMessage}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {estimate.provenance}
+              </p>
+            )}
+          </div>
+          {mode !== "unavailable" ? (
+            <NutritionConfidenceSelect
+              confidence={estimate.confidence}
+              onChange={updateConfidence}
+            />
+          ) : null}
         </div>
+
+        {mode === "unavailable" ? (
+          <details className="rounded-md border p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Add manual estimates
+            </summary>
+            <div className="mt-4 space-y-4">
+              <NutritionConfidenceSelect
+                confidence={estimate.confidence}
+                onChange={updateConfidence}
+              />
+              <NutritionFieldGroups
+                groups={nutritionGroups}
+                onUpdate={updateTotal}
+                totals={estimate.totals}
+              />
+            </div>
+          </details>
+        ) : (
+          <NutritionFieldGroups
+            groups={nutritionGroups}
+            onUpdate={updateTotal}
+            totals={estimate.totals}
+          />
+        )}
       </div>
-      <p className="text-sm text-muted-foreground">
-        Provenance: {estimate.provenance}
-      </p>
     </CollapsibleSection>
+  );
+}
+
+function NutritionConfidenceSelect({
+  confidence,
+  onChange
+}: {
+  confidence: NutritionEstimate["confidence"];
+  onChange: (value: NutritionEstimate["confidence"]) => void;
+}) {
+  return (
+    <div className="w-full space-y-2 sm:w-44">
+      <Label htmlFor="nutrition-confidence">Confidence</Label>
+      <select
+        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        id="nutrition-confidence"
+        onChange={(event) =>
+          onChange(event.target.value as NutritionEstimate["confidence"])
+        }
+        value={confidence}
+      >
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+  );
+}
+
+function NutritionFieldGroups({
+  groups,
+  onUpdate,
+  totals
+}: {
+  groups: {
+    title: string;
+    fields: { field: NutritionField; label: string; unit: string }[];
+  }[];
+  onUpdate: (field: NutritionField, value: string) => void;
+  totals: NutritionTotals;
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      {groups.map((group) => (
+        <div className="space-y-3 rounded-md border p-3" key={group.title}>
+          <h4 className="text-sm font-medium">{group.title}</h4>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            {group.fields.map((item) => (
+              <NutritionInput
+                key={item.field}
+                label={item.label}
+                onChange={(value) => onUpdate(item.field, value)}
+                unit={item.unit}
+                value={totals[item.field]}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -296,7 +434,7 @@ function NutritionInput({
           id={id}
           min={0}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Unknown"
+          placeholder="Add"
           type="number"
           value={value ?? ""}
         />
