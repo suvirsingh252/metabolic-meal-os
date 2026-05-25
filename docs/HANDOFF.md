@@ -50,14 +50,14 @@ Implemented:
 - Adapter directories exist for future Open Food Facts, nutrition, recipe parser, grocery prices, and weather integrations.
 - Recipe/shared URL analysis support: `/analyze` accepts normal recipe URLs, shortened/shared URLs, TikTok links, Instagram Reels, YouTube Shorts, and pasted text in the existing input. `/api/analyze-meal` classifies the source, fetches safely server-side through the recipe-parser adapter, prefers Recipe JSON-LD when present, falls back to bounded metadata/page text, and returns source metadata plus source notes with the analysis.
 - Recipe JSON-LD nutrition extraction: when a recipe page exposes structured nutrition facts, the parser carries meal-level totals into `nutritionEstimate` with confidence and provenance. Structured nutrition remains preferred over estimates.
-- Good Enough Nutrition Estimation v1: manual/free-text meal descriptions with recognizable components can produce conservative `nutritionEstimate.source: estimated` values for calories, protein, and fiber only. Sodium, sugar, fat, and carbs stay blank/null unless a structured source or user review supplies them.
+- Good Enough Nutrition Estimation v1 plus Serving Size Controls v1: manual/free-text meal descriptions with recognizable components can produce conservative `nutritionEstimate.source: estimated` values for calories, protein, and fiber only. The estimator parses simple quantities, bowl phrases, large/small portions, and butter inclusion/exclusion; sodium, sugar, fat, and carbs stay blank/null unless a structured source or user review supplies them.
 - Social/video link handling: the parser only uses accessible HTML/OpenGraph metadata and does not bypass platform protections. If TikTok, Instagram, YouTube Shorts, or similar links do not expose enough recipe-like detail, the API returns a clear fallback asking for a caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
 - Household recipe feedback, AI analysis, pantry item, operational tag, and localization types are present for future workflows.
 - Evidence-aware foundation: static approved source registry and safe health-guidance principles for diabetes-aware, PCOS-aware, and Canada's Food Guide-aligned future analysis.
 - Evidence-Aware Analysis v3: runtime meal analysis now uses the approved source registry and health-guidance principles to produce evidence notes, confidence notes, a safety disclaimer, and source/principle-linked guidance basis. V3 fields are production-active, editable in `/analyze`, and summarized into Notion Notes without schema changes.
 - Ingredient-aware analysis context: `/api/analyze-meal` now does a best-effort read of matching known Ingredients from Notion before the OpenAI call and adds a compact "Known household ingredient context" block when matches exist. This can include household flags, nutrient confidence, FDC description, and ingredient-level protein/fiber/carbohydrate/energy hints already stored in Notion.
 - USDA FoodData Central ingredient lookup foundation: server-side `/api/ingredients/lookup` route, scoped `FDC_API_KEY`, normalized nutrient snapshot mapper, and Settings diagnostics panel.
-- Meal-level nutrition persistence v1: reviewed meals can carry calories, protein, carbs, fat, fiber, sodium, sugar, confidence, provenance, and source. `/analyze` exposes editable nutrition totals in the review flow, labels free-text estimates for review, and `save-meal` writes compatible Notion properties when they already exist.
+- Meal-level nutrition persistence v1: reviewed meals can carry calories, protein, carbs, fat, fiber, sodium, sugar, confidence, provenance, and source. `/analyze` exposes editable nutrition totals in the review flow, labels free-text estimates for review, shows matched estimate assumptions, offers coarse serving multiplier controls (`0.5x`, `1x`, `1.5x`, `2x`) plus add/remove butter when relevant, and `save-meal` writes compatible Notion properties when they already exist.
 - Meal quality v1: rule-based quality scoring considers protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. Existing meals without exact nutrition can receive read-time quality backfill from legacy scorecards in Notion Notes.
 - Explicit USDA -> Notion ingredient enrichment endpoint: `/api/ingredients/enrich` can lookup only or lookup and update an Ingredient page when compatible Notion properties already exist.
 - FoodData Central matching quality improvements: lookup now fetches preferred generic USDA data types more robustly, ranks Foundation/SR Legacy/Survey ahead of Experimental and Branded where suitable, penalizes prepared/flavored/plain-staple mismatches, adds limited query expansion for paneer and atta, and returns optional match metadata explaining the selected data type and fallback reason.
@@ -78,7 +78,7 @@ Not implemented yet:
 - Full pantry management.
 - Live Open Food Facts, nutrition, grocery price, flyer, or weather API integrations.
 - Persistence for structured ingredients, pantry items, household preferences, or separate AI analysis records beyond current safe Notion meal-source writes.
-- Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not calculate serving-level totals from ingredient context without quantities; the only automatic free-text estimate is the limited deterministic calories/protein/fiber path.
+- Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not calculate serving-level totals from ingredient context without quantities; the only automatic free-text estimate is the limited deterministic calories/protein/fiber path with coarse beta-grade serving controls.
 - Automatic USDA lookup/enrichment during meal analysis or ingredient suggestion persistence.
 - Multi-household Notion partitioning.
 
@@ -158,7 +158,8 @@ Pages:
   - Returns `analysisVersion` and `analysisModel`.
   - Carries recipe-page JSON-LD nutrition facts through to `nutritionEstimate` when present.
   - For manual/free-text meals without structured nutrition, runs the deterministic free-text estimator only when the description has enough recognizable food detail. Current coverage includes paratha/parantha, gobi/cauliflower, butter, eggs, chicken breast, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, and salad/vegetables.
-  - Free-text estimates fill calories/protein/fiber only, leave sodium/sugar/fat/carbs null, and include provenance naming matched components and conservative serving assumptions. It still does not ask OpenAI to calculate exact calories or macros.
+  - Free-text estimates fill calories/protein/fiber only, leave sodium/sugar/fat/carbs null, and include provenance naming matched components, serving assumptions, quantity multipliers, confidence, and review guidance. It still does not ask OpenAI to calculate exact calories or macros.
+  - Serving-size parsing currently supports simple numeric/word quantities for eggs, rotis/chapatis, parathas/paranthas, `half bowl`, `one bowl`, `large`, `small`, `extra butter`, `with butter`, and `without butter`.
 
 - `GET /api/dashboard`
   - Queries recent saved Meals through the shared Notion Meals read utility.
@@ -214,7 +215,7 @@ Pages:
   - Defaults current saves to `sourceType: manual`, `importedAt: now`, and `parserVersion: manual-v1`.
   - Writes optional source tracking fields only if compatible Notion Meals properties already exist.
   - Writes optional nutrition totals, nutrition confidence/provenance/source, explicit analysis scores, and meal quality score only if compatible Notion Meals properties already exist.
-  - User edits to nutrition totals convert the source to `user-entered` and append review-edit provenance. Blank nutrition fields remain null and are not written as zero.
+  - User edits to nutrition totals and reviewed estimate controls convert the source to `user-entered` and append review-edit/reviewed-estimate provenance. Blank nutrition fields remain null and are not written as zero.
   - Does not create Notion properties or relations.
 
 - `POST /api/notion/save-ingredients`
@@ -431,11 +432,12 @@ Reasoning:
 
 1. Review FoodData Central matching quality on a larger household ingredient set and add targeted query expansions only where needed.
 2. Review Evidence-Aware Analysis v3 plus known Ingredient context output quality on real household meals and tighten prompt/schema language if it drifts into medical claims or over-precise nutrition claims.
-3. Continue the household experience audit across save, meals, feedback, and settings flows so the rest of the app matches the simplified `/analyze` hierarchy.
-4. Add structured ingredient persistence after confirming the normalized Ingredient relation behavior in production.
-5. Add structured ingredient persistence behind the current string-compatible ingredient flow.
-6. Add meal detail view.
-7. Harden Recipe URL analysis after real-site testing.
+3. Test Serving Size Controls v1 on more household shorthand meals and add only deterministic rules with clear provenance.
+4. Continue the household experience audit across save, meals, feedback, and settings flows so the rest of the app matches the simplified `/analyze` hierarchy.
+5. Add structured ingredient persistence after confirming the normalized Ingredient relation behavior in production.
+6. Add structured ingredient persistence behind the current string-compatible ingredient flow.
+7. Add meal detail view.
+8. Harden Recipe URL analysis after real-site testing.
 
 ## Manual Testing Checklist
 

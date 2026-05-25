@@ -1,6 +1,20 @@
 # Architectural Decisions
 
-Last updated: 2026-05-25 (Good Enough Nutrition Estimation v1)
+Last updated: 2026-05-25 (Serving Size Controls v1)
+
+## 2026-05-25 — Serving Size Controls Stay Coarse And Reviewable
+
+Decision: Extend the deterministic free-text estimator with lightweight serving-size parsing and add compact estimate review controls on `/analyze`, without adding Notion properties or heavy nutrition modeling.
+
+Reasoning:
+- The biggest practical weakness in Good Enough Nutrition Estimation v1 was treating `gobi parantha with butter`, `2 gobi paranthas with butter`, `half bowl dal`, and `large chicken salad` as the same portion.
+- Deterministic parsing for a small set of common quantity words, numbers, bowl phrases, large/small modifiers, and butter inclusion is safer than model-generated nutrition.
+- Users need a quick way to adjust an estimated serving before save without turning the review page into a clinical macro calculator.
+
+Tradeoffs:
+- Controls are beta-grade and intentionally coarse: `0.5x`, `1x`, `1.5x`, `2x`, plus butter add/remove.
+- Only calories, protein, and fiber are estimated; sodium, sugar, fat, and carbs remain `null` unless structured nutrition or user review supplies them.
+- Reviewed estimates are saved as `user-entered` with provenance that records the original estimate and review action.
 
 ## 2026-05-25 — Free-Text Nutrition Estimation Is Conservative And Limited
 
@@ -42,7 +56,7 @@ Tradeoffs:
 - Legacy meals often lack exact nutrition totals.
 - JSON-LD nutrition varies by recipe site and may be incomplete.
 - Free-text estimates cover only calories/protein/fiber and are labeled as estimates.
-- Users may need to enter or correct totals manually in the review flow; user edits override estimated provenance.
+- Users may need to enter or correct totals manually in the review flow; user edits and reviewed serving adjustments override estimated provenance with `user-entered` review provenance.
 
 ## 2026-05-25 — Notion Schema Remains Operator-Controlled
 

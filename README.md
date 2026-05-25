@@ -117,9 +117,11 @@ This endpoint requires `OPENAI_API_KEY` in `.env.local`.
 Nutrition behavior:
 
 - Recipe pages with schema.org JSON-LD nutrition facts populate structured meal-level nutrition when available.
-- Manual/free-text meals can receive conservative estimated calories, protein, and fiber for a small set of common foods.
+- Manual/free-text meals can receive conservative estimated calories, protein, and fiber for a small set of common foods, including simple serving-size signals such as `2 rotis`, `half bowl dal`, `large`, and `with/without butter`.
 - Sodium, sugar, fat, and carbs remain blank unless structured data or review edits provide them.
-- Estimated nutrition is labeled and editable before save; user edits become `user-entered` provenance.
+- Estimated nutrition is labeled with matched components, serving assumptions, confidence, and review guidance.
+- Estimated meals expose coarse review controls before save: serving multiplier `0.5x`, `1x`, `1.5x`, `2x`, plus add/remove butter where relevant.
+- User edits or reviewed estimate adjustments become `user-entered` provenance while preserving blank values as `null`, not zero.
 
 ## Manual Integration Test
 

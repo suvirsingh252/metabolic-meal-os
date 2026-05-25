@@ -72,6 +72,20 @@ export interface MealNutritionEstimate {
   confidence: "high" | "medium" | "low";
   provenance: string;
   source: "recipe-json-ld" | "user-entered" | "notion-backfill" | "estimated";
+  assumptions?: {
+    matchedComponents: string[];
+    servingSizeAssumptions: string[];
+    quantityMultipliers: {
+      component: string;
+      multiplier: number;
+      reason: string;
+    }[];
+    baseTotals: MealNutritionTotals;
+    servingMultiplier: number;
+    butterInferred: boolean;
+    confidence: "high" | "medium" | "low";
+    reviewBeforeSave: string;
+  };
 }
 
 export type MealSourceClassification =

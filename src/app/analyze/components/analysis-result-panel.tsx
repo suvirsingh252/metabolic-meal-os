@@ -2,6 +2,7 @@
 
 import type { RefObject } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +62,18 @@ const blankNutritionEstimate: NutritionEstimate = {
   source: "user-entered"
 };
 
+const estimatedServingMultipliers = [0.5, 1, 1.5, 2] as const;
+
+function roundNutritionValue(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function multiplyNutritionValue(value: number | null, multiplier: number) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? roundNutritionValue(value * multiplier)
+    : null;
+}
+
 export function hasAnyNutritionValue(totals: NutritionTotals) {
   return Object.values(totals).some(
     (value) => typeof value === "number" && Number.isFinite(value)
@@ -88,11 +101,15 @@ export function getNutritionTotalsDisplayState(
         ? "Notion backfill"
         : nutritionEstimate.source === "estimated"
           ? "Estimated"
+          : nutritionEstimate.assumptions
+            ? "Reviewed estimate"
           : "Manual";
 
   return {
     mode:
-      nutritionEstimate.source === "user-entered"
+      nutritionEstimate.assumptions
+        ? ("estimated" as const)
+        : nutritionEstimate.source === "user-entered"
         ? ("manual" as const)
         : nutritionEstimate.source === "estimated"
           ? ("estimated" as const)
@@ -122,6 +139,103 @@ export function applyNutritionReviewEdit(
       ...estimate.totals,
       [field]: value
     }
+  };
+}
+
+function appendReviewProvenance(
+  previousProvenance: string | null | undefined,
+  reviewNote: string
+) {
+  const base = previousProvenance?.trim() || "Entered during meal review";
+
+  return base.includes(reviewNote) ? base : `${base}; ${reviewNote}`;
+}
+
+export function applyEstimatedServingMultiplier(
+  estimate: NutritionEstimate,
+  multiplier: number
+): NutritionEstimate {
+  const baseTotals = estimate.assumptions?.baseTotals ?? estimate.totals;
+  const totals: NutritionTotals = {
+    calories: multiplyNutritionValue(baseTotals.calories, multiplier),
+    protein: multiplyNutritionValue(baseTotals.protein, multiplier),
+    carbs: multiplyNutritionValue(baseTotals.carbs, multiplier),
+    fat: multiplyNutritionValue(baseTotals.fat, multiplier),
+    fiber: multiplyNutritionValue(baseTotals.fiber, multiplier),
+    sodium: multiplyNutritionValue(baseTotals.sodium, multiplier),
+    sugar: multiplyNutritionValue(baseTotals.sugar, multiplier)
+  };
+
+  return {
+    ...estimate,
+    source: "user-entered",
+    provenance: appendReviewProvenance(
+      estimate.provenance,
+      `reviewed during meal review: serving multiplier set to ${multiplier}x`
+    ),
+    totals,
+    assumptions: estimate.assumptions
+      ? {
+          ...estimate.assumptions,
+          servingMultiplier: multiplier
+        }
+      : undefined
+  };
+}
+
+export function applyEstimatedButterAdjustment(
+  estimate: NutritionEstimate,
+  includeButter: boolean
+): NutritionEstimate {
+  const baseTotals = estimate.assumptions?.baseTotals ?? estimate.totals;
+  const butterCalories = includeButter ? 45 : -45;
+  const nextBaseTotals: NutritionTotals = {
+    ...baseTotals,
+    calories:
+      typeof baseTotals.calories === "number"
+        ? Math.max(0, roundNutritionValue(baseTotals.calories + butterCalories))
+        : includeButter
+          ? 45
+          : null
+  };
+  const servingMultiplier = estimate.assumptions?.servingMultiplier ?? 1;
+  const adjustedEstimate: NutritionEstimate = {
+    ...estimate,
+    assumptions: estimate.assumptions
+      ? {
+          ...estimate.assumptions,
+          baseTotals: nextBaseTotals,
+          butterInferred: includeButter,
+          matchedComponents: includeButter
+            ? Array.from(
+                new Set([
+                  ...estimate.assumptions.matchedComponents,
+                  "small butter serving"
+                ])
+              )
+            : estimate.assumptions.matchedComponents.filter(
+                (component) => !/butter/i.test(component)
+              ),
+          servingSizeAssumptions: [
+            ...estimate.assumptions.servingSizeAssumptions.filter(
+              (assumption) => !/butter/i.test(assumption)
+            ),
+            includeButter
+              ? "butter reviewed as included"
+              : "butter reviewed as removed"
+          ]
+        }
+      : undefined
+  };
+
+  return {
+    ...applyEstimatedServingMultiplier(adjustedEstimate, servingMultiplier),
+    provenance: appendReviewProvenance(
+      estimate.provenance,
+      includeButter
+        ? "reviewed during meal review: butter added"
+        : "reviewed during meal review: butter removed"
+    )
   };
 }
 
@@ -299,6 +413,20 @@ function NutritionTotalsSection({
     });
   }
 
+  function updateServingMultiplier(multiplier: number) {
+    onAnalysisChange({
+      ...analysis,
+      nutritionEstimate: applyEstimatedServingMultiplier(estimate, multiplier)
+    });
+  }
+
+  function updateButterIncluded(includeButter: boolean) {
+    onAnalysisChange({
+      ...analysis,
+      nutritionEstimate: applyEstimatedButterAdjustment(estimate, includeButter)
+    });
+  }
+
   return (
     <CollapsibleSection
       description="Meal-level totals used by the dashboard. Leave unknown values blank."
@@ -368,14 +496,94 @@ function NutritionTotalsSection({
             </div>
           </details>
         ) : (
-          <NutritionFieldGroups
-            groups={nutritionGroups}
-            onUpdate={updateTotal}
-            totals={estimate.totals}
-          />
+          <>
+            {mode === "estimated" ? (
+              <EstimateAssumptionsSection
+                estimate={estimate}
+                onButterIncludedChange={updateButterIncluded}
+                onServingMultiplierChange={updateServingMultiplier}
+              />
+            ) : null}
+            <NutritionFieldGroups
+              groups={nutritionGroups}
+              onUpdate={updateTotal}
+              totals={estimate.totals}
+            />
+          </>
         )}
       </div>
     </CollapsibleSection>
+  );
+}
+
+function EstimateAssumptionsSection({
+  estimate,
+  onButterIncludedChange,
+  onServingMultiplierChange
+}: {
+  estimate: NutritionEstimate;
+  onButterIncludedChange: (includeButter: boolean) => void;
+  onServingMultiplierChange: (multiplier: number) => void;
+}) {
+  const assumptions = estimate.assumptions;
+  const selectedMultiplier = assumptions?.servingMultiplier ?? 1;
+  const butterMentioned = Boolean(
+    assumptions?.butterInferred ||
+      assumptions?.matchedComponents.some((component) => /butter/i.test(component))
+  );
+
+  return (
+    <div className="space-y-3 rounded-md border bg-background p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Estimate assumptions</h4>
+          {assumptions?.matchedComponents.length ? (
+            <div className="flex flex-wrap gap-2">
+              {assumptions.matchedComponents.map((component) => (
+                <Badge key={component}>{component}</Badge>
+              ))}
+            </div>
+          ) : null}
+          {assumptions?.servingSizeAssumptions.length ? (
+            <p className="text-sm text-muted-foreground">
+              {assumptions.servingSizeAssumptions.join("; ")}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {estimatedServingMultipliers.map((multiplier) => (
+            <Button
+              aria-pressed={selectedMultiplier === multiplier}
+              key={multiplier}
+              onClick={() => onServingMultiplierChange(multiplier)}
+              size="sm"
+              type="button"
+              variant={selectedMultiplier === multiplier ? "default" : "secondary"}
+            >
+              {multiplier}x
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {butterMentioned || assumptions ? (
+          <Button
+            onClick={() =>
+              onButterIncludedChange(!assumptions?.butterInferred)
+            }
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            {assumptions?.butterInferred ? "Remove butter" : "Add butter"}
+          </Button>
+        ) : null}
+        <span className="text-xs text-muted-foreground">
+          {assumptions?.reviewBeforeSave ??
+            "Review estimated serving assumptions before saving."}
+        </span>
+      </div>
+    </div>
   );
 }
 

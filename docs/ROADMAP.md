@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-25 (Good Enough Nutrition Estimation v1)
+Last updated: 2026-05-25 (Serving Size Controls v1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -87,6 +87,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add configurable dashboard targets for calories, protein, fiber, and sodium.
 - [x] Add meal-level nutrition persistence v1 for recipe JSON-LD nutrition facts and user-entered review totals.
 - [x] Add Good Enough Nutrition Estimation v1 for manual/free-text meals, covering conservative calories/protein/fiber only with estimated provenance.
+- [x] Add Serving Size Controls v1 for estimated manual/free-text meals, including deterministic quantity parsing, assumption provenance, and coarse pre-save review controls.
 - [x] Add editable nutrition totals in the `/analyze` review flow.
 - [x] Add meal quality v1 scoring and dashboard quality surfaces.
 - [x] Add legacy scorecard read-time quality backfill for saved meals without exact nutrition totals.
@@ -132,7 +133,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Open Food Facts enrichment for Canadian grocery products.
 - [ ] Canadian grocery price/flyer intelligence through adapters.
 - [ ] Weather/context-aware planning for Halifax/NS seasons.
-- [ ] Expand nutrition estimation coverage only where rules stay testable and provenance remains clear.
+- [ ] Expand nutrition estimation coverage only where rules stay testable, serving assumptions stay reviewable, and provenance remains clear.
 - [ ] Nutrition enrichment with estimates kept separate from canonical recipe data.
 - [ ] Source-attributed analysis explanations with source IDs, confidence, and reviewed guidance language.
 - [ ] Personalized planning using household feedback signals.
@@ -160,4 +161,4 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] The `/analyze` review UI has a first hierarchy pass, but the rest of the app still needs household UX simplification.
 - [ ] Dashboard targets are client-side only and need persisted user/household settings later.
 - [ ] Legacy nutrition and quality backfill is read-time only; no Notion write-back migration exists yet.
-- [ ] Free-text nutrition estimation is deliberately narrow and should not be treated as clinical-grade nutrition science.
+- [ ] Free-text nutrition estimation and serving controls are deliberately narrow, coarse, and beta-grade; they should not be treated as clinical-grade nutrition science.

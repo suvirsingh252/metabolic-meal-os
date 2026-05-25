@@ -1676,3 +1676,31 @@ Next recommended actions:
 - Extract Notion schema helpers into `src/lib/storage/notion`.
 - Wire client search/pagination UI more completely for Meals and Ingredients.
 - Continue splitting `/analyze` into reducer-backed review/save/edit components.
+
+# 2026-05-25 Serving Size Controls v1
+
+Goals:
+- Reduce serving-size ambiguity in Good Enough Nutrition Estimation v1 without changing Notion schema or adding heavy nutrition modeling.
+
+Completed work:
+- Extended `src/lib/domain/nutrition/free-text-estimator.ts` to parse simple quantity and serving signals: numeric/word quantities for eggs, rotis/chapatis, parathas/paranthas, `half bowl`, `one bowl`, `large`, `small`, `extra butter`, `with butter`, and `without butter`.
+- Added estimate assumption metadata to meal nutrition estimates: matched components, serving-size assumptions, quantity multipliers, base totals, current serving multiplier, butter inference, confidence, and review-before-save guidance.
+- Updated provenance text for estimates so it names matched components, serving assumptions, quantity multipliers, confidence, and the fact that only calories/protein/fiber are estimated.
+- Added `/analyze` estimate assumption UI for estimated/reviewed-estimate nutrition only, with matched component badges, serving multiplier controls (`0.5x`, `1x`, `1.5x`, `2x`), and add/remove butter action.
+- Serving multiplier and butter review actions update calories/protein/fiber live, preserve null fields, convert source to `user-entered`, and append reviewed-estimate provenance.
+- Preserved structured recipe JSON-LD precedence and unavailable/manual nutrition behavior.
+- Added tests for gobi parantha with butter, 2 gobi paranthas with butter, without butter, large chicken breast with salad, half bowl dal with rice, vague input, null-preserving serving multipliers, and reviewed estimate provenance.
+- Updated README, architecture, decisions, handoff, known issues, roadmap, sources, and this session log.
+
+Verification:
+- `npm test` passed: 56/56 tests.
+
+Remaining risks:
+- Serving controls are intentionally coarse and beta-grade, not clinical nutrition modeling.
+- Rule coverage is still narrow and should only expand when deterministic parsing and provenance remain clear.
+- Visual browser verification has not yet been run for the new controls.
+
+Next recommended actions:
+- Run `npm run lint` and `npm run build` after docs settle.
+- Test the `/analyze` controls visually on desktop/mobile.
+- Add more household shorthand fixtures only after seeing real inputs.
