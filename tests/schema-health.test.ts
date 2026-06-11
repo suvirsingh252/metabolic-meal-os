@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { evaluateMealsSchemaHealth } from "@/src/lib/notion/schema-health";
+import { getPlannerSchemaDiagnostics } from "@/src/lib/notion/meal-plan";
 
 test("schema health reports missing optional meal fields", () => {
   const health = evaluateMealsSchemaHealth([
@@ -53,4 +54,27 @@ test("schema health accepts numeric nutrition confidence", () => {
     health.incompatible.some((field) => field.label === "Nutrition Confidence"),
     false
   );
+});
+
+test("planner schema diagnostics report missing planner config safely", async () => {
+  const previousDatabaseId = process.env.NOTION_MEAL_PLAN_DATABASE_ID;
+  const previousSourceId = process.env.NOTION_MEAL_PLAN_SOURCE_ID;
+
+  delete process.env.NOTION_MEAL_PLAN_DATABASE_ID;
+  delete process.env.NOTION_MEAL_PLAN_SOURCE_ID;
+
+  try {
+    const diagnostics = await getPlannerSchemaDiagnostics();
+
+    assert.equal(diagnostics.key, "planner");
+    assert.equal("ok" in diagnostics && diagnostics.ok, false);
+  } finally {
+    if (previousDatabaseId) {
+      process.env.NOTION_MEAL_PLAN_DATABASE_ID = previousDatabaseId;
+    }
+
+    if (previousSourceId) {
+      process.env.NOTION_MEAL_PLAN_SOURCE_ID = previousSourceId;
+    }
+  }
 });

@@ -1,6 +1,21 @@
 # Architectural Decisions
 
-Last updated: 2026-06-11 (Beta 3.6 iPhone Share Intake)
+Last updated: 2026-06-11 (Weekly Dinner Planner v1)
+
+## 2026-06-11 — Weekly Planner v1 Is Dinner-Only And Notion-Backed
+
+Decision: Add `/planner` as a small Notion-backed dinner planner using a dedicated Meal Plan database, while modeling every row with `Meal Slot` for future breakfast/lunch/snack expansion.
+
+Reasoning:
+- The immediate family need is to assign saved dinners to the current week, clear them, and mark what happened.
+- Saved Meals already contain the household meal archive, so planner v1 should relate to those records rather than inventing meals or nutrition.
+- Missing planner configuration must not break the deployed app; `/planner` and Settings diagnostics should explain setup gaps and block writes safely.
+- AI weekly generation, grocery lists, and drag-and-drop are intentionally deferred until manual planning behavior is trusted.
+
+Implementation:
+- `GET /api/planner` returns current Monday-Sunday dinner slots and setup diagnostics.
+- `POST /api/planner` validates `YYYY-MM-DD` dates, allowed slots/statuses, and Notion meal page IDs before assigning, clearing, or updating status.
+- `src/lib/notion/meal-plan.ts` reads the active Meal Plan data source schema before writes and only updates the planner row, never saved meal nutrition or feedback records.
 
 ## 2026-06-11 — Beta 3.6 iPhone Share Intake Uses Dedicated Token And Optional Persistence
 

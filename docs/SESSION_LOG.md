@@ -1,5 +1,35 @@
 # Session Log
 
+## 2026-06-11 Weekly Dinner Planner v1
+
+Goal:
+- Build a production-safe Planner v1 foundation where `/planner` shows the current week, assigns saved meals to dinner slots, clears planned meals, and marks meals planned/cooked/skipped/swapped.
+
+Implementation:
+- Added `/planner` with a mobile-first dinner-only planner client.
+- Added Planner nav item.
+- Added `GET /api/planner` and `POST /api/planner`.
+- Added `src/lib/domain/planner` validation for `YYYY-MM-DD` dates, meal slots, statuses, and Notion meal page IDs.
+- Added `src/lib/notion/meal-plan.ts` for Notion-backed Meal Plan schema checks, current-week Dinner queries, assignment upserts, clear updates, status updates, and Settings diagnostics.
+- Added optional `NOTION_MEAL_PLAN_DATABASE_ID` support, with `NOTION_MEAL_PLAN_SOURCE_ID` accepted as a fallback read for early setup compatibility.
+- Added Settings schema diagnostics for planner setup.
+- Added planner tests for week calculation, validators, and missing-config setup behavior.
+
+Required Notion properties:
+- Name (title)
+- Plan Date (date)
+- Meal Slot (select: Dinner, Lunch, Breakfast, Snack)
+- Meal (relation to existing Meals database/data source)
+- Status (select: Planned, Cooked, Skipped, Swapped)
+- Source (select: Manual, Suggested, Generated)
+- Household Notes (rich text)
+
+Required Vercel env var:
+- `NOTION_MEAL_PLAN_DATABASE_ID` to enable planner reads/writes. Without it, `/planner` loads with setup diagnostics and writes are blocked.
+
+Out of scope:
+- AI weekly generation, grocery-list generation, drag-and-drop, breakfast/lunch/snack UI, and invented meals/nutrition.
+
 ## 2026-06-11 Beta 3.6 iPhone Share Intake v1
 
 Goal:

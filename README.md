@@ -25,6 +25,7 @@ Follow the mandatory start-of-session and end-of-session procedures in `docs/HAN
 - `/analyze?intake=<id>` — pre-filled from iPhone Share Sheet intake
 - `/meals`
 - `/meals/[id]`
+- `/planner`
 - `/feedback`
 - `/settings`
 - `POST /api/intake/share` — iPhone Shortcut intake endpoint
@@ -51,7 +52,7 @@ cp .env.example .env.local
 
 Add your OpenAI API key to `OPENAI_API_KEY` in `.env.local`. Add your Notion integration secret to `NOTION_API_KEY`.
 
-The Notion database IDs come from each Notion database URL. Open the Meals, Ingredients, Feedback, Weekly Plans, and Meal Templates databases in Notion, copy each database URL, and use the long ID in the URL for the matching `NOTION_*_DATABASE_ID` value.
+The Notion database IDs come from each Notion database URL. Open the Meals, Ingredients, Feedback, Meal Plan, Weekly Plans, and Meal Templates databases in Notion, copy each database URL, and use the long ID in the URL for the matching `NOTION_*_DATABASE_ID` value.
 
 Do not commit `.env.local` or any real API keys. Secrets must stay server-side and must not use the `NEXT_PUBLIC_` prefix.
 
@@ -70,6 +71,7 @@ Required Vercel environment variables:
 - `NOTION_MEALS_DATABASE_ID`
 - `NOTION_INGREDIENTS_DATABASE_ID`
 - `NOTION_FEEDBACK_DATABASE_ID`
+- `NOTION_MEAL_PLAN_DATABASE_ID` — enables `/planner`; the page shows setup diagnostics if absent
 - `NOTION_WEEKLY_PLANS_DATABASE_ID`
 - `NOTION_MEAL_TEMPLATES_DATABASE_ID`
 - `IOS_SHORTCUT_TOKEN` — secret token for the iPhone Share Sheet Shortcut (Beta 3.6)
@@ -83,7 +85,9 @@ Deployment checklist:
 - Notion API key configured.
 - All Notion database IDs configured.
 - Meals and Feedback databases shared with the Notion integration.
+- Meal Plan database shared with the Notion integration if Planner is enabled.
 - `/settings` Notion diagnostics passes on the Vercel URL.
+- `/planner` loads; if configured, the current week dinner slots can be assigned, cleared, and marked cooked/skipped/swapped.
 - `IOS_SHORTCUT_TOKEN` set and iPhone Shortcut configured (see iPhone Shortcut Setup below).
 
 ## iPhone Testing And Home Screen
@@ -213,6 +217,26 @@ Recommendation behavior:
 - With no feedback history, preference remains neutral and Today falls back to stable saved-meal metadata scoring.
 - Today cards show 2-4 plain household reasons and include an expandable `Why this meal?` explanation generated from the same deterministic score components.
 - Beta 3.5 hardening fixed mobile `Suggest Another` cycling so categories with alternatives can keep rotating after temporary exclusions are exhausted, and repeated-saved-meal reasons no longer imply household success unless feedback supports that claim.
+
+Planner behavior:
+
+- `/planner` is a Notion-backed Weekly Dinner Planner v1.
+- It renders the current Monday-Sunday week and dinner slots only. The data model still writes `Meal Slot` so lunch, breakfast, and snack can be added later without changing the core row shape.
+- Saved meals from the existing Meals database are the only assignable options. The planner does not invent meals, generate weeks, or build grocery lists.
+- The planner can assign a saved meal, clear a planned meal relation, and update status to `Planned`, `Cooked`, `Skipped`, or `Swapped`.
+- If `NOTION_MEAL_PLAN_DATABASE_ID` is missing or the Meal Plan schema is incomplete, `/planner` shows setup diagnostics and blocks writes without crashing.
+
+Meal Plan Notion database:
+
+| Property | Type |
+|---|---|
+| Name | Title |
+| Plan Date | Date |
+| Meal Slot | Select: Dinner, Lunch, Breakfast, Snack |
+| Meal | Relation to existing Meals database/data source |
+| Status | Select: Planned, Cooked, Skipped, Swapped |
+| Source | Select: Manual, Suggested, Generated |
+| Household Notes | Rich text |
 
 Beta 3 usability behavior:
 

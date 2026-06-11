@@ -5,6 +5,7 @@ import {
   getNotionMealsEnv
 } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
+import { getPlannerSchemaDiagnostics } from "@/src/lib/notion/meal-plan";
 import {
   evaluateMealsSchemaHealth,
   type MealSchemaHealth
@@ -12,7 +13,7 @@ import {
 
 export const runtime = "nodejs";
 
-type DatabaseKey = "meals" | "ingredients" | "feedback";
+type DatabaseKey = "meals" | "ingredients" | "feedback" | "planner";
 
 interface SchemaSummary {
   key: DatabaseKey;
@@ -27,6 +28,10 @@ interface SchemaSummary {
     };
   }>;
   health?: MealSchemaHealth;
+  plannerHealth?: {
+    ok: boolean;
+    warnings: string[];
+  };
 }
 
 interface SchemaFailure {
@@ -151,7 +156,8 @@ export async function GET() {
       getNotionIngredientsEnv,
       "NOTION_INGREDIENTS_DATABASE_ID"
     ),
-    readSchema("feedback", getNotionFeedbackEnv, "NOTION_FEEDBACK_DATABASE_ID")
+    readSchema("feedback", getNotionFeedbackEnv, "NOTION_FEEDBACK_DATABASE_ID"),
+    getPlannerSchemaDiagnostics()
   ]);
 
   const databases = results.filter(
@@ -162,6 +168,11 @@ export async function GET() {
           ...database,
           health: evaluateMealsSchemaHealth(database.properties)
         }
+      : database.key === "planner" && "health" in database
+        ? {
+            ...database,
+            plannerHealth: database.health
+          }
       : database
   );
   const errors = results.filter(

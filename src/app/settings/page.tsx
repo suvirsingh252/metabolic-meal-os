@@ -34,7 +34,7 @@ type NotionDiagnosticsResult =
   | NotionDiagnosticsFailure;
 
 interface NotionSchemaDatabase {
-  key: "meals" | "ingredients" | "feedback";
+  key: "meals" | "ingredients" | "feedback" | "planner";
   id: string;
   title: string;
   properties: Array<{
@@ -63,10 +63,14 @@ interface NotionSchemaDatabase {
     }>;
     warnings: string[];
   };
+  plannerHealth?: {
+    ok: boolean;
+    warnings: string[];
+  };
 }
 
 interface NotionSchemaError {
-  key: "meals" | "ingredients" | "feedback";
+  key: "meals" | "ingredients" | "feedback" | "planner";
   ok: false;
   error: string;
 }
@@ -739,7 +743,7 @@ export default function SettingsPage() {
                 </Alert>
               ) : null}
 
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-4 lg:grid-cols-4">
                 {schemaResult.databases.map((database) => (
                   <SchemaSummaryCard database={database} key={database.key} />
                 ))}
@@ -997,6 +1001,9 @@ function SchemaSummaryCard({
 
       <div className="mt-4 space-y-2">
         {database.health ? <SchemaHealthPanel health={database.health} /> : null}
+        {database.plannerHealth ? (
+          <PlannerSchemaHealthPanel health={database.plannerHealth} />
+        ) : null}
 
         {database.properties.map((property) => (
           <div className="rounded-md border bg-card px-3 py-2 text-sm" key={property.name}>
@@ -1020,6 +1027,31 @@ function SchemaSummaryCard({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function PlannerSchemaHealthPanel({
+  health
+}: {
+  health: NonNullable<NotionSchemaDatabase["plannerHealth"]>;
+}) {
+  if (health.ok) {
+    return (
+      <div className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
+        Planner schema supports dinner planning.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
+      <p className="font-medium text-accent">Planner setup needs attention</p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+        {health.warnings.map((warning) => (
+          <li key={warning}>{warning}</li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-11 (Beta 3.6 iPhone Share Intake)
+Last updated: 2026-06-11 (Weekly Dinner Planner v1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -9,6 +9,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Scaffold Next.js App Router app.
 - [x] Add responsive dashboard shell.
 - [x] Add routes: `/`, `/analyze`, `/meals`, `/feedback`, `/settings`.
+- [x] Add `/planner` Weekly Dinner Planner v1 route.
 - [x] Add typed server-side env config.
 - [x] Add OpenAI meal analysis endpoint.
 - [x] Wire `/analyze` to OpenAI analysis.
@@ -105,6 +106,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Complete Beta 3 usability closeout: replace Notion-facing copy in normal flows with Meal OS language, move external links/raw notes into Advanced details, clarify quick feedback semantics, add Analyze staged loading, add Dashboard household takeaways, and reorganize Meal Detail around household summary.
 - [x] Complete Beta 3.5 functional audit and critical hardening: verified Analyze -> Save -> Notion -> Meals -> Dashboard lifecycle, fixed active data-source nutrition persistence, supported numeric nutrition confidence, hardened mobile `Suggest Another`, corrected overclaiming recommendation copy, and improved Meals mobile tap targets.
 - [x] Add Beta 3.6 iPhone Share Intake: `POST /api/intake/share` with `IOS_SHORTCUT_TOKEN` auth, URL/text classification, optional Notion intake persistence, and `/analyze?intake=<id>` bridge panel with social URL fallback UX.
+- [x] Add Weekly Dinner Planner v1: Notion-backed current-week dinner slots, saved-meal assignment, clear, status updates, setup diagnostics, and schema-safe writes.
 
 ## Current Sprint
 
@@ -120,6 +122,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] If optional nutrition and quality properties are added to Notion Meals, confirm new saves populate them.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
+- [ ] Verify `/planner` against the production Meal Plan database after adding `NOTION_MEAL_PLAN_DATABASE_ID`.
 
 ## Next Up
 
@@ -144,7 +147,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 
 ## Future Ideas
 
-- [ ] Weekly planning workflow.
+- [x] Weekly dinner planning foundation.
+- [ ] AI-assisted weekly planning suggestions.
 - [ ] Meal templates.
 - [ ] Household preference profile.
 - [ ] Shopping list generation.
