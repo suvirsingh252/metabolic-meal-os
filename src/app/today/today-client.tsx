@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
+  ArrowRight,
   Check,
   ExternalLink,
   Heart,
   Loader2,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Utensils
 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -247,7 +250,12 @@ export function TodayClient() {
         </div>
       </section>
 
-      {loadError ? <Alert>{loadError}</Alert> : null}
+      {loadError ? (
+        <div className="space-y-3">
+          <Alert>{loadError}</Alert>
+          <TodayActionFallback />
+        </div>
+      ) : null}
       {saveMessage ? <Alert>{saveMessage}</Alert> : null}
 
       {viewModel?.freshIdeas.length ? (
@@ -285,8 +293,11 @@ export function TodayClient() {
           </div>
         ) : null}
         {viewModel?.emptyState ? (
-          <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">
-            {viewModel.emptyState}
+          <div className="space-y-4 rounded-md border bg-card p-4">
+            <p className="text-sm text-muted-foreground">
+              {viewModel.emptyState}
+            </p>
+            <TodayActionFallback />
           </div>
         ) : null}
         <div className="grid gap-4 lg:grid-cols-2">
@@ -320,6 +331,25 @@ export function TodayClient() {
           </div>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function TodayActionFallback() {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button asChild>
+        <Link href="/analyze">
+          Analyze a meal
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
+      <Button asChild variant="secondary">
+        <Link href="/meals">
+          <Utensils className="h-4 w-4" />
+          View saved meals
+        </Link>
+      </Button>
     </div>
   );
 }

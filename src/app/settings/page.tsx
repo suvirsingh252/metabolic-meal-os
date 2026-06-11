@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   KeyRound,
@@ -139,7 +139,11 @@ function getErrorMessage(value: unknown) {
   return "Unable to verify Notion connection.";
 }
 
+type SettingsSection = "household" | "integrations" | "diagnostics";
+
 export default function SettingsPage() {
+  const [activeSection, setActiveSection] =
+    useState<SettingsSection>("household");
   const [isTestingNotion, setIsTestingNotion] = useState(false);
   const [isTestingSchemas, setIsTestingSchemas] = useState(false);
   const [notionResult, setNotionResult] =
@@ -388,108 +392,137 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Configuration"
         title="Settings"
-        description="Verify server-side OpenAI and Notion configuration without exposing secrets to the client."
+        description="Manage household defaults, integrations, and developer diagnostics."
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5" />
-              Server environment
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="openai-status">OpenAI API key</Label>
-              <Input id="openai-status" readOnly value="Server-side only" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notion-status">Notion API key</Label>
-              <Input id="notion-status" readOnly value="Server-side only" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5" />
-              MVP scope
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Private deployment guardrails protect API routes.</p>
-            <p>No local database is configured.</p>
-            <p>API credentials remain server-only.</p>
-          </CardContent>
-        </Card>
+      <div className="flex gap-2 overflow-x-auto rounded-md border bg-card p-1">
+        <SettingsSectionButton
+          active={activeSection === "household"}
+          onClick={() => setActiveSection("household")}
+        >
+          Household
+        </SettingsSectionButton>
+        <SettingsSectionButton
+          active={activeSection === "integrations"}
+          onClick={() => setActiveSection("integrations")}
+        >
+          Integrations
+        </SettingsSectionButton>
+        <SettingsSectionButton
+          active={activeSection === "diagnostics"}
+          onClick={() => setActiveSection("diagnostics")}
+        >
+          Diagnostics
+        </SettingsSectionButton>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Household defaults</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ReadonlySetting label="Country" value={householdPreferences.country} />
-          <ReadonlySetting label="Province" value={householdPreferences.province} />
-          <ReadonlySetting label="City" value={householdPreferences.city} />
-          <ReadonlySetting
-            label="Preferred units"
-            value={householdPreferences.preferredUnits}
-          />
-          <ReadonlySetting label="Currency" value={householdPreferences.currency} />
-          <ReadonlySetting
-            label="Temperature"
-            value={householdPreferences.temperatureUnit}
-          />
-        </CardContent>
-      </Card>
+      {activeSection === "household" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Household defaults</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ReadonlySetting label="Country" value={householdPreferences.country} />
+            <ReadonlySetting label="Province" value={householdPreferences.province} />
+            <ReadonlySetting label="City" value={householdPreferences.city} />
+            <ReadonlySetting
+              label="Preferred units"
+              value={householdPreferences.preferredUnits}
+            />
+            <ReadonlySetting label="Currency" value={householdPreferences.currency} />
+            <ReadonlySetting
+              label="Temperature"
+              value={householdPreferences.temperatureUnit}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Notion diagnostics</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button
-            disabled={isTestingNotion}
-            onClick={testNotionConnection}
-            type="button"
-          >
-            {isTestingNotion ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Settings2 className="h-4 w-4" />
-            )}
-            {isTestingNotion ? "Testing..." : "Test Notion Connection"}
-          </Button>
+      {activeSection === "integrations" ? (
+        <>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5" />
+                  Server environment
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="openai-status">OpenAI API key</Label>
+                  <Input id="openai-status" readOnly value="Server-side only" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notion-status">Notion API key</Label>
+                  <Input id="notion-status" readOnly value="Server-side only" />
+                </div>
+              </CardContent>
+            </Card>
 
-          {notionResult?.ok ? (
-            <div className="rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
-              <div className="flex items-center gap-2 font-medium text-primary">
-                <CheckCircle2 className="h-4 w-4" />
-                Notion connection verified
-              </div>
-              <p className="mt-2 text-foreground">
-                Meals database: {notionResult.databaseTitle}
-              </p>
-              <p className="mt-1 break-all text-muted-foreground">
-                {notionResult.databaseId}
-              </p>
-            </div>
-          ) : null}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings2 className="h-5 w-5" />
+                  MVP scope
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <p>Private deployment guardrails protect API routes.</p>
+                <p>No local database is configured.</p>
+                <p>API credentials remain server-only.</p>
+              </CardContent>
+            </Card>
+          </div>
 
-          {notionResult && !notionResult.ok ? (
-            <Alert>
-              <span className="inline-flex items-center gap-2">
-                <XCircle className="h-4 w-4" />
-                {notionResult.error}
-              </span>
-            </Alert>
-          ) : null}
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Notion diagnostics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                disabled={isTestingNotion}
+                onClick={testNotionConnection}
+                type="button"
+              >
+                {isTestingNotion ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Settings2 className="h-4 w-4" />
+                )}
+                {isTestingNotion ? "Testing..." : "Test Notion Connection"}
+              </Button>
 
+              {notionResult?.ok ? (
+                <div className="rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
+                  <div className="flex items-center gap-2 font-medium text-primary">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Notion connection verified
+                  </div>
+                  <p className="mt-2 text-foreground">
+                    Meals database: {notionResult.databaseTitle}
+                  </p>
+                  <p className="mt-1 break-all text-muted-foreground">
+                    {notionResult.databaseId}
+                  </p>
+                </div>
+              ) : null}
+
+              {notionResult && !notionResult.ok ? (
+                <Alert>
+                  <span className="inline-flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
+                    {notionResult.error}
+                  </span>
+                </Alert>
+              ) : null}
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+
+      {activeSection === "diagnostics" ? (
+        <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -715,6 +748,8 @@ export default function SettingsPage() {
           ) : null}
         </CardContent>
       </Card>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -906,6 +941,32 @@ function IngredientLookupResultCard({
 
 function formatNutrient(value: number | undefined, unit: string) {
   return typeof value === "number" ? `${value} ${unit}` : "Not returned";
+}
+
+function SettingsSectionButton({
+  active,
+  children,
+  onClick
+}: {
+  active: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-pressed={active}
+      className={[
+        "min-h-10 shrink-0 rounded-md px-3 text-sm font-medium transition-colors",
+        active
+          ? "bg-secondary text-secondary-foreground"
+          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+      ].join(" ")}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  );
 }
 
 function ReadonlySetting({ label, value }: { label: string; value: string }) {

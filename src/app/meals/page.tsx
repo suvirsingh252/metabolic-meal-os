@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -15,6 +15,8 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 
@@ -37,6 +39,8 @@ function getErrorMessage(value: unknown) {
 
 export default function MealsPage() {
   const [meals, setMeals] = useState<MealSummary[]>([]);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"newest" | "name" | "protein">("newest");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,6 +73,39 @@ export default function MealsPage() {
     return () => window.clearTimeout(timeoutId);
   }, [loadMeals]);
 
+  const filteredMeals = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const matches = meals.filter((meal) => {
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return [
+        meal.mealName,
+        meal.cuisine,
+        meal.mealType,
+        meal.proteinLevel,
+        meal.bloodSugarImpact
+      ]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(normalizedQuery));
+    });
+
+    return [...matches].sort((first, second) => {
+      if (sort === "name") {
+        return first.mealName.localeCompare(second.mealName);
+      }
+
+      if (sort === "protein") {
+        return (second.proteinG ?? -1) - (first.proteinG ?? -1);
+      }
+
+      return (
+        new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+      );
+    });
+  }, [meals, query, sort]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -90,9 +127,30 @@ export default function MealsPage() {
       {error ? <Alert>{error}</Alert> : null}
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between gap-4">
-          <CardTitle>Saved meal records</CardTitle>
-          <Search className="h-5 w-5 text-muted-foreground" />
+        <CardHeader className="gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>Saved meal records</CardTitle>
+            <Search className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
+            <Input
+              aria-label="Search saved meals"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name, cuisine, type, or impact"
+              value={query}
+            />
+            <Select
+              aria-label="Sort saved meals"
+              onChange={(event) =>
+                setSort(event.target.value as "newest" | "name" | "protein")
+              }
+              value={sort}
+            >
+              <option value="newest">Newest first</option>
+              <option value="name">Name A-Z</option>
+              <option value="protein">Protein high-low</option>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -109,9 +167,15 @@ export default function MealsPage() {
             </div>
           ) : null}
 
-          {!isLoading && meals.length > 0 ? (
+          {!isLoading && meals.length > 0 && filteredMeals.length === 0 ? (
+            <div className="rounded-md border bg-background p-6 text-sm text-muted-foreground">
+              No meals match the current search.
+            </div>
+          ) : null}
+
+          {!isLoading && filteredMeals.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-2">
-              {meals.map((meal) => (
+              {filteredMeals.map((meal) => (
                 <MealCard key={meal.id} meal={meal} />
               ))}
             </div>
@@ -129,6 +193,12 @@ function MealCard({ meal }: { meal: MealSummary }) {
     meal.proteinLevel ? `${meal.proteinLevel} protein` : null,
     meal.bloodSugarImpact ? `${meal.bloodSugarImpact} blood sugar impact` : null
   ].filter((badge): badge is string => Boolean(badge));
+  const nutrientHighlights = [
+    formatNutrient(meal.calories, "kcal"),
+    formatNutrient(meal.proteinG, "g protein"),
+    formatNutrient(meal.fiberG, "g fiber")
+  ].filter((value): value is string => Boolean(value));
+  const preview = getMealPreview(meal.notes);
 
   return (
     <div className="rounded-md border bg-background p-4">
@@ -156,10 +226,23 @@ function MealCard({ meal }: { meal: MealSummary }) {
         </Button>
       </div>
 
-      {meal.notes ? (
+      {preview ? (
         <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted-foreground">
-          {meal.notes}
+          {preview}
         </p>
+      ) : null}
+
+      {nutrientHighlights.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {nutrientHighlights.map((highlight) => (
+            <span
+              className="rounded-md border bg-card px-2 py-1 text-xs text-muted-foreground"
+              key={highlight}
+            >
+              {highlight}
+            </span>
+          ))}
+        </div>
       ) : null}
 
       <div className="mt-4 grid gap-2 text-sm md:grid-cols-3">
@@ -172,6 +255,22 @@ function MealCard({ meal }: { meal: MealSummary }) {
       </Button>
     </div>
   );
+}
+
+function formatNutrient(value: number | null, label: string) {
+  return typeof value === "number" ? `${Math.round(value)} ${label}` : null;
+}
+
+function getMealPreview(notes: string | null) {
+  if (!notes) {
+    return null;
+  }
+
+  if (/original notes|analysis framework|evidence-aware/i.test(notes)) {
+    return null;
+  }
+
+  return notes;
 }
 
 function MealFlag({ checked, label }: { checked: boolean; label: string }) {

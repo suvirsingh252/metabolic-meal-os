@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, MessageSquare, Save } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
@@ -54,6 +54,7 @@ function getMealLoadErrorMessage(value: unknown) {
 
 export default function FeedbackPage() {
   const [meals, setMeals] = useState<MealSummary[]>([]);
+  const [mealSearch, setMealSearch] = useState("");
   const [mealSelectionValue, setMealSelectionValue] = useState(manualMealValue);
   const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
   const [isLoadingMeals, setIsLoadingMeals] = useState(true);
@@ -99,6 +100,52 @@ export default function FeedbackPage() {
 
     return () => window.clearTimeout(timeoutId);
   }, [loadMeals]);
+
+  const filteredMeals = useMemo(() => {
+    const normalizedQuery = mealSearch.trim().toLowerCase();
+
+    return meals
+      .filter((meal) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        return [
+          meal.mealName,
+          meal.cuisine,
+          meal.mealType,
+          meal.createdAt
+        ]
+          .filter(Boolean)
+          .some((value) => value!.toLowerCase().includes(normalizedQuery));
+      })
+      .slice(0, 40);
+  }, [mealSearch, meals]);
+  const selectableMeals = useMemo(() => {
+    const selectedMeal = selectedMealId
+      ? meals.find((meal) => meal.id === selectedMealId)
+      : null;
+
+    if (
+      selectedMeal &&
+      !filteredMeals.some((meal) => meal.id === selectedMeal.id)
+    ) {
+      return [selectedMeal, ...filteredMeals];
+    }
+
+    return filteredMeals;
+  }, [filteredMeals, meals, selectedMealId]);
+  const recentMeals = useMemo(
+    () =>
+      [...meals]
+        .sort(
+          (first, second) =>
+            new Date(second.createdAt).getTime() -
+            new Date(first.createdAt).getTime()
+        )
+        .slice(0, 4),
+    [meals]
+  );
 
   function handleMealSelection(mealId: string) {
     setMealSelectionValue(mealId);
@@ -185,6 +232,13 @@ export default function FeedbackPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="mealSelection">Meal</Label>
+              <Input
+                disabled={isLoadingMeals}
+                id="mealSearch"
+                onChange={(event) => setMealSearch(event.target.value)}
+                placeholder="Search saved meals by name, cuisine, or date"
+                value={mealSearch}
+              />
               <Select
                 disabled={isLoadingMeals}
                 id="mealSelection"
@@ -194,15 +248,32 @@ export default function FeedbackPage() {
                 <option value={manualMealValue}>
                   {isLoadingMeals ? "Loading saved meals..." : "Manual entry"}
                 </option>
-                {meals.map((meal) => (
+                {selectableMeals.map((meal) => (
                   <option key={meal.id} value={meal.id}>
-                    {meal.mealName}
+                    {getMealOptionLabel(meal)}
                   </option>
                 ))}
               </Select>
+              {!isLoadingMeals && recentMeals.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {recentMeals.map((meal) => (
+                    <Button
+                      key={meal.id}
+                      onClick={() => handleMealSelection(meal.id)}
+                      size="sm"
+                      type="button"
+                      variant={
+                        selectedMealId === meal.id ? "secondary" : "ghost"
+                      }
+                    >
+                      {meal.mealName}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
               <p className="text-sm text-muted-foreground">
-                Saved meal feedback will include a Notion relation when the
-                Meal Feedback database has a compatible Meal relation property.
+                Search narrows the picker. Recent meals are shown first for
+                quick logging.
               </p>
               {mealLoadWarning ? (
                 <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -297,6 +368,31 @@ export default function FeedbackPage() {
       </Card>
     </div>
   );
+}
+
+function getMealOptionLabel(meal: MealSummary) {
+  const context = [
+    formatMealDate(meal.createdAt),
+    meal.mealType,
+    meal.cuisine
+  ].filter(Boolean);
+
+  return context.length > 0
+    ? `${meal.mealName} - ${context.join(" · ")}`
+    : meal.mealName;
+}
+
+function formatMealDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric"
+  }).format(date);
 }
 
 interface EnumSelectProps<TValue extends string> {

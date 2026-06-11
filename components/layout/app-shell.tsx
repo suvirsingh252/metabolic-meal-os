@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Menu } from "lucide-react";
+import { Activity } from "lucide-react";
 import { navItems } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,40 +47,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <Button className="ml-auto md:hidden" size="icon" variant="ghost">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Open navigation</span>
-          </Button>
+          <div className="ml-auto md:hidden" />
         </div>
-
-        <nav
-          className="grid border-t bg-card md:hidden"
-          style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
-        >
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
-
-            return (
-              <Link
-                className={cn(
-                  "flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1.5 py-2 text-xs text-muted-foreground",
-                  active && "bg-secondary text-secondary-foreground"
-                )}
-                href={item.href}
-                key={item.href}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="max-w-full truncate">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:py-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:py-6 md:pb-6 lg:px-8">
         {children}
       </main>
+
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-20 grid border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
+      >
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = pathname === item.href;
+
+          return (
+            <Link
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[0.7rem] text-muted-foreground",
+                active && "bg-secondary text-secondary-foreground"
+              )}
+              href={item.href}
+              key={item.href}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="max-w-full truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

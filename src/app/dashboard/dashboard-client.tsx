@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   MealCalloutCard,
   MealQualityBadge,
@@ -49,12 +50,19 @@ function getErrorMessage(value: unknown) {
 
 export function DashboardClient() {
   const [dashboard, setDashboard] = useState<DashboardViewModel | null>(null);
-  const [targets, setTargets] = useState<NutritionTargets>({
+  const [appliedTargets, setAppliedTargets] = useState<NutritionTargets>({
     calories: 2200,
     protein: 140,
     fiber: 30,
     sodium: 2300
   });
+  const [draftTargets, setDraftTargets] = useState<NutritionTargets>({
+    calories: 2200,
+    protein: 140,
+    fiber: 30,
+    sodium: 2300
+  });
+  const [targetsReady, setTargetsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -64,10 +72,10 @@ export function DashboardClient() {
 
     try {
       const params = new URLSearchParams({
-        calories: String(targets.calories),
-        protein: String(targets.protein),
-        fiber: String(targets.fiber),
-        sodium: String(targets.sodium)
+        calories: String(appliedTargets.calories),
+        protein: String(appliedTargets.protein),
+        fiber: String(appliedTargets.fiber),
+        sodium: String(appliedTargets.sodium)
       });
       const response = await fetch(`/api/dashboard?${params.toString()}`);
       const data: unknown = await response.json();
@@ -83,7 +91,7 @@ export function DashboardClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [targets]);
+  }, [appliedTargets]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -92,7 +100,13 @@ export function DashboardClient() {
       if (storedTargets) {
         try {
           const parsed = JSON.parse(storedTargets) as Partial<NutritionTargets>;
-          setTargets((current) => ({
+          setAppliedTargets((current) => ({
+            calories: readStoredTarget(parsed.calories, current.calories),
+            protein: readStoredTarget(parsed.protein, current.protein),
+            fiber: readStoredTarget(parsed.fiber, current.fiber),
+            sodium: readStoredTarget(parsed.sodium, current.sodium)
+          }));
+          setDraftTargets((current) => ({
             calories: readStoredTarget(parsed.calories, current.calories),
             protein: readStoredTarget(parsed.protein, current.protein),
             fiber: readStoredTarget(parsed.fiber, current.fiber),
@@ -102,19 +116,25 @@ export function DashboardClient() {
           window.localStorage.removeItem("nutritionTargets");
         }
       }
+
+      setTargetsReady(true);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("nutritionTargets", JSON.stringify(targets));
+    if (!targetsReady) {
+      return;
+    }
+
+    window.localStorage.setItem("nutritionTargets", JSON.stringify(appliedTargets));
     const timeoutId = window.setTimeout(() => {
       void loadDashboard();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadDashboard, targets]);
+  }, [appliedTargets, loadDashboard, targetsReady]);
 
   return (
     <div className="space-y-6">
@@ -155,7 +175,13 @@ export function DashboardClient() {
         <>
           <TodayOverview dashboard={dashboard} />
           <TargetProgress dashboard={dashboard} />
-          <TargetSettings targets={targets} onTargetsChange={setTargets} />
+          <TargetSettings
+            isLoading={isLoading}
+            onApply={() => setAppliedTargets(draftTargets)}
+            onTargetsChange={setDraftTargets}
+            targets={draftTargets}
+            targetsChanged={!areTargetsEqual(draftTargets, appliedTargets)}
+          />
           <QualitySummary dashboard={dashboard} />
           <DataReliabilitySummary dashboard={dashboard} />
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
@@ -166,6 +192,15 @@ export function DashboardClient() {
         </>
       ) : null}
     </div>
+  );
+}
+
+function areTargetsEqual(first: NutritionTargets, second: NutritionTargets) {
+  return (
+    first.calories === second.calories &&
+    first.protein === second.protein &&
+    first.fiber === second.fiber &&
+    first.sodium === second.sodium
   );
 }
 
@@ -267,11 +302,17 @@ function TargetProgress({ dashboard }: { dashboard: DashboardViewModel }) {
 }
 
 function TargetSettings({
+  isLoading,
+  onApply,
   onTargetsChange,
-  targets
+  targets,
+  targetsChanged
 }: {
+  isLoading: boolean;
+  onApply: () => void;
   onTargetsChange: (targets: NutritionTargets) => void;
   targets: NutritionTargets;
+  targetsChanged: boolean;
 }) {
   function updateTarget(field: keyof NutritionTargets, value: string) {
     const numberValue = Number(value);
@@ -288,20 +329,36 @@ function TargetSettings({
 
   return (
     <Card>
-      <CardHeader className="p-4 pb-2">
+      <CardHeader className="flex-col gap-3 p-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="text-base">Nutrition targets</CardTitle>
+        <Button
+          disabled={isLoading || !targetsChanged}
+          onClick={onApply}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          Apply targets
+        </Button>
       </CardHeader>
       <CardContent className="grid gap-3 p-4 pt-2 sm:grid-cols-2 lg:grid-cols-4">
         {(["calories", "protein", "fiber", "sodium"] as const).map((field) => (
-          <label className="space-y-2 text-sm" key={field}>
-            <span className="capitalize text-muted-foreground">{field}</span>
+          <div className="space-y-2 text-sm" key={field}>
+            <Label
+              className="capitalize text-muted-foreground"
+              htmlFor={`target-${field}`}
+            >
+              {field}
+            </Label>
             <Input
+              id={`target-${field}`}
               min={1}
+              name={field}
               onChange={(event) => updateTarget(field, event.target.value)}
               type="number"
               value={targets[field]}
             />
-          </label>
+          </div>
         ))}
       </CardContent>
     </Card>
