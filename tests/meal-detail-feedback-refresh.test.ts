@@ -59,12 +59,28 @@ test("shared optimistic feedback helper supports Today ate actions", () => {
 
   assert.equal(summary.totalEvents, 1);
   assert.equal(summary.eatenCount, 1);
-  assert.equal(summary.likedCount, 1);
-  assert.equal(summary.wouldRepeatCount, 1);
+  assert.equal(summary.likedCount, 0);
+  assert.equal(summary.wouldRepeatCount, 0);
   assert.equal(summary.lovedCount, 0);
   assert.deepEqual(summary.recentNotes, [
     "Ate This logged from Today on 2026-06-11."
   ]);
+});
+
+test("shared optimistic feedback helper keeps repeat-only actions out of eaten count", () => {
+  const summary = applyOptimisticMealDetailFeedback(
+    emptyMealFeedbackSummary("meal-1"),
+    "repeat",
+    {
+      createdAt: "2026-06-11T12:00:00.000Z",
+      note: "Would Make Again logged from Meal Detail on 2026-06-11."
+    }
+  );
+
+  assert.equal(summary.totalEvents, 1);
+  assert.equal(summary.eatenCount, 0);
+  assert.equal(summary.wouldRepeatCount, 1);
+  assert.equal(summary.likedCount, 0);
 });
 
 test("mergeFeedbackSummariesPreservingOptimistic keeps local counts until server catches up", () => {
@@ -108,9 +124,9 @@ test("meal detail actions expose pending, success, refresh, and duplicate guards
   assert.match(source, /disabled=\{Boolean\(pendingAction\)\}/);
   assert.match(source, /if \(pendingAction\)/);
   assert.match(source, /Saving\.\.\./);
-  assert.match(source, /Saved\. Meal history updated\./);
-  assert.match(source, /Marked as loved\./);
-  assert.match(source, /Thanks -- we'll use this for future suggestions\./);
+  assert.match(source, /Saved: logged as eaten\./);
+  assert.match(source, /Saved: logged as eaten, loved, and worth repeating\./);
+  assert.match(source, /Saved: marked as worth repeating\./);
 });
 
 test("Today feedback actions expose optimistic refresh, pending labels, duplicate guards, and rollback behavior", () => {
@@ -126,4 +142,6 @@ test("Today feedback actions expose optimistic refresh, pending labels, duplicat
   assert.match(source, /Eaten \{feedbackSummary\.eatenCount\}/);
   assert.match(source, /Loved \{feedbackSummary\.lovedCount\}/);
   assert.match(source, /Would repeat \{feedbackSummary\.wouldRepeatCount\}/);
+  assert.match(source, /Ate This records: logged as eaten\./);
+  assert.match(source, /Loved It records: eaten, loved, and worth repeating\./);
 });

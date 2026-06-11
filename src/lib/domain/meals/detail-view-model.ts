@@ -105,6 +105,30 @@ function buildNutritionItems(meal: MealSummary): MealDetailNutritionItem[] {
   ];
 }
 
+function toHouseholdWhyReason(reason: string) {
+  if (/not recently|haven't had/i.test(reason)) {
+    return "You have not had this recently.";
+  }
+
+  if (/family|favorite|loved/i.test(reason)) {
+    return "Marked family friendly.";
+  }
+
+  if (/weeknight|snack/i.test(reason)) {
+    return "Good weeknight option.";
+  }
+
+  if (/quality|rated|nutrition/i.test(reason)) {
+    return "Higher quality saved meal.";
+  }
+
+  if (/repeat|popular/i.test(reason)) {
+    return "Similar meals have worked well.";
+  }
+
+  return reason.endsWith(".") ? reason : `${reason}.`;
+}
+
 export function buildMealDetailViewModel(
   meals: MealSummary[],
   mealId: string,
@@ -126,12 +150,16 @@ export function buildMealDetailViewModel(
   const feedbackSummary =
     options.feedbackByMealId?.[meal.id] ?? emptyMealFeedbackSummary(meal.id);
   const category = getRecommendationCategory(meal);
-  const whyReasons = generateRecommendationReasons(
-    recommendationMeal,
-    recommendationMeals,
-    category,
-    generatedAt,
-    feedbackSummary.totalEvents > 0 ? feedbackSummary : null
+  const whyReasons = Array.from(
+    new Set(
+      generateRecommendationReasons(
+        recommendationMeal,
+        recommendationMeals,
+        category,
+        generatedAt,
+        feedbackSummary.totalEvents > 0 ? feedbackSummary : null
+      ).map(toHouseholdWhyReason)
+    )
   );
   const nutritionItems = buildNutritionItems(meal);
 

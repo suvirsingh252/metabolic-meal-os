@@ -32,21 +32,26 @@ export function SaveMealSection({
         ) : (
           <Save className="h-4 w-4" />
         )}
-        {isSaving ? "Saving..." : "Save to Notion"}
+        {isSaving ? "Saving..." : "Save meal"}
       </Button>
       {saveError ? <Alert className="mt-4">{saveError}</Alert> : null}
       {savedMeal ? (
         <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
-          <p className="font-medium text-primary">Saved to Notion.</p>
-          <a
-            className="mt-2 inline-flex items-center gap-2 text-primary underline-offset-4 hover:underline"
-            href={savedMeal.notionUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Open Notion page
-            <ExternalLink className="h-4 w-4" />
-          </a>
+          <p className="font-medium text-primary">Saved to Meal OS.</p>
+          <details className="mt-3 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground">
+              Advanced details
+            </summary>
+            <a
+              className="mt-2 inline-flex items-center gap-2 text-primary underline-offset-4 hover:underline"
+              href={savedMeal.notionUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Open saved record
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </details>
           <IngredientPersistenceMessage status={ingredientPersistence} />
         </div>
       ) : null}
@@ -92,7 +97,8 @@ function IngredientPersistenceMessage({
   if (status.state === "failed") {
     return (
       <p className="mt-3 text-amber-800">
-        Meal saved, but ingredient persistence did not complete. {status.message}
+        Meal saved, but ingredient suggestions did not finish saving.{" "}
+        {status.message}
       </p>
     );
   }

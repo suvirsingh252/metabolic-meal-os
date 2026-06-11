@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildTodayViewModel,
+  generateRecommendationExplanation,
   generateRecommendationReasons,
   getAlternativeSuggestion,
   rankRecommendationsForCategory,
+  scoreRecommendation,
   type RecommendationMeal
 } from "@/src/lib/domain/recommendations";
 import type { MealFeedbackSummaryByMealId } from "@/src/lib/domain/feedback";
@@ -272,4 +274,123 @@ test("today view model falls back when feedback summaries are absent", () => {
 
   assert.equal(today.suggestions.Dinner?.meal.id, "dinner");
   assert.equal(today.suggestions.Dinner?.feedbackSummary, null);
+});
+
+test("no-feedback scoring is deterministic and preference-neutral", () => {
+  const meals = [
+    meal({
+      id: "steady",
+      mealName: "Steady dinner",
+      familyApproved: true,
+      weeknightFriendly: true,
+      qualityScore: 80,
+      proteinG: 24,
+      fiberG: 8
+    })
+  ];
+  const firstScore = scoreRecommendation({
+    meal: meals[0],
+    meals,
+    category: "Dinner",
+    generatedAt,
+    feedbackSummary: null
+  });
+  const secondScore = scoreRecommendation({
+    meal: meals[0],
+    meals,
+    category: "Dinner",
+    generatedAt,
+    feedbackSummary: null
+  });
+
+  assert.deepEqual(firstScore, secondScore);
+  assert.equal(firstScore.preferenceScore, 0);
+  assert.equal(firstScore.varietyPenalty, 0);
+  assert.ok(firstScore.schedulingScore > 0);
+});
+
+test("strong preference scoring raises preferred meals without new schema fields", () => {
+  const dinner = meal({ id: "favorite", qualityScore: 70 });
+  const score = scoreRecommendation({
+    meal: dinner,
+    meals: [dinner],
+    category: "Dinner",
+    generatedAt,
+    feedbackSummary: {
+      mealId: "favorite",
+      totalEvents: 4,
+      eatenCount: 4,
+      lovedCount: 2,
+      likedCount: 4,
+      dislikedCount: 0,
+      wouldRepeatCount: 4,
+      wouldNotRepeatCount: 0,
+      lastEatenAt: "2026-05-01T12:00:00.000Z",
+      lastPositiveAt: "2026-05-01T12:00:00.000Z",
+      netPreferenceScore: 20,
+      confidence: "medium",
+      recentNotes: []
+    }
+  });
+
+  assert.ok(score.preferenceScore > score.schedulingScore);
+  assert.ok(score.totalScore > score.schedulingScore);
+});
+
+test("explanations include preference, recency, variety, and scheduling components", () => {
+  const dinner = meal({
+    id: "repeat",
+    mealName: "Repeat dinner",
+    qualityScore: 90,
+    createdAt: "2026-05-01T12:00:00.000Z"
+  });
+  const meals = [
+    dinner,
+    meal({ id: "repeat-2", mealName: "Repeat dinner" }),
+    meal({ id: "repeat-3", mealName: "Repeat dinner" })
+  ];
+  const feedback = {
+    mealId: "repeat",
+    totalEvents: 3,
+    eatenCount: 3,
+    lovedCount: 1,
+    likedCount: 3,
+    dislikedCount: 0,
+    wouldRepeatCount: 3,
+    wouldNotRepeatCount: 0,
+    lastEatenAt: "2026-06-09T12:00:00.000Z",
+    lastPositiveAt: "2026-06-09T12:00:00.000Z",
+    netPreferenceScore: 14,
+    confidence: "medium" as const,
+    recentNotes: []
+  };
+  const score = scoreRecommendation({
+    meal: dinner,
+    meals,
+    category: "Dinner",
+    generatedAt,
+    feedbackSummary: feedback
+  });
+  const explanation = generateRecommendationExplanation(
+    {
+      meal: dinner,
+      meals,
+      category: "Dinner",
+      generatedAt,
+      feedbackSummary: feedback
+    },
+    score
+  );
+
+  assert.equal(explanation.details.length, 4);
+  assert.ok(explanation.details.some((detail) => detail.includes("household")));
+  assert.ok(explanation.details.some((detail) => detail.includes("Recency")));
+  assert.ok(
+    explanation.details.some(
+      (detail) => detail.includes("variety") || detail.includes("repeated")
+    )
+  );
+  assert.ok(
+    explanation.details.some((detail) => detail.includes("saved meal"))
+  );
 });

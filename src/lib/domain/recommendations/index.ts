@@ -1,5 +1,6 @@
 export * from "@/src/lib/domain/recommendations/ranking";
 export * from "@/src/lib/domain/recommendations/reasons";
+export * from "@/src/lib/domain/recommendations/scoring";
 export * from "@/src/lib/domain/recommendations/today-view-model";
 export * from "@/src/lib/domain/recommendations/types";
 export * from "@/src/lib/domain/recommendations/variety";

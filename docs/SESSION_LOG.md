@@ -1,5 +1,71 @@
 # Session Log
 
+## 2026-06-11 Beta 3 Usability Closeout
+
+Goal:
+- Implement the highest-impact Pre-Beta 3 usability audit fixes without changing the storage architecture or adding new product workflows.
+
+Completed work:
+- Replaced normal household-flow Notion/backend copy with Meal OS language on Analyze, Meals, Feedback, Today, Dashboard, and Meal Detail.
+- Kept Notion/API persistence intact while moving external saved-record links into Advanced details where kept.
+- Added staged Analyze loading copy and expectation text for detailed meals that may take about 20-30 seconds.
+- Clarified quick feedback semantics: `Ate This` logs eaten only; `Loved It` logs eaten, loved, and worth repeating; Meal Detail `Would Make Again` is repeat-only in household summaries.
+- Kept Today undo client-side only and changed copy so the UI does not imply persisted feedback reversal.
+- Added direct household reasons to Today recommendations and removed score/internal jargon from normal recommendation explanations.
+- Added Dashboard household takeaways before detailed metrics and moved source/data coverage into Advanced data coverage.
+- Reworked Meal Detail around household summary, feedback, why the meal works, nutrition/quality, and Advanced details for raw notes/provenance/external record links.
+- Updated focused tests for feedback semantics, recommendation explanations, meal detail reasons, and internal link behavior.
+
+Validation:
+- `npm run lint` passed.
+- `npm run typecheck` passed.
+- `npm test` passed.
+- `npm run build` passed.
+- Browser verified Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail locally.
+- Browser mobile viewport pass at 390px verified Analyze, Today, and Dashboard with no horizontal overflow.
+- Analyze loading was verified by submitting a small local test meal; staged loading appeared and completed without saving.
+
+Deferred:
+- Persisted feedback undo/reversal was not implemented.
+- Today undo remains a local view restore only.
+- Meal Detail and Feedback use explicit saved confirmation copy instead of promising reversible persistence.
+
+Manual Vercel/Notion verification checklist after deployment:
+1. Analyze still saves meals successfully to Notion.
+2. Saved meals appear in Meals with Meal OS wording, not Notion wording.
+3. Today feedback writes to Notion as expected.
+4. `Ate This`, `Loved It`, and `Would Make Again` semantics appear correctly in saved feedback summaries.
+5. Dashboard household takeaways update after feedback/data changes.
+6. Meal Detail shows household summary first and hides raw notes/external links under Advanced details.
+7. Mobile deployment has no horizontal overflow on Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail.
+8. No user-facing copy implies feedback can be persistently undone unless that feature is actually implemented.
+
+## 2026-06-11 Beta 3 Adaptive Recommendation Engine v1
+
+Goal:
+- Use existing household feedback and saved meal metadata to make Today recommendations more adaptive without adding Notion schema, AI recommendation calls, or nondeterministic ranking.
+
+Completed work:
+- Added explicit recommendation component scoring under `src/lib/domain/recommendations/scoring.ts`.
+- Split recommendation scores into preference score, recency score, variety penalty, and saved scheduling metadata score.
+- Kept ranking deterministic with stable tie-breaking and neutral preference scoring when feedback is absent.
+- Generated recommendation explanations from the same scoring inputs used for ranking.
+- Added expandable `Why this meal?` explanations to Today suggestion cards.
+- Added unit tests for no-feedback households, strong preference households, repeat-meal avoidance, and explanation generation.
+
+Validation:
+- Focused recommendation tests passed with `npx tsx --test tests/recommendations.test.ts`.
+- `npm run lint` passed.
+- `npm run typecheck` passed.
+- `npm run test` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+- `git diff --check` passed.
+
+Notion review:
+- No Notion schema changes were added.
+- No new Notion properties are required.
+- No AI-generated recommendations were introduced.
+
 ## 2026-05-26 Nutrition + Quality Backfill & Reliability Layer v1
 
 Goal:

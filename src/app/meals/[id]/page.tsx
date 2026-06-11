@@ -41,6 +41,12 @@ function EmptyText({ children }: { children: string }) {
   return <p className="text-sm leading-6 text-muted-foreground">{children}</p>;
 }
 
+function cleanPrimaryText(value: string | null) {
+  return value
+    ?.replace(/\[Truncated for Notion rich_text limit\]/gi, "")
+    .trim();
+}
+
 export default async function MealDetailPage({
   params
 }: {
@@ -89,20 +95,12 @@ export default async function MealDetailPage({
       <PageHeader
         eyebrow="Meal detail"
         title={meal.mealName}
-        description="Saved meal context, household feedback, nutrition signals, and quick feedback actions."
-        action={
-          <Button asChild variant="secondary">
-            <a href={meal.url} rel="noreferrer" target="_blank">
-              <ExternalLink className="h-4 w-4" />
-              Open in Notion
-            </a>
-          </Button>
-        }
+        description="Household feedback, why it works, and nutrition signals for this saved meal."
       />
 
       <section className="flex flex-wrap gap-2">
-        <Badge>{detail.sourceBadge}</Badge>
-        {detail.confidenceBadge ? <Badge>{detail.confidenceBadge}</Badge> : null}
+        {meal.cuisine ? <Badge>{meal.cuisine}</Badge> : null}
+        {meal.mealType ? <Badge>{meal.mealType}</Badge> : null}
         {dateLabel ? (
           <Badge className="bg-muted text-muted-foreground">
             <CalendarDays className="h-3.5 w-3.5" />
@@ -110,6 +108,37 @@ export default async function MealDetailPage({
           </Badge>
         ) : null}
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Household summary</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm md:grid-cols-3">
+          <div className="rounded-md border bg-background p-4">
+            <p className="text-muted-foreground">Meal type</p>
+            <p className="mt-1 font-medium">
+              {[meal.mealType, meal.cuisine].filter(Boolean).join(" · ") ||
+                "Not labeled yet"}
+            </p>
+          </div>
+          <div className="rounded-md border bg-background p-4">
+            <p className="text-muted-foreground">Household feedback</p>
+            <p className="mt-1 font-medium">
+              {feedbackSummary.totalEvents > 0
+                ? `${feedbackSummary.eatenCount} eaten · ${feedbackSummary.wouldRepeatCount} repeat`
+                : "No feedback yet"}
+            </p>
+          </div>
+          <div className="rounded-md border bg-background p-4">
+            <p className="text-muted-foreground">Nutrition / quality</p>
+            <p className="mt-1 font-medium">
+              {detail.hasNutritionData
+                ? "Nutrition signals available"
+                : "Nutrition details limited"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <MealDetailActions
         initialFeedbackSummary={feedbackSummary}
@@ -160,8 +189,6 @@ export default async function MealDetailPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              {meal.cuisine ? <Badge>{meal.cuisine}</Badge> : null}
-              {meal.mealType ? <Badge>{meal.mealType}</Badge> : null}
               {meal.proteinLevel ? <Badge>{meal.proteinLevel} protein</Badge> : null}
               {meal.satietyLevel ? <Badge>{meal.satietyLevel} satiety</Badge> : null}
               {meal.bloodSugarImpact ? (
@@ -169,11 +196,11 @@ export default async function MealDetailPage({
               ) : null}
               {meal.effortLevel ? <Badge>{meal.effortLevel} effort</Badge> : null}
             </div>
-            {meal.notes ? (
-              <p className="text-sm leading-6 text-muted-foreground">{meal.notes}</p>
-            ) : (
-              <EmptyText>No saved meal notes are available yet.</EmptyText>
-            )}
+            <EmptyText>
+              {detail.hasNutritionData
+                ? "Meal OS has enough saved context to summarize this meal."
+                : "Meal OS has limited saved context for this meal right now."}
+            </EmptyText>
           </CardContent>
         </Card>
       </section>
@@ -197,13 +224,35 @@ export default async function MealDetailPage({
           ) : (
             <EmptyText>Nutrition details have not been saved for this meal yet.</EmptyText>
           )}
-          {detail.nutritionProvenance ? (
-            <EmptyText>{detail.nutritionProvenance}</EmptyText>
-          ) : (
-            <EmptyText>No nutrition provenance is saved yet.</EmptyText>
-          )}
         </CardContent>
       </Card>
+
+      <details className="rounded-md border bg-card p-4">
+        <summary className="cursor-pointer font-medium">Advanced details</summary>
+        <div className="mt-4 space-y-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-2">
+            <Badge>{detail.sourceBadge}</Badge>
+            {detail.confidenceBadge ? <Badge>{detail.confidenceBadge}</Badge> : null}
+          </div>
+          {cleanPrimaryText(meal.notes) ? (
+            <p className="leading-6">{cleanPrimaryText(meal.notes)}</p>
+          ) : (
+            <EmptyText>No original notes are saved for this meal.</EmptyText>
+          )}
+          {detail.nutritionProvenance ? (
+            <p className="leading-6">{detail.nutritionProvenance}</p>
+          ) : null}
+          <a
+            className="inline-flex items-center gap-2 text-primary underline-offset-4 hover:underline"
+            href={meal.url}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Open saved record
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
+      </details>
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
-  ExternalLink,
   Loader2,
   RefreshCw,
   Search,
@@ -34,7 +33,7 @@ function getErrorMessage(value: unknown) {
     return value.error;
   }
 
-  return "Unable to load meals from Notion right now.";
+  return "Unable to load saved meals right now.";
 }
 
 export default function MealsPage() {
@@ -109,9 +108,9 @@ export default function MealsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Structured records"
+        eyebrow="Saved meals"
         title="Meals"
-        description="Browse saved meals from the Notion Meals database."
+        description="Browse meals already saved in Meal OS."
         action={
           <Button disabled={isLoading} onClick={loadMeals} variant="secondary">
             {isLoading ? (
@@ -218,12 +217,6 @@ function MealCard({ meal }: { meal: MealSummary }) {
             ))}
           </div>
         </div>
-        <Button asChild size="sm" variant="ghost">
-          <a href={meal.url} rel="noreferrer" target="_blank">
-            Notion
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        </Button>
       </div>
 
       {preview ? (

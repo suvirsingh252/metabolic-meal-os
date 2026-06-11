@@ -41,8 +41,6 @@ export function applyOptimisticMealDetailFeedback(
   const next: MealFeedbackSummary = {
     ...summary,
     totalEvents: summary.totalEvents + 1,
-    eatenCount: summary.eatenCount + 1,
-    lastEatenAt: latestDate(summary.lastEatenAt, options.createdAt),
     recentNotes: [
       options.note,
       ...summary.recentNotes.filter((note) => note !== options.note)
@@ -50,20 +48,26 @@ export function applyOptimisticMealDetailFeedback(
   };
 
   if (action === "loved") {
+    next.eatenCount += 1;
+    next.lastEatenAt = latestDate(summary.lastEatenAt, options.createdAt);
     next.lovedCount += 1;
     next.likedCount += 1;
     next.wouldRepeatCount += 1;
     next.lastPositiveAt = latestDate(next.lastPositiveAt, options.createdAt);
     next.netPreferenceScore += 8;
   } else if (action === "disliked") {
+    next.eatenCount += 1;
+    next.lastEatenAt = latestDate(summary.lastEatenAt, options.createdAt);
     next.dislikedCount += 1;
     next.wouldNotRepeatCount += 1;
     next.netPreferenceScore -= 5;
-  } else {
-    next.likedCount += 1;
+  } else if (action === "repeat") {
     next.wouldRepeatCount += 1;
     next.lastPositiveAt = latestDate(next.lastPositiveAt, options.createdAt);
-    next.netPreferenceScore += 4;
+    next.netPreferenceScore += 2;
+  } else {
+    next.eatenCount += 1;
+    next.lastEatenAt = latestDate(summary.lastEatenAt, options.createdAt);
   }
 
   next.confidence = getConfidence(next.totalEvents);

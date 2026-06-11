@@ -133,9 +133,7 @@ export function TodayClient() {
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        setLoadError(
-          getErrorMessage(data, "Unable to load saved meals from Notion right now.")
-        );
+        setLoadError(getErrorMessage(data, "Unable to load saved meals right now."));
         return;
       }
 
@@ -252,10 +250,10 @@ export function TodayClient() {
               ? `${recommendation.meal.mealName} - loved from Today`
               : `${recommendation.meal.mealName} - ate from Today`,
           selectedMealId: recommendation.meal.id,
-          energyAfter: sentiment === "loved" ? "Excellent" : "Steady",
-          hungerLater: "Satisfied",
+          energyAfter: sentiment === "loved" ? "Excellent" : "Neutral",
+          hungerLater: sentiment === "loved" ? "Satisfied" : "Moderate",
           cravingsLater: false,
-          wouldRepeat: true,
+          wouldRepeat: sentiment === "loved",
           notes: note
         })
       });
@@ -310,8 +308,8 @@ export function TodayClient() {
       pendingMealIdsRef.current.delete(recommendation.meal.id);
       setSaveMessage(
         result.warning
-          ? `Saved feedback. ${result.warning}`
-          : "Saved feedback to Notion."
+          ? `${getTodayFeedbackSavedMessage(sentiment)} ${result.warning}`
+          : getTodayFeedbackSavedMessage(sentiment)
       );
       router.refresh();
     } catch {
@@ -353,7 +351,9 @@ export function TodayClient() {
       )
     );
     setUndoByMealId((previous) => removeMealKey(previous, recommendation.meal.id));
-    setSaveMessage("Undo applied in this Today view. Notion history was not changed.");
+    setSaveMessage(
+      "Undo applied in this view. The saved feedback record was kept."
+    );
   }
 
   return (
@@ -587,6 +587,7 @@ function SuggestionCard({
   const pendingAction =
     ateState === "saving" ? "ate" : lovedState === "saving" ? "loved" : null;
   const feedbackSummary = recommendation.feedbackSummary;
+  const explanation = recommendation.explanation;
 
   return (
     <Card>
@@ -607,18 +608,28 @@ function SuggestionCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          {recommendation.reasons.map((reason) => (
+          {getVisibleRecommendationReasons(recommendation).map((reason) => (
             <Badge key={reason}>{reason}</Badge>
           ))}
-          {recommendation.reasons.length === 0 ? (
-            <Badge className="bg-muted text-muted-foreground">
-              Limited saved signals
-            </Badge>
-          ) : null}
         </div>
         <p className="text-sm text-muted-foreground">
           {recommendation.confidenceNote}
         </p>
+        {explanation?.details.length ? (
+          <details className="rounded-md border bg-background px-3 py-2 text-sm">
+            <summary className="cursor-pointer font-medium text-foreground">
+              Why this meal?
+            </summary>
+            <div className="mt-2 space-y-2 text-muted-foreground">
+              <p>{explanation.headline}</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {explanation.details.map((detail) => (
+                  <li key={detail}>{detail}</li>
+                ))}
+              </ul>
+            </div>
+          </details>
+        ) : null}
         {feedbackSummary && feedbackSummary.totalEvents > 0 ? (
           <div className="flex flex-wrap gap-2">
             <Badge className="bg-muted text-muted-foreground">
@@ -690,7 +701,60 @@ function SuggestionCard({
             Suggest Another
           </Button>
         </div>
+        <div className="grid gap-1 text-xs leading-5 text-muted-foreground sm:grid-cols-2">
+          <p>Ate This records: logged as eaten.</p>
+          <p>Loved It records: eaten, loved, and worth repeating.</p>
+        </div>
       </CardContent>
     </Card>
   );
+}
+
+function getTodayFeedbackSavedMessage(sentiment: "ate" | "loved") {
+  return sentiment === "loved"
+    ? "Saved: logged as eaten, loved, and worth repeating."
+    : "Saved: logged as eaten.";
+}
+
+function getVisibleRecommendationReasons(recommendation: MealRecommendation) {
+  const reasons = [
+    ...recommendation.reasons,
+    ...(recommendation.explanation?.details ?? [])
+  ];
+  const plainReasons = reasons.map(toHouseholdRecommendationReason);
+  const uniqueReasons = Array.from(new Set(plainReasons)).filter(Boolean);
+
+  return uniqueReasons.slice(0, 4);
+}
+
+function toHouseholdRecommendationReason(reason: string) {
+  if (/not appeared lately|not recently|haven't had/i.test(reason)) {
+    return "You have not had this recently.";
+  }
+
+  if (/family|favorite|loved/i.test(reason)) {
+    return "Marked family friendly.";
+  }
+
+  if (/weeknight|snack/i.test(reason)) {
+    return "Good weeknight option.";
+  }
+
+  if (/variety|repeated too often/i.test(reason)) {
+    return "Adds variety to the week.";
+  }
+
+  if (/repeat|worked|popular/i.test(reason)) {
+    return "Similar meals have worked well.";
+  }
+
+  if (/quality|rated|metadata|nutrition/i.test(reason)) {
+    return "Higher quality saved meal.";
+  }
+
+  if (/limited saved meal signals|neutral|sparse/i.test(reason)) {
+    return "Meal OS has limited history for this meal.";
+  }
+
+  return reason.endsWith(".") ? reason : `${reason}.`;
 }

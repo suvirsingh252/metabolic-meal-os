@@ -87,7 +87,7 @@ test("buildMealDetailViewModel returns a detail model for a saved meal", () => {
   assert.equal(detail?.meal.mealName, "Chana masala");
   assert.equal(detail?.feedbackSummary.eatenCount, 2);
   assert.equal(detail?.dateLabel, "2026-06-01T12:00:00.000Z");
-  assert.ok(detail?.whyReasons.includes("Family loved this"));
+  assert.ok(detail?.whyReasons.includes("Marked family friendly."));
   assert.ok(detail?.feedbackReasons.includes("Household loved this before"));
   assert.equal(detail?.hasNutritionData, true);
   assert.equal(

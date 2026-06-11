@@ -347,16 +347,21 @@ export default function FeedbackPage() {
 
           {savedFeedback ? (
             <div className="mt-6 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
-              <p className="font-medium text-primary">Saved to Notion.</p>
-              <a
-                className="mt-2 inline-flex items-center gap-2 text-primary underline-offset-4 hover:underline"
-                href={savedFeedback.notionUrl}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Open feedback page
-                <ExternalLink className="h-4 w-4" />
-              </a>
+              <p className="font-medium text-primary">Saved to Meal OS.</p>
+              <details className="mt-3 text-muted-foreground">
+                <summary className="cursor-pointer font-medium text-foreground">
+                  Advanced details
+                </summary>
+                <a
+                  className="mt-2 inline-flex items-center gap-2 text-primary underline-offset-4 hover:underline"
+                  href={savedFeedback.notionUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open saved record
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </details>
               {savedFeedback.warning ? (
                 <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900">
                   {savedFeedback.warning}

@@ -211,5 +211,5 @@ test("Today renders client-only undo copy after feedback saves", () => {
   assert.match(source, /locallyUndoneMealIdsRef\.current\.add/);
   assert.match(source, /Saved\. Undo\?/);
   assert.match(source, /Undo local view/);
-  assert.match(source, /Notion history was not changed/);
+  assert.match(source, /The saved feedback record was kept/);
 });

@@ -1,9 +1,9 @@
 import { generateRecommendationReasons } from "@/src/lib/domain/recommendations/reasons";
 import {
-  countMealRepeats,
-  countNutritionFields,
-  getDaysSinceDate,
-  getDaysSinceMeal,
+  generateRecommendationExplanation,
+  scoreRecommendation
+} from "@/src/lib/domain/recommendations/scoring";
+import {
   normalizeMealName,
   normalizeMealType
 } from "@/src/lib/domain/recommendations/variety";
@@ -22,88 +22,6 @@ export interface RankRecommendationOptions {
   excludedMealIds?: string[];
   excludedMealNames?: string[];
   feedbackByMealId?: MealFeedbackSummaryByMealId;
-}
-
-function scoreMeal(
-  meal: RecommendationMeal,
-  meals: RecommendationMeal[],
-  generatedAt: string,
-  feedbackSummary: MealFeedbackSummary | null
-) {
-  const daysSinceMeal = getDaysSinceMeal(meal, generatedAt);
-  const repeatCount = countMealRepeats(meals, meal);
-  const nutritionFields = countNutritionFields(meal);
-  let score = 0;
-
-  if (typeof meal.qualityScore === "number") {
-    score += Math.max(0, Math.min(meal.qualityScore, 100)) * 0.4;
-  }
-
-  if (meal.familyApproved) {
-    score += 24;
-  }
-
-  if (meal.weeknightFriendly) {
-    score += 6;
-  }
-
-  if (meal.comfortMeal) {
-    score += 4;
-  }
-
-  score += nutritionFields * 3;
-  score += Math.min(10, Math.max(0, repeatCount - 1) * 4);
-
-  if (daysSinceMeal === null) {
-    score -= 5;
-  } else if (daysSinceMeal <= 2) {
-    score -= 45;
-  } else if (daysSinceMeal <= 7) {
-    score -= 24;
-  } else if (daysSinceMeal <= 14) {
-    score -= 8;
-  } else if (daysSinceMeal >= 30) {
-    score += 10;
-  } else {
-    score += 4;
-  }
-
-  if (feedbackSummary) {
-    score += Math.min(30, feedbackSummary.netPreferenceScore * 2);
-    score += Math.min(18, feedbackSummary.lovedCount * 12);
-    score += Math.min(14, feedbackSummary.wouldRepeatCount * 5);
-    score += Math.min(8, feedbackSummary.eatenCount * 2);
-    score -= Math.min(28, feedbackSummary.dislikedCount * 10);
-    score -= Math.min(18, feedbackSummary.wouldNotRepeatCount * 8);
-
-    if (feedbackSummary.lastEatenAt) {
-      const daysSinceFeedbackEating = getDaysSinceDate(
-        feedbackSummary.lastEatenAt,
-        generatedAt
-      );
-
-      if (daysSinceFeedbackEating !== null && daysSinceFeedbackEating <= 2) {
-        score -= 80;
-      } else if (
-        daysSinceFeedbackEating !== null &&
-        daysSinceFeedbackEating <= 7
-      ) {
-        score -= 45;
-      } else if (
-        daysSinceFeedbackEating !== null &&
-        daysSinceFeedbackEating <= 14
-      ) {
-        score -= 12;
-      } else if (
-        daysSinceFeedbackEating !== null &&
-        daysSinceFeedbackEating >= 21
-      ) {
-        score += 8;
-      }
-    }
-  }
-
-  return score;
 }
 
 function getConfidence(
@@ -151,14 +69,31 @@ export function rankRecommendationsForCategory(
 
   return candidates
     .map((meal) => {
+      const feedbackSummary = options.feedbackByMealId?.[meal.id] ?? null;
+      const scoreBreakdown = scoreRecommendation({
+        meal,
+        meals,
+        category,
+        generatedAt: options.generatedAt,
+        feedbackSummary
+      });
       const reasons = generateRecommendationReasons(
         meal,
         meals,
         category,
         options.generatedAt,
-        options.feedbackByMealId?.[meal.id] ?? null
+        feedbackSummary
       );
-      const feedbackSummary = options.feedbackByMealId?.[meal.id] ?? null;
+      const explanation = generateRecommendationExplanation(
+        {
+          meal,
+          meals,
+          category,
+          generatedAt: options.generatedAt,
+          feedbackSummary
+        },
+        scoreBreakdown
+      );
       const confidence = getConfidence(
         meal,
         candidates.length,
@@ -170,8 +105,10 @@ export function rankRecommendationsForCategory(
         meal,
         feedbackSummary,
         category,
-        score: scoreMeal(meal, meals, options.generatedAt, feedbackSummary),
+        score: scoreBreakdown.totalScore,
+        scoreBreakdown,
         reasons,
+        explanation,
         confidence,
         confidenceNote:
           confidence === "low"

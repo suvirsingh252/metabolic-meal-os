@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
+Last updated: 2026-06-11 (Beta 3 Usability Closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -100,6 +100,9 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add Today Feedback Refresh v1 with per-card pending guards, optimistic summary updates, stale-server conservative merge, and `router.refresh()`.
 - [x] Add Today Recent Household Learning Strip v1 from existing feedback summaries.
 - [x] Add Today Feedback Undo v1 as a client-only local view restore without Notion reversal.
+- [x] Add Beta 3 Adaptive Recommendation Engine v1 with deterministic preference, recency, variety-penalty, and saved scheduling metadata scoring from existing data.
+- [x] Add Today `Why this meal?` explanations generated from deterministic recommendation score components.
+- [x] Complete Beta 3 usability closeout: replace Notion-facing copy in normal flows with Meal OS language, move external links/raw notes into Advanced details, clarify quick feedback semantics, add Analyze staged loading, add Dashboard household takeaways, and reorganize Meal Detail around household summary.
 
 ## Current Sprint
 
@@ -107,7 +110,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
 - [x] Review evidence-aware guidance quality on representative real household meals and tune the first household answer.
 - [x] Audit estimate review/dashboard nutrition surfaces for clarity, mobile readability, and supportive tone.
-- [ ] Audit remaining household UX flows for clarity, mobile readability, and supportive tone.
+- [x] Audit and improve highest-impact household UX flows for Beta 3 clarity, mobile readability, and supportive tone.
+- [x] Add schema-neutral adaptive Today recommendations from existing saved meals and feedback.
 - [x] Harden recipe parser robustness for first-pass representative recipe and social/shared URL intake.
 - [ ] Continue real-world recipe/social URL testing and record domains that are blocked, login-gated, or script-rendered.
 - [ ] If optional source properties are added to Notion Meals, confirm manual saves populate them.
@@ -133,6 +137,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add optimistic refresh after feedback saves on Today and Meal Detail.
 - [x] Add basic unit tests for API/domain validation.
 - [x] Tighten save-meal validator: stop defaulting missing v2 fields to 0/empty.
+- [x] Review Today recommendation explanations on the current local household meal archive and remove score/internal jargon from normal card copy.
 
 ## Future Ideas
 

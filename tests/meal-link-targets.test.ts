@@ -13,5 +13,5 @@ test("Meals list items link to internal meal detail pages", () => {
   const source = readFileSync("src/app/meals/page.tsx", "utf8");
 
   assert.match(source, /href=\{getMealDetailPath\(meal\.id\)\}/);
-  assert.match(source, /href=\{meal\.url\}/);
+  assert.doesNotMatch(source, /href=\{meal\.url\}/);
 });

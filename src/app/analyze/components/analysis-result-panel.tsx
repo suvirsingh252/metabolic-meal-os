@@ -101,7 +101,7 @@ export function getNutritionTotalsDisplayState(
     nutritionEstimate.source === "recipe-json-ld"
       ? "Recipe page"
       : nutritionEstimate.source === "notion-backfill"
-        ? "Notion backfill"
+        ? "Older saved record"
         : nutritionEstimate.source === "estimated"
           ? "Estimated"
           : hasManualReviewEdit
@@ -1063,7 +1063,7 @@ function AdvancedSavedFieldsSection({
 }) {
   return (
     <CollapsibleSection
-      description="Source details and fields saved into Notion."
+      description="Source details and editable fields saved with the meal."
       title="Advanced saved fields"
     >
       <SourceSummary analysis={analysis} />

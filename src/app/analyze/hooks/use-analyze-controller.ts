@@ -135,7 +135,7 @@ export function useAnalyzeController() {
     } catch {
       dispatch({
         type: "saveFailed",
-        message: "Unable to reach Notion saving service. Try again."
+        message: "Unable to reach the meal saving service. Try again."
       });
     } finally {
       dispatch({ type: "saveFinished" });

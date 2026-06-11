@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
+Last updated: 2026-06-11 (Beta 3 Usability Closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -12,7 +12,6 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 
 - [ ] In-app browser localhost testing has sometimes been blocked by `net::ERR_BLOCKED_BY_CLIENT`; use command-line checks or a normal browser if this recurs.
 - [ ] In-app browser form filling can fail when the virtual clipboard is unavailable; use command-line API checks or a normal browser for generated `/analyze` result testing if this recurs.
-- [ ] Browser visual verification for the dashboard/nutrition closeout was not completed because the Browser plugin reported `iab` unavailable.
 - [ ] Multiple Next dev servers can remain running on alternate ports after interrupted sessions; check with `lsof -ti :3011` or inspect `.next/dev/logs`.
 
 ## Technical Debt
@@ -35,11 +34,12 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Read-time backfill is intentionally conservative and may leave old records partially unknown even when a human could infer more from the Notes text.
 - [ ] Dashboard targets are client-side only through `localStorage`; they are not persisted server-side and are not household/user-scoped.
 - [ ] Today feedback undo is client-only. It restores the local Today view and Recent Household Learning strip, but it does not delete or reverse the persisted Notion Meal Feedback record.
+- [ ] Meal Detail and Feedback do not have undo. They use explicit saved confirmation copy because the current feedback API appends records and has no persisted reversal/delete behavior.
 - [ ] Optimistic feedback summaries can briefly differ from Notion-backed summaries while Notion read consistency catches up. The UI preserves local optimistic/undo state during the current session where practical.
 
 ## UX Problems
 
-- [ ] `/analyze` review has household-first hierarchy, tone tuning, and a mobile hardening pass for nutrition estimates, but save, meals, feedback, and settings flows are still functional and plain.
+- [ ] `/analyze`, Today, Dashboard, Meals, Feedback, and Meal Detail now have Beta 3 household-facing copy/layout improvements. `/settings` remains intentionally admin/operator oriented and still needs deeper simplification if it becomes a household flow.
 - [ ] Estimate review controls are intentionally coarse. They handle serving multipliers and butter toggles, but do not support detailed ingredient quantities, cooking fat amounts, or serving-by-weight workflows.
 - [ ] Meals and Ingredients APIs support pagination/search, but client pages only have basic existing UX and should be wired more fully.
 - [ ] `/analyze` is now reducer/component based, but the result panel can still be split into smaller section files if it grows again.
@@ -48,7 +48,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Household defaults are read-only and hard-coded to CA/NS/Halifax for now. There is no settings persistence UI yet.
 - [ ] Recipe source, nutrition, score, and quality fields only persist to Notion if compatible optional Meals properties exist.
 - [ ] Dashboard intelligence is useful but intentionally simple: no household-level analytics, predictive coaching, or ML yet.
-- [ ] Today and Meal Detail feedback actions are more responsive, but `/feedback` remains the older functional form flow.
+- [ ] `/feedback` has Meal OS save copy, saved-meal search, and clearer success behavior, but it remains a functional form flow rather than a redesigned feedback experience.
 
 ## Future Migrations
 
@@ -74,7 +74,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Canada grocery, nutrition, Open Food Facts, and weather integrations are adapter stubs only. Recipe parser has an active shared-URL implementation, but it remains intentionally dependency-free.
 - [ ] Weekly Plans and Meal Templates database IDs exist but are not fully used.
 - [ ] Production smoke-test automation is read-only by design and does not cover OpenAI analysis or Notion write flows.
-- [ ] Beta 2 feedback refresh, learning strip, and undo required no Notion schema changes. Richer feedback analytics or persisted undo/reversal would need explicit backend and schema/product decisions.
+- [ ] Beta 2/Beta 3 feedback refresh, learning strip, usability copy, and client-only undo required no Notion schema changes. Richer feedback analytics or persisted undo/reversal would need explicit backend and schema/product decisions.
 
 ## Manual Notion Schema Gap
 

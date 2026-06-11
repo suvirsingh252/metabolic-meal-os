@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
+Last updated: 2026-06-11 (Beta 3 Usability Closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -23,7 +23,7 @@ Frontend surfaces:
 - `/analyze` state is reducer-backed in `src/app/analyze/reducer.ts` with controller logic in `src/app/analyze/hooks/use-analyze-controller.ts` and UI sections under `src/app/analyze/components`.
 - `lucide-react` for icons.
 
-The UI is still intentionally MVP-simple: cards, forms, badges, alerts, buttons, and native progressive disclosure. No global state manager is used. `/analyze` has a first household-first hierarchy pass; Today and Meal Detail now have responsive feedback polish; `/feedback` and `/settings` still need deeper UX simplification.
+The UI is still intentionally MVP-simple: cards, forms, badges, alerts, buttons, and native progressive disclosure. No global state manager is used. `/analyze` has a household-first hierarchy pass and staged loading copy; Today, Dashboard, Meals, Feedback, and Meal Detail now use Meal OS language in normal household flows instead of Notion-facing copy. External saved-record links, raw notes, provenance, and diagnostics are kept in Advanced/Settings-oriented areas where practical.
 
 ## Backend/API Architecture
 
@@ -121,7 +121,8 @@ Feedback:
 6. `src/lib/notion/feedback-summary.ts` reads existing feedback records into per-meal summaries used by Today, Meal Detail, ranking, and household learning UI.
 7. `src/lib/domain/feedback/optimistic.ts` contains shared optimistic update, merge, and local restore helpers for client feedback refresh behavior.
 8. Today's Recent Household Learning strip is derived from existing feedback summaries by `src/lib/domain/feedback/learning-strip.ts`; it does not require new data fields.
-9. Today undo is client-side only: it restores the pre-optimistic summary in the local Today view and preserves that local override against stale refreshes in the current session. It does not delete or reverse Notion history.
+9. Quick action semantics are explicit in the UI and domain helpers: `Ate This` records eaten only; `Loved It` records eaten, loved, and worth repeating; Meal Detail `Would Make Again` is treated as repeat-only in household summaries.
+10. Today undo is client-side only: it restores the pre-optimistic summary in the local Today view and preserves that local override against stale refreshes in the current session. It does not delete or reverse persisted feedback history.
 
 Diagnostics:
 1. `/settings` calls `GET /api/diagnostics/notion`.
@@ -192,9 +193,46 @@ Aggregation rules:
 - dashboard cards and chips are designed to preserve unknown nutrition states without forcing zeroes and now wrap labels more reliably on mobile;
 - functions are deterministic and unit tested.
 
+Dashboard presentation:
+- `/dashboard` starts with household-facing takeaways before detailed metrics: what Meal OS learned, what to do next, and confidence.
+- If nutrition is sparse, the UI says plainly that nutrition totals are limited and Meal OS is leaning more on meal quality and household feedback.
+- Data confidence/source mix remains available under Advanced data coverage with plain labels such as recipe nutrition, Meal OS estimates, reviewed by household, older saved records, and missing nutrition.
+
 Targets are configurable in the dashboard UI for calories, protein, fiber, and sodium. Current target settings are client-side only through `localStorage` and query params to `/api/dashboard`; there is no server-side user settings persistence yet.
 
 Meal quality v1 is a rule-based 0-100 score using protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. If exact nutrition is unavailable, legacy Analysis Framework scorecards can provide read-time quality backfill. Backfilled source/provenance text includes `notion-backfill` when inferred from saved Notion fields or legacy Notes. No predictive coaching, ML, or household-level analytics are implemented.
+
+## Today Recommendation Architecture
+
+Today recommendations are pure domain logic under `src/lib/domain/recommendations`.
+
+Primary modules:
+- `ranking.ts`: category filtering, deterministic ordering, alternative selection, and stable tie-breaking by meal name.
+- `scoring.ts`: component scoring for preference, recency, variety penalty, and existing saved scheduling metadata.
+- `reasons.ts`: compact badge reasons for cards.
+- `today-view-model.ts`: Today suggestions, fresh ideas, health snapshot, and sparse-data fallbacks.
+- `variety.ts`: normalized meal names/types, repeat counts, nutrition detail counts, and date recency helpers.
+
+Scoring inputs:
+- saved meal metadata already loaded from Notion Meals;
+- existing per-meal feedback summaries derived from the current Meal Feedback database;
+- generated timestamp for deterministic recency calculations.
+
+Scoring rules:
+- preference score comes only from existing feedback summaries, including loved, liked, disliked, would-repeat, would-not-repeat, eaten counts, and net preference;
+- recency score penalizes newly saved or recently eaten meals and gives a small lift to meals not seen lately;
+- variety penalty reduces repeated meals when feedback shows recent repeat eating or the archive contains multiple same-name records;
+- scheduling score uses existing meal metadata such as quality, family-approved, weeknight-friendly, comfort, and nutrition-detail completeness.
+
+Recommendation explanations:
+- The UI receives `RecommendationExplanation` from the same scoring input used for ranking.
+- Today cards show 2-4 direct household reasons and `Why this meal?` as native progressive disclosure.
+- Explanations are deterministic text, not AI-generated, and avoid numeric score internals in normal household copy.
+
+Graceful degradation:
+- If feedback summaries are missing or empty, preference score is `0`, confidence can remain low, and ranking falls back to saved meal metadata plus recency.
+- If no saved meals exist, Today keeps the existing empty state and does not invent meals.
+- No Notion schema changes or additional properties are required.
 
 ## Planned Provider Abstraction
 

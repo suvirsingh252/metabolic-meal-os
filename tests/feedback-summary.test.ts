@@ -66,6 +66,24 @@ test("summarizeMealFeedback captures disliked and mixed feedback", () => {
   assert.equal(summaries["meal-2"]?.confidence, "medium");
 });
 
+test("summarizeMealFeedback keeps Meal Detail repeat-only feedback out of eaten count", () => {
+  const summaries = summarizeMealFeedback([
+    event({
+      feedbackEntry: "Chana masala - would make again from Meal Detail",
+      energyAfter: "Neutral",
+      hungerLater: "Moderate",
+      wouldRepeat: true,
+      notes: "Would Make Again logged from Meal Detail on 2026-06-11."
+    })
+  ]);
+
+  assert.equal(summaries["meal-1"]?.totalEvents, 1);
+  assert.equal(summaries["meal-1"]?.eatenCount, 0);
+  assert.equal(summaries["meal-1"]?.likedCount, 0);
+  assert.equal(summaries["meal-1"]?.wouldRepeatCount, 1);
+  assert.equal(summaries["meal-1"]?.lastEatenAt, null);
+});
+
 test("summarizeMealFeedback exposes recent feedback notes without schema changes", () => {
   const summaries = summarizeMealFeedback([
     event({ notes: "Newest note" }),

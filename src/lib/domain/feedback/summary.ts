@@ -60,6 +60,12 @@ function isDislikedEvent(event: MealFeedbackEvent) {
   );
 }
 
+function isRepeatOnlyEvent(event: MealFeedbackEvent) {
+  const text = `${event.feedbackEntry} ${event.notes ?? ""}`.toLowerCase();
+
+  return text.includes("would make again from meal detail");
+}
+
 function latestDate(left: string | null, right: string) {
   if (!left) {
     return right;
@@ -113,17 +119,20 @@ export function summarizeMealFeedback(
     const loved = isLovedEvent(event);
     const positive = isPositiveEvent(event);
     const disliked = isDislikedEvent(event);
+    const repeatOnly = isRepeatOnlyEvent(event);
 
     summary.totalEvents += 1;
-    summary.eatenCount += 1;
-    summary.lastEatenAt = latestDate(summary.lastEatenAt, event.createdAt);
+    if (!repeatOnly) {
+      summary.eatenCount += 1;
+      summary.lastEatenAt = latestDate(summary.lastEatenAt, event.createdAt);
+    }
 
     if (loved) {
       summary.lovedCount += 1;
       summary.netPreferenceScore += 4;
     }
 
-    if (positive) {
+    if (positive && !repeatOnly) {
       summary.likedCount += 1;
       summary.lastPositiveAt = latestDate(summary.lastPositiveAt, event.createdAt);
       summary.netPreferenceScore += 2;

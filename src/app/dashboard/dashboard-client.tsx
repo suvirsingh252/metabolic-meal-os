@@ -173,6 +173,7 @@ export function DashboardClient() {
 
       {dashboard ? (
         <>
+          <HouseholdTakeaways dashboard={dashboard} />
           <TodayOverview dashboard={dashboard} />
           <TargetProgress dashboard={dashboard} />
           <TargetSettings
@@ -214,7 +215,7 @@ function TodayOverview({ dashboard }: { dashboard: DashboardViewModel }) {
   return (
     <section className="space-y-3">
       <SectionHeading
-        helper={`Logged on ${formatDate(dashboard.today.date)}`}
+        helper={`Today: ${formatDateWithYear(dashboard.today.date)}`}
         title="Today overview"
       />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -244,6 +245,59 @@ function TodayOverview({ dashboard }: { dashboard: DashboardViewModel }) {
           label="Meals"
           value={String(dashboard.today.mealCount)}
         />
+      </div>
+    </section>
+  );
+}
+
+function HouseholdTakeaways({ dashboard }: { dashboard: DashboardViewModel }) {
+  const confidence = getHouseholdConfidence(dashboard);
+  const missingNutrition = dashboard.week.sourceMix.missingNutrition;
+  const nutritionLimited = missingNutrition > 0;
+  const firstInsight = dashboard.insights[0];
+
+  return (
+    <section className="space-y-3">
+      <SectionHeading
+        helper={`This week: ${formatDateWithYear(
+          dashboard.week.startDate
+        )} to ${formatDateWithYear(dashboard.week.endDate)}`}
+        title="Household takeaways"
+      />
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base">What did we learn?</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2 text-sm leading-6 text-muted-foreground">
+            {dashboard.week.mealCount > 0
+              ? `${dashboard.week.mealCount} saved meals are shaping this week's view. Meal OS is using saved quality, nutrition, and household feedback where available.`
+              : "No saved meals are in this week's window yet."}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base">What should we do next?</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2 text-sm leading-6 text-muted-foreground">
+            {firstInsight?.action ?? firstInsight?.message ??
+              "Save one detailed meal or log feedback on a recent meal to improve future suggestions."}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base">How confident is this?</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 p-4 pt-2 text-sm leading-6 text-muted-foreground">
+            <p>{confidence}</p>
+            {nutritionLimited ? (
+              <p>
+                Nutrition totals are limited right now, so Meal OS is leaning more
+                on meal quality and household feedback.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     </section>
   );
@@ -372,7 +426,7 @@ function QualitySummary({ dashboard }: { dashboard: DashboardViewModel }) {
   return (
     <section className="space-y-3">
       <SectionHeading
-        helper="Quality uses the existing rule-based score and legacy scorecard fallback."
+        helper="Quality combines saved nutrition and meal pattern signals where available."
         title="Quality summary"
       />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -437,25 +491,22 @@ function DataReliabilitySummary({ dashboard }: { dashboard: DashboardViewModel }
   const fiberSample = dashboard.week.nutritionCompleteness.fiber;
 
   return (
-    <section className="space-y-3">
-      <SectionHeading
-        helper="Neutral coverage indicators for saved meal records in the current week."
-        title="Data confidence"
-      />
-      <Card>
+    <details className="rounded-md border bg-card p-4">
+      <summary className="cursor-pointer font-medium">Advanced data coverage</summary>
+      <div className="mt-3">
         <CardContent className="space-y-4 p-4">
           <div className="flex flex-wrap gap-2">
             <NutritionSignalChip tone={mix.structured > 0 ? "steady" : "unavailable"}>
-              {mix.structured} structured
+              {mix.structured} recipe nutrition
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.estimated > 0 ? "steady" : "unavailable"}>
-              {mix.estimated} estimated
+              {mix.estimated} Meal OS estimates
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.userEntered + mix.reviewed > 0 ? "positive" : "unavailable"}>
-              {mix.userEntered + mix.reviewed} manually reviewed
+              {mix.userEntered + mix.reviewed} reviewed by household
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.backfilled > 0 ? "warning" : "unavailable"}>
-              {mix.backfilled} backfilled
+              {mix.backfilled} older saved records
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.missingNutrition > 0 ? "unavailable" : "positive"}>
               {mix.missingNutrition} missing nutrition
@@ -468,8 +519,8 @@ function DataReliabilitySummary({ dashboard }: { dashboard: DashboardViewModel }
             <ReliabilityLine label="Fiber" sample={fiberSample.label} />
           </div>
         </CardContent>
-      </Card>
-    </section>
+      </div>
+    </details>
   );
 }
 
@@ -526,7 +577,8 @@ function WeeklySummary({ dashboard }: { dashboard: DashboardViewModel }) {
       <CardContent className="space-y-3 p-4 pt-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <CalendarDays className="h-4 w-4" />
-          {formatDate(dashboard.week.startDate)} to {formatDate(dashboard.week.endDate)}
+          This week: {formatDateWithYear(dashboard.week.startDate)} to{" "}
+          {formatDateWithYear(dashboard.week.endDate)}
         </div>
         <div className="grid gap-2">
           <WeeklySignal
@@ -628,11 +680,31 @@ function formatScore(value: number | null) {
   return value === null ? "Unavailable" : `${value}/100`;
 }
 
-function formatDate(value: string) {
+function formatDateWithYear(value: string) {
   return new Intl.DateTimeFormat("en", {
     month: "short",
-    day: "numeric"
+    day: "numeric",
+    year: "numeric"
   }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function getHouseholdConfidence(dashboard: DashboardViewModel) {
+  if (dashboard.week.mealCount === 0) {
+    return "Low confidence until meals are saved for this week.";
+  }
+
+  if (
+    dashboard.week.qualitySample.isEnoughData &&
+    dashboard.week.sourceMix.missingNutrition === 0
+  ) {
+    return "Good confidence for this week's saved meals.";
+  }
+
+  if (dashboard.week.qualitySample.scoredMeals > 0) {
+    return "Medium confidence because some quality signals are available.";
+  }
+
+  return "Low confidence because saved nutrition and feedback are limited.";
 }
 
 function insightClassName(severity: DashboardInsight["severity"]) {

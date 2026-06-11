@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check,
-  ExternalLink,
   Heart,
   Loader2,
   Repeat2,
@@ -30,11 +29,12 @@ const actionCopy: Record<
     label: string;
     icon: "check" | "heart" | "down" | "repeat";
     feedbackEntry: string;
-    energyAfter: "Excellent" | "Steady" | "Crash";
-    hungerLater: "Satisfied" | "Very Hungry";
+    energyAfter: "Excellent" | "Steady" | "Neutral" | "Crash";
+    hungerLater: "Satisfied" | "Moderate" | "Very Hungry";
     cravingsLater: boolean;
     wouldRepeat: boolean;
     notePrefix: string;
+    helper: string;
     successMessage: string;
   }
 > = {
@@ -42,12 +42,13 @@ const actionCopy: Record<
     label: "Ate This",
     icon: "check",
     feedbackEntry: "ate from Meal Detail",
-    energyAfter: "Steady",
-    hungerLater: "Satisfied",
+    energyAfter: "Neutral",
+    hungerLater: "Moderate",
     cravingsLater: false,
-    wouldRepeat: true,
+    wouldRepeat: false,
     notePrefix: "Ate This",
-    successMessage: "Saved. Meal history updated."
+    helper: "Logged as eaten.",
+    successMessage: "Saved: logged as eaten."
   },
   loved: {
     label: "Loved It",
@@ -58,7 +59,8 @@ const actionCopy: Record<
     cravingsLater: false,
     wouldRepeat: true,
     notePrefix: "Loved It",
-    successMessage: "Marked as loved."
+    helper: "Logged as eaten, loved, and worth repeating.",
+    successMessage: "Saved: logged as eaten, loved, and worth repeating."
   },
   disliked: {
     label: "Did Not Like",
@@ -69,18 +71,20 @@ const actionCopy: Record<
     cravingsLater: true,
     wouldRepeat: false,
     notePrefix: "Did Not Like",
-    successMessage: "Thanks -- we'll use this for future suggestions."
+    helper: "Logged as not liked.",
+    successMessage: "Saved: logged as not liked."
   },
   repeat: {
     label: "Would Make Again",
     icon: "repeat",
     feedbackEntry: "would make again from Meal Detail",
-    energyAfter: "Steady",
-    hungerLater: "Satisfied",
+    energyAfter: "Neutral",
+    hungerLater: "Moderate",
     cravingsLater: false,
     wouldRepeat: true,
     notePrefix: "Would Make Again",
-    successMessage: "Thanks -- we'll use this for future suggestions."
+    helper: "Marked as worth repeating.",
+    successMessage: "Saved: marked as worth repeating."
   }
 };
 
@@ -230,7 +234,7 @@ export function MealDetailActions({
   return (
     <div className="space-y-3">
       {message ? <Alert>{message}</Alert> : null}
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {(Object.keys(actionCopy) as ActionId[]).map((actionId) => {
           const action = actionCopy[actionId];
           const state = saveState[actionId];
@@ -254,12 +258,11 @@ export function MealDetailActions({
             </Button>
           );
         })}
-        <Button asChild variant="ghost">
-          <a href={meal.url} rel="noreferrer" target="_blank">
-            <ExternalLink className="h-4 w-4" />
-            Open in Notion
-          </a>
-        </Button>
+      </div>
+      <div className="grid gap-2 text-xs leading-5 text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        {(Object.keys(actionCopy) as ActionId[]).map((actionId) => (
+          <p key={actionId}>{actionCopy[actionId].helper}</p>
+        ))}
       </div>
       <Card>
         <CardHeader>

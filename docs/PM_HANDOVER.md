@@ -37,7 +37,9 @@ Live and working:
 - Meal Detail is available at `/meals/[id]`, with internal links from Today and Meals.
 - Today and Meal Detail feedback actions save to Notion and optimistically refresh visible household feedback summaries.
 - Today includes a Recent Household Learning strip derived from existing feedback summaries.
-- Today feedback undo is client-only. It restores local Today UI state and does not reverse Notion history.
+- Today feedback undo is client-only. It restores local Today UI state and does not reverse persisted feedback history.
+- Today recommendations now use deterministic adaptive scoring from saved meal metadata and existing household feedback summaries. Ranking has no AI calls, no new Notion fields, and card-level `Why this meal?` explanations.
+- Beta 3 usability closeout is local and ready for deployment: normal household flows use Meal OS language instead of Notion-facing copy; external saved-record links and raw notes are under Advanced details; Analyze has staged loading copy; Dashboard starts with household takeaways; Meal Detail starts with a household summary.
 - PWA/mobile shell: manifest, app metadata, icons, safe-area/mobile layout work.
 - Read-only production smoke-test automation via `npm run smoke:prod`.
 - `/analyze` review UI has a first household-first simplification pass with progressive disclosure.
@@ -86,26 +88,31 @@ Important architecture rules:
 - Review result starts with a household-first summary: "is this workable?", compact protein/satiety/blood-sugar context, smallest helpful change, why it helps, and cultural-preservation notes.
 - Existing editable details remain available through progressive sections.
 - Evidence, safety, source metadata, scores, and advanced saved fields are secondary/collapsed so they do not dominate the household answer.
-- User can save the meal to Notion; ingredient suggestions persist separately.
+- User can click `Save meal`; the success state says `Saved to Meal OS.` Ingredient suggestions persist separately.
+- Long analysis runs show staged copy such as `Reading meal details...`, `Estimating household fit...`, `Checking nutrition signals...`, and `Preparing your review...`, plus a 20-30 second expectation.
 - Review includes editable nutrition totals. Blank values remain unknown; the app distinguishes unknown from zero.
 
 `/`:
 - Loads Today from saved meals and existing feedback summaries.
-- Shows daily meal suggestions, quick `Ate This` / `Loved It` feedback actions, a compact Recent Household Learning strip, and client-only undo for the latest successful feedback on a card.
+- Shows daily meal suggestions, expandable `Why this meal?` explanations, quick `Ate This` / `Loved It` feedback actions, a compact Recent Household Learning strip, and client-only undo for the latest successful feedback on a card.
 - Feedback actions write to Notion through the existing feedback API and optimistically refresh local card summaries while server data catches up.
+- `Ate This` logs eaten only. `Loved It` logs eaten, loved, and worth repeating. Copy does not claim persisted undo.
 
 `/dashboard`:
 - Loads dashboard intelligence from `/api/dashboard`.
-- Shows daily nutrition, configurable targets, smart insights, weekly trends, recent meals, and quality summaries.
+- Starts with household takeaways: what Meal OS learned, what to do next, and confidence. Then shows daily nutrition, configurable targets, smart insights, weekly trends, recent meals, and quality summaries.
+- Technical data coverage/source diagnostics live under Advanced data coverage.
 - Targets for calories, protein, fiber, and sodium are client-side only for now.
 
 `/meals`:
 - Loads saved Meals from Notion.
-- Links to `/meals/[id]` detail pages.
+- Uses Meal OS wording and links to `/meals/[id]` detail pages; external saved-record links are not primary list actions.
 
 `/meals/[id]`:
-- Shows saved meal context, household feedback, nutrition/quality context, and quick feedback actions.
+- Starts with household summary, feedback, why the meal works, nutrition/quality context, and quick feedback actions.
 - Feedback actions write to Notion and optimistically refresh visible household feedback counts.
+- Raw notes, provenance, and external saved-record links are hidden under Advanced details.
+- `Would Make Again` is repeat-only in household summaries.
 
 `/feedback`:
 - Loads saved meals for selection.
@@ -140,7 +147,7 @@ Meal Feedback:
 - Actively used.
 - Stores post-meal feedback.
 - Supports optional relation to Meals when Notion is configured with a compatible relation property.
-- Used by `/feedback`, Today quick actions, and Meal Detail quick actions. No Beta 2 feedback polish schema changes were required.
+- Used by `/feedback`, Today quick actions, Meal Detail quick actions, Recent Household Learning, and deterministic Today preference scoring. No Beta 2/Beta 3 schema changes were required.
 
 Weekly Plans:
 - Configured by env/database ID but not actively used yet.
@@ -174,6 +181,8 @@ Highest priority:
 - No full authentication. Private deployment/token guardrails exist, but do not broaden public sharing before real auth exists.
 - No automated write-flow smoke tests; current smoke automation is read-only.
 - Today feedback undo is client-only and does not delete/reverse Notion feedback records.
+- Persisted feedback reversal/delete remains deferred; do not imply feedback can be durably undone until a backend behavior exists.
+- Recommendation scoring is deterministic v1 and unpersisted; there is no recommendation audit log or planning workflow yet.
 - Structured ingredient parsing/persistence is pending.
 - No Notion write-back migration exists for legacy nutrition or quality fields.
 - Dashboard targets are client-side only.
@@ -200,9 +209,9 @@ Other debt:
 
 ## 9. Recommended Next Slices
 
-1. Real-meal tone and household usability review.
+1. Deploy and manually verify Beta 3 usability behavior on Vercel/Notion.
 2. Add a Notion schema checklist/migration path for explicit nutrition and quality fields, then an operator-triggered backfill job for legacy score fields.
-3. UX pass across `/meals`, `/feedback`, and `/settings`.
+3. UX pass across `/settings` and any remaining admin/operator surfaces.
 4. Structured ingredient persistence.
 5. Continue real-world recipe/social URL intake testing and record blocked/problematic domains.
 6. Write-flow smoke tests.
@@ -221,6 +230,15 @@ Manual Vercel deployment:
 4. Trigger or wait for deployment from `main`.
 5. Smoke test `/`, `/analyze`, `/dashboard`, `/api/dashboard`, and `/api/analyze-meal`.
 6. If private/token guardrails are enabled, verify required token/header/cookie behavior in production.
+7. For the Beta 3 usability pass, verify:
+   - Analyze still saves meals successfully to Notion.
+   - Saved meals appear in Meals with Meal OS wording, not Notion wording.
+   - Today feedback writes to Notion as expected.
+   - `Ate This`, `Loved It`, and `Would Make Again` semantics appear correctly in saved feedback summaries.
+   - Dashboard household takeaways update after feedback/data changes.
+   - Meal Detail shows household summary first and hides raw notes/external links under Advanced details.
+   - Mobile deployment has no horizontal overflow on Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail.
+   - No user-facing copy implies feedback can be persistently undone unless that feature is actually implemented.
 
 Manual Notion schema:
 - The app does not create or mutate Notion schema automatically.

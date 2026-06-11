@@ -1,6 +1,42 @@
 # Architectural Decisions
 
-Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
+Last updated: 2026-06-11 (Beta 3 Usability Closeout)
+
+## 2026-06-11 — Beta 3 Usability Uses Household Language And Progressive Disclosure
+
+Decision: Keep Notion as the persistence layer, but remove Notion/backend language from normal household flows and move implementation details behind Advanced or Settings-oriented surfaces.
+
+Reasoning:
+- Pre-Beta 3 simulation showed that users interpreted Notion labels, raw notes, provenance, and diagnostics as internal machinery rather than household guidance.
+- The highest-impact fixes were copy, layout, and behavior clarity, not a persistence rewrite.
+- Normal flows should say `Save meal`, `Saved to Meal OS`, `Saved meals`, and `Open saved record` only inside Advanced details where an external record link remains useful.
+- Dashboard and Meal Detail should start with household summaries before metrics, provenance, or source diagnostics.
+
+Feedback semantics:
+- `Ate This` records eaten only.
+- `Loved It` records eaten, loved, and worth repeating.
+- Meal Detail `Would Make Again` is treated as repeat-only in household summaries.
+- Today undo remains client-side only; persisted undo/reversal is deferred until explicit backend behavior and product rules exist.
+
+Tradeoffs:
+- External Notion links still exist for admin/debug usefulness, but they are not primary household actions.
+- Raw notes and provenance remain available under Advanced details instead of being removed.
+- Persisted reversal/delete was intentionally not added in this slice to avoid implying history was changed when the existing API only appends feedback.
+
+## 2026-06-11 — Today Recommendations Stay Deterministic And Schema-Neutral
+
+Decision: Build Adaptive Recommendation Engine v1 as deterministic domain scoring from existing saved meal metadata and existing household feedback summaries, with component explanations surfaced on Today cards.
+
+Reasoning:
+- Today needs to learn from household behavior before adding planning workflows, but feedback data is sparse and uneven.
+- Existing Notion Meals and Meal Feedback data already provide enough signals for a first adaptive layer.
+- Splitting scores into preference, recency, variety penalty, and saved scheduling metadata makes ranking inspectable and testable.
+- Recommendation explanations should come from the exact score inputs used for ranking, not separate generated copy.
+
+Tradeoffs:
+- This is not predictive coaching, AI recommendation, collaborative filtering, or ML.
+- Sparse households still lean heavily on saved meal metadata and recency until more feedback exists.
+- The app does not add Notion properties, so detailed recommendation telemetry is not persisted yet.
 
 ## 2026-06-11 — Feedback Refresh Is Optimistic And Schema-Neutral
 

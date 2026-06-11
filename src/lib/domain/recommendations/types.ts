@@ -27,12 +27,27 @@ export interface RecommendationMeal {
   qualityScore: number | null;
 }
 
+export interface RecommendationScoreBreakdown {
+  preferenceScore: number;
+  recencyScore: number;
+  varietyPenalty: number;
+  schedulingScore: number;
+  totalScore: number;
+}
+
+export interface RecommendationExplanation {
+  headline: string;
+  details: string[];
+}
+
 export interface MealRecommendation {
   meal: RecommendationMeal;
   feedbackSummary: MealFeedbackSummary | null;
   category: TodayMealCategory;
   score: number;
+  scoreBreakdown: RecommendationScoreBreakdown;
   reasons: string[];
+  explanation: RecommendationExplanation;
   confidence: "medium" | "low";
   confidenceNote: string;
 }

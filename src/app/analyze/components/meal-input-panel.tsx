@@ -1,9 +1,16 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { FileText, Loader2, Wand2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+
+const loadingMessages = [
+  "Reading meal details...",
+  "Estimating household fit...",
+  "Checking nutrition signals...",
+  "Preparing your review..."
+];
 
 export function MealInputPanel({
   recipeText,
@@ -20,6 +27,29 @@ export function MealInputPanel({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRecipeTextChange: (value: string) => void;
 }) {
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const loadingMessage = loadingMessages[loadingMessageIndex];
+
+  useEffect(() => {
+    if (!isLoading) {
+      return;
+    }
+
+    const resetId = window.setTimeout(() => {
+      setLoadingMessageIndex(0);
+    }, 0);
+    const intervalId = window.setInterval(() => {
+      setLoadingMessageIndex((current) =>
+        current >= loadingMessages.length - 1 ? current : current + 1
+      );
+    }, 5500);
+
+    return () => {
+      window.clearTimeout(resetId);
+      window.clearInterval(intervalId);
+    };
+  }, [isLoading]);
+
   return (
     <Card>
       <CardHeader>
@@ -48,8 +78,11 @@ export function MealInputPanel({
             <p className="text-sm text-muted-foreground">
               Enter at least 10 characters. {trimmedRecipeTextLength} characters
             </p>
+            <p className="text-sm text-muted-foreground">
+              This can take about 20-30 seconds for detailed meals.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="space-y-2">
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
               disabled={isAnalyzeDisabled}
@@ -60,8 +93,13 @@ export function MealInputPanel({
               ) : (
                 <Wand2 className="h-4 w-4" />
               )}
-              {isLoading ? "Analyzing..." : "Analyze recipe"}
+              {isLoading ? loadingMessage : "Analyze recipe"}
             </button>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">
+                Meal OS is still working. Detailed reviews can take a short moment.
+              </p>
+            ) : null}
           </div>
         </form>
       </CardContent>

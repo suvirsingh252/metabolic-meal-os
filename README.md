@@ -131,16 +131,33 @@ Nutrition behavior:
 Dashboard reliability behavior:
 
 - Historical Meals are enriched at read time only. Existing Notion nutrition and score properties win; legacy Notes scorecards can backfill quality metadata; exact nutrition totals are never invented.
-- `/dashboard` shows compact data confidence indicators for weekly source mix, missing nutrition, backfilled records, and nutrient sample sizes.
+- `/dashboard` starts with household takeaways: what Meal OS learned, what to do next, and how confident the dashboard is. Technical data coverage indicators live under Advanced data coverage.
 - `/settings` Notion schema diagnostics reports optional Meals field gaps and incompatible property types without mutating Notion schema or blocking the app.
 
 Feedback behavior:
 
 - `/feedback`, Today quick actions, and Meal Detail quick actions save to the existing Notion Meal Feedback database through `POST /api/notion/log-feedback`.
 - Today and Meal Detail update visible household feedback summaries optimistically after successful feedback saves, then refresh server data when practical.
+- Quick action semantics are intentionally explicit: `Ate This` logs eaten only; `Loved It` logs eaten, loved, and worth repeating; Meal Detail `Would Make Again` is repeat-only in the household summary.
 - Today shows a compact Recent Household Learning strip derived from existing feedback summaries.
-- Today undo is client-side only. It restores the local Today view and learning strip but does not delete or reverse Notion history.
-- No Notion schema changes are required for the Beta 2 feedback refresh, learning strip, or client-only undo slices.
+- Today undo is client-side only. It restores the local Today view and learning strip but does not delete or reverse persisted feedback history.
+- Meal Detail and Feedback use explicit saved-state copy instead of implying persisted undo exists.
+- No Notion schema changes are required for the Beta 2/Beta 3 feedback refresh, learning strip, usability copy, or client-only undo slices.
+
+Recommendation behavior:
+
+- Today recommendations use deterministic scoring from existing saved meal metadata and existing household feedback summaries only.
+- The score is split into preference, recency, variety penalty, and saved scheduling metadata components.
+- No OpenAI call, generated recommendation, or new Notion property is used for recommendation ranking.
+- With no feedback history, preference remains neutral and Today falls back to stable saved-meal metadata scoring.
+- Today cards show 2-4 plain household reasons and include an expandable `Why this meal?` explanation generated from the same deterministic score components.
+
+Beta 3 usability behavior:
+
+- Normal household flows use Meal OS language (`Save meal`, `Saved to Meal OS`, `Saved meals`) instead of Notion-facing copy.
+- External saved-record links remain available only in Advanced details where kept.
+- Analyze uses staged loading copy (`Reading meal details...`, `Estimating household fit...`, `Checking nutrition signals...`, `Preparing your review...`) and tells users detailed meals can take about 20-30 seconds.
+- Meal Detail starts with household summary, quick feedback semantics, why the meal works, nutrition/quality, and recent feedback. Raw notes, provenance, and external saved-record links live under Advanced details.
 
 ## Manual Integration Test
 
@@ -164,6 +181,6 @@ npm run dev
 
 6. Open `http://localhost:3011/analyze`, paste a recipe or meal idea, and run analysis.
 
-7. Review or edit the analyzed meal fields, then click `Save to Notion`.
+7. Review or edit the analyzed meal fields, then click `Save meal`.
 
-8. Confirm the success link opens the new Notion page in the Meals database.
+8. Confirm the success state says `Saved to Meal OS.` and, under Advanced details, the saved record opens in the Meals database.
