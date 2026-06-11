@@ -143,7 +143,7 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   ]);
   const carbohydratesG = findProperty(
     properties,
-    ["Carbohydrates (g)", "Carbs (g)", "Carbohydrate (g)", "Carbohydrates"],
+    ["Carbohydrates (g)", "Carbs (g)", "Carbs", "Carbohydrate (g)", "Carbohydrates"],
     ["number"]
   );
   const fatG = findProperty(properties, ["Fat (g)", "Total Fat (g)", "Fat"], [
@@ -157,7 +157,7 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   ]);
   const sugarG = findProperty(
     properties,
-    ["Sugar (g)", "Sugars (g)", "Total Sugars (g)", "Total Sugar (g)"],
+    ["Sugar (g)", "Sugar", "Sugars (g)", "Total Sugars (g)", "Total Sugar (g)"],
     ["number"]
   );
   const nutritionConfidence = findProperty(

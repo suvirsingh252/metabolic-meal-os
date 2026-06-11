@@ -1,8 +1,11 @@
 import type {
   AnalyticsMeal,
   DashboardMealSummary,
+  NutritionCompleteness,
   NutritionMetric,
+  NutritionSourceMix,
   NutritionTotals,
+  QualitySampleSummary,
   TrendLabel
 } from "@/src/lib/domain/analytics/types";
 import { scoreMealQuality } from "@/src/lib/domain/analytics/quality";
@@ -138,17 +141,17 @@ export function buildRecentMeals(
       calories: numericOrNull(meal.nutrition.calories),
       protein: numericOrNull(meal.nutrition.protein),
       confidence: meal.confidence ?? null,
-      provenance: meal.provenance ?? null,
+      provenance: meal.provenance ?? meal.source ?? null,
       url: meal.url ?? null
     }));
 }
 
-export function averageMealQuality(meals: AnalyticsMeal[]) {
+export function averageMealQuality(meals: AnalyticsMeal[], minScoredMeals = 1) {
   const scores = meals
     .map((meal) => scoreMealQuality(meal).score)
     .filter((score): score is number => typeof score === "number");
 
-  if (scores.length === 0) {
+  if (scores.length < minScoredMeals) {
     return null;
   }
 
@@ -172,7 +175,7 @@ function findMealByQuality(meals: AnalyticsMeal[], mode: "best" | "opportunity")
       typeof item.score === "number"
     );
 
-  if (scoredMeals.length === 0) {
+  if (scoredMeals.length < 2) {
     return null;
   }
 
@@ -181,6 +184,105 @@ function findMealByQuality(meals: AnalyticsMeal[], mode: "best" | "opportunity")
   );
 
   return buildRecentMeals([scoredMeals[0].meal], 1)[0] ?? null;
+}
+
+export function buildNutritionCompleteness(
+  meals: AnalyticsMeal[]
+): NutritionCompleteness {
+  return Object.fromEntries(
+    nutritionMetrics.map((metric) => {
+      const knownMeals = meals.filter((meal) =>
+        isKnownNumber(meal.nutrition[metric])
+      ).length;
+
+      return [
+        metric,
+        {
+          knownMeals,
+          totalMeals: meals.length,
+          label: sampleLabel(knownMeals, meals.length, "meals")
+        }
+      ];
+    })
+  ) as NutritionCompleteness;
+}
+
+export function buildQualitySampleSummary(
+  meals: AnalyticsMeal[],
+  minScoredMeals = 2
+): QualitySampleSummary {
+  const scoredMeals = meals.filter(
+    (meal) => typeof scoreMealQuality(meal).score === "number"
+  ).length;
+
+  return {
+    scoredMeals,
+    totalMeals: meals.length,
+    isEnoughData: scoredMeals >= minScoredMeals,
+    label:
+      scoredMeals >= minScoredMeals
+        ? `Based on ${scoredMeals} of ${meals.length} meals`
+        : scoredMeals === 0
+          ? "No scored meals yet"
+          : `Based on ${scoredMeals} meal; more data needed`
+  };
+}
+
+export function buildNutritionSourceMix(meals: AnalyticsMeal[]): NutritionSourceMix {
+  const mix: NutritionSourceMix = {
+    structured: 0,
+    estimated: 0,
+    reviewed: 0,
+    userEntered: 0,
+    backfilled: 0,
+    missingNutrition: 0
+  };
+
+  for (const meal of meals) {
+    if (!hasKnownNutrition(meal)) {
+      mix.missingNutrition += 1;
+      continue;
+    }
+
+    const evidence = [meal.source, meal.confidence, meal.provenance]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (
+      evidence.includes("recipe") ||
+      evidence.includes("json-ld") ||
+      evidence.includes("structured")
+    ) {
+      mix.structured += 1;
+      if (evidence.includes("notion-backfill")) {
+        mix.backfilled += 1;
+      }
+    } else if (evidence.includes("user-entered")) {
+      mix.userEntered += 1;
+      if (evidence.includes("notion-backfill")) {
+        mix.backfilled += 1;
+      }
+    } else if (
+      evidence.includes("reviewed") ||
+      evidence.includes("manual") ||
+      evidence.includes("edited during meal review")
+    ) {
+      mix.reviewed += 1;
+      if (evidence.includes("notion-backfill")) {
+        mix.backfilled += 1;
+      }
+    } else if (evidence.includes("estimated") || evidence.includes("free-text")) {
+      mix.estimated += 1;
+      if (evidence.includes("notion-backfill")) {
+        mix.backfilled += 1;
+      }
+    } else {
+      mix.backfilled += 1;
+    }
+  }
+
+  return mix;
 }
 
 function qualityFields(meal: AnalyticsMeal) {
@@ -274,6 +376,26 @@ export function getDailyTotalsForMetric(
 
 function numericOrNull(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function isKnownNumber(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function hasKnownNutrition(meal: AnalyticsMeal) {
+  return nutritionMetrics.some((metric) => isKnownNumber(meal.nutrition[metric]));
+}
+
+function sampleLabel(knownMeals: number, totalMeals: number, noun: string) {
+  if (totalMeals === 0) {
+    return `No ${noun} logged`;
+  }
+
+  if (knownMeals === 0) {
+    return "No nutrition totals saved yet";
+  }
+
+  return `Based on ${knownMeals} of ${totalMeals} ${noun}`;
 }
 
 function roundToOne(value: number) {

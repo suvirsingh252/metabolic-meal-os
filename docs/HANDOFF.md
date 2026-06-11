@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
+Last updated: 2026-05-26 (Nutrition + Quality Backfill Reliability)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -60,6 +60,9 @@ Implemented:
 - Meal-level nutrition persistence v1: reviewed meals can carry calories, protein, carbs, fat, fiber, sodium, sugar, confidence, provenance, and source. `/analyze` exposes editable nutrition totals in the review flow, labels structured, estimated, user-edited/manual, and unavailable states distinctly, shows matched estimate assumptions, offers coarse serving multiplier controls (`0.5x`, `1x`, `1.5x`, `2x`) plus add/remove butter when relevant, and `save-meal` writes compatible Notion properties when they already exist.
 - Visual/mobile estimate hardening: estimate assumption badges wrap, serving buttons use larger mobile tap targets, dashboard chips/cards avoid truncating important state, and repeated serving/butter review actions replace stale provenance notes.
 - Meal quality v1: rule-based quality scoring considers protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. Existing meals without exact nutrition can receive read-time quality backfill from legacy scorecards in Notion Notes.
+- Nutrition + quality reliability v1: saved Meals now get conservative read-time metadata backfill from existing Notion fields and legacy Notes when evidence exists. Backfill can infer quality score, protein/fiber/energy density/processing scores, nutrition source, provenance, and confidence, but never invents precise nutrition totals and never overwrites explicit values.
+- Dashboard data confidence indicators: `/dashboard` now shows weekly source mix, missing nutrition count, backfilled record count, nutrient completeness sample sizes, and quality sample-size labels. Weekly quality and best/opportunity callouts require enough scored meals to avoid overstating one-record summaries.
+- Meals schema health check: `/api/diagnostics/notion-schemas` evaluates optional Meals nutrition, provenance, quality, and Meal Date fields; `/settings` surfaces non-blocking warnings for missing or incompatible properties. The app still does not mutate Notion schema.
 - Explicit USDA -> Notion ingredient enrichment endpoint: `/api/ingredients/enrich` can lookup only or lookup and update an Ingredient page when compatible Notion properties already exist.
 - FoodData Central matching quality improvements: lookup now fetches preferred generic USDA data types more robustly, ranks Foundation/SR Legacy/Survey ahead of Experimental and Branded where suitable, penalizes prepared/flavored/plain-staple mismatches, adds limited query expansion for paneer and atta, and returns optional match metadata explaining the selected data type and fallback reason.
 - Ingredient picker/enrichment UX: Settings loads existing Notion Ingredients, lets the user select an Ingredient by name, and enriches the selected page without manual Notion page ID copy/paste. Manual lookup-only mode remains available when no Ingredient is selected.
@@ -117,6 +120,8 @@ Code organization:
 - `src/lib/health-guidance/*`: safe guidance principles and global health safety rules.
 - `src/lib/household/preferences.ts`: default household preference access.
 - `src/lib/notion`: Notion client, mappers, and page summary extraction.
+- `src/lib/notion/meal-backfill.ts`: read-time historical metadata backfill for saved Meals.
+- `src/lib/notion/schema-health.ts`: optional Meals schema health evaluation for Settings diagnostics.
 - `src/lib/notion/meals-query.ts`: shared Notion Meals read path used by `/api/notion/meals` and `/api/dashboard`.
 - `src/lib/notion/ingredient-context.ts`: best-effort read-only helper for matching known Ingredients and formatting lightweight household ingredient context for analysis prompts.
 - `src/lib/notion/ingredient-summary.ts`: maps Notion Ingredient pages into simplified summaries for Settings picker/enrichment UX.
@@ -167,7 +172,8 @@ Pages:
   - Builds and returns a `DashboardViewModel`.
   - Accepts optional query params for dashboard targets: `calories`, `protein`, `fiber`, and `sodium`.
   - Does not call OpenAI.
-  - Uses persisted meal-level nutrition where available, including saved estimates, and falls back to legacy scorecard parsing for quality only. Provenance/source distinguish estimated values from structured facts.
+  - Uses persisted meal-level nutrition where available, including saved estimates, and falls back to read-time Notion backfill for derived metadata only. Provenance/source distinguish structured, estimated, user-entered, reviewed, unavailable, and `notion-backfill` records.
+  - Returns nutrition completeness and source mix metadata so sparse historical data is labeled with sample sizes instead of treated as complete.
 
 - `POST /api/ingredients/lookup`
   - Input: `{ ingredient: string }`

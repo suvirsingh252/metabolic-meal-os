@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   aggregateNutritionTotals,
+  buildNutritionCompleteness,
   buildRecentMeals,
+  buildNutritionSourceMix,
   getSevenDayWindow,
   isMealInInclusiveDateRange,
   isMealOnDate
@@ -21,6 +23,7 @@ function meal(
     nutrition: overrides.nutrition ?? {},
     url: overrides.url,
     confidence: overrides.confidence,
+    source: overrides.source,
     provenance: overrides.provenance
   };
 }
@@ -34,6 +37,66 @@ test("aggregateNutritionTotals returns null totals for empty meal list", () => {
     fiber: null,
     sodium: null,
     sugar: null
+  });
+});
+
+test("nutrition completeness counts partial rows without treating null as zero", () => {
+  const completeness = buildNutritionCompleteness([
+    meal({
+      id: "1",
+      loggedAt: generatedAt,
+      nutrition: { calories: 400, protein: null, fiber: 6 }
+    }),
+    meal({
+      id: "2",
+      loggedAt: generatedAt,
+      nutrition: { protein: 20 }
+    }),
+    meal({ id: "3", loggedAt: generatedAt, nutrition: {} })
+  ]);
+
+  assert.equal(completeness.calories.knownMeals, 1);
+  assert.equal(completeness.protein.knownMeals, 1);
+  assert.equal(completeness.fiber.label, "Based on 1 of 3 meals");
+  assert.equal(completeness.sodium.label, "No nutrition totals saved yet");
+});
+
+test("source mix counts structured, estimated, reviewed, backfilled, and missing meals", () => {
+  const mix = buildNutritionSourceMix([
+    meal({
+      id: "structured",
+      loggedAt: generatedAt,
+      source: "recipe-json-ld",
+      nutrition: { calories: 500 }
+    }),
+    meal({
+      id: "estimated",
+      loggedAt: generatedAt,
+      source: "estimated",
+      nutrition: { calories: 400 }
+    }),
+    meal({
+      id: "reviewed",
+      loggedAt: generatedAt,
+      provenance: "edited during meal review",
+      nutrition: { protein: 25 }
+    }),
+    meal({
+      id: "backfilled",
+      loggedAt: generatedAt,
+      provenance: "notion-backfill: partial saved nutrition fields",
+      nutrition: { fiber: 8 }
+    }),
+    meal({ id: "missing", loggedAt: generatedAt, nutrition: {} })
+  ]);
+
+  assert.deepEqual(mix, {
+    structured: 1,
+    estimated: 1,
+    reviewed: 1,
+    userEntered: 0,
+    backfilled: 1,
+    missingNutrition: 1
   });
 });
 

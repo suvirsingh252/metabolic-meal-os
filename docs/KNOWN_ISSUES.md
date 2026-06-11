@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
+Last updated: 2026-05-26 (Nutrition + Quality Backfill Reliability)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -31,7 +31,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] FoodData Central matching is improved but still heuristic. Variety-specific staples such as basmati rice may still use branded fallback when USDA does not return a suitable generic match; review `matchedDescription`, `matching`, notes, and `confidence`.
 - [ ] Meal-level nutrition persistence depends on compatible existing Notion fields. The app does not create or mutate Notion schema.
 - [ ] Free-text nutrition estimation is intentionally incomplete and not clinical-grade. It covers a small tested list of common household meal components and shorthand, parses only coarse serving-size signals, and only estimates calories, protein, and fiber.
-- [ ] Legacy meals may lack exact nutrition totals. Quality can backfill from legacy scorecards at read time, but no Notion write-back migration exists yet.
+- [ ] Legacy meals may lack exact nutrition totals. Derived quality/provenance metadata can backfill at read time, but no Notion write-back migration exists yet.
+- [ ] Read-time backfill is intentionally conservative and may leave old records partially unknown even when a human could infer more from the Notes text.
 - [ ] Dashboard targets are client-side only through `localStorage`; they are not persisted server-side and are not household/user-scoped.
 
 ## UX Problems
@@ -89,12 +90,14 @@ Ask the operator whether they want to add these compatible Meals properties:
 - `Metabolic Score` — Number
 - `Protein Score` — Number
 - `Fiber Score` — Number
+- `Energy Density Score` — Number
+- `Processing Score` — Number
 - `Satiety Score` — Number
 - `Blood Sugar Risk Score` — Number
+- `Meal Date` — Date, optional; current dashboard can still group by Notion created time when absent.
 
-Operator-requested quality component fields are not written yet:
+Optional quality component fields not covered by this reliability slice:
 
 - `Sodium Score` — Number
 - `Sugar Score` — Number
 - `Diversity Score` — Number
-- `Processing Score` — Number

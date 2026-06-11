@@ -1,5 +1,33 @@
 # Session Log
 
+## 2026-05-26 Nutrition + Quality Backfill & Reliability Layer v1
+
+Goal:
+- Improve historical dashboard trust without expanding the nutrition model or mutating Notion schema automatically.
+
+Completed work:
+- Added read-time Notion meal backfill helpers for derived metadata only: meal quality, protein/fiber/energy density/processing scores, nutrition source, provenance, and confidence.
+- Preserved explicit Notion values and left unknown nutrition totals as `null`; old records are not rewritten.
+- Added Meals schema health evaluation to `/api/diagnostics/notion-schemas` and non-blocking Settings warnings for missing or incompatible optional fields.
+- Added dashboard source mix and completeness metadata for today/week, plus a compact Data confidence section.
+- Added sparse-data guards: weekly quality needs two scored meals, best/opportunity callouts need enough scored data, and nutrient sample labels show denominators.
+- Added tests for legacy scorecard backfill, partial nutrition rows, missing provenance/source mix, null-safe aggregation, schema health, no overwrite of explicit values, and sample-size metadata.
+
+Validation:
+- `npm test` passed.
+- `npm run lint` passed.
+- `npm run build` passed, with the known Node experimental Type Stripping warning.
+
+Notion review:
+- No automatic Notion schema mutation was added.
+- No required schema changes are needed for the app to run because backfill and dashboard confidence are read-time.
+- Optional Meals fields improve persistence and diagnostics: Calories, Protein, Carbs, Fat, Fiber, Sodium, Sugar, Meal Quality Score, Protein Score, Fiber Score, Energy Density Score, Processing Score, Nutrition Confidence, Nutrition Source, Nutrition Provenance, and Meal Date.
+
+Known limitations:
+- Exact nutrition totals are not inferred for legacy meals.
+- Backfilled metadata is conservative and may remain partial.
+- There is still no Notion write-back migration job.
+
 ## 2026-05-25 Visual + Mobile Review Hardening and Household Fixture Expansion
 
 Goal:

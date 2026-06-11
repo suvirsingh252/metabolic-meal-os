@@ -1,6 +1,6 @@
 # Sources and Health Guidance Foundation
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 
 This app has an evidence-aware foundation for meal analysis, nutrition enrichment, and grocery intelligence. The source registry and health-guidance principles are now wired into runtime meal analysis prompt context and output fields. It does not call external source APIs for this guidance and does not use USDA nutrient lookup during meal analysis.
 
@@ -205,3 +205,21 @@ Rules:
 - No new Notion schema is required for serving-adjusted provenance or user-entered override tracking. The existing nutrition source, provenance, confidence, and nullable nutrient fields are sufficient for the current dashboard and save workflow.
 - The app does not calculate meal totals from ingredient-level per-100g snapshots without quantities.
 - The app does not create Notion schema; compatible Meals properties must already exist.
+
+## Dashboard Reliability And Backfill
+
+Historical Meals are enriched at read time only:
+
+- Existing Notion nutrition, source, provenance, confidence, and score fields take precedence.
+- Legacy Notes scorecards can backfill derived quality metadata.
+- Existing saved nutrition fields can backfill coarse source/provenance/confidence labels with `notion-backfill`.
+- Exact nutrition totals are not invented for old records.
+- Unknown values remain `null` and dashboard summaries carry sample-size metadata.
+
+Dashboard source categories:
+
+- `structured`: recipe/JSON-LD or other structured nutrition evidence.
+- `estimated`: deterministic free-text estimate.
+- `user-entered` / reviewed: manual edits or reviewed estimate values.
+- `notion-backfill`: read-time metadata inferred from existing saved fields or legacy Notes.
+- missing nutrition: no saved nutrition totals available.

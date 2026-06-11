@@ -1,4 +1,5 @@
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { backfillMealMetadata } from "@/src/lib/notion/meal-backfill";
 
 export interface MealSummary {
   id: string;
@@ -23,11 +24,14 @@ export interface MealSummary {
   sodiumMg: number | null;
   sugarG: number | null;
   nutritionConfidence: string | null;
+  nutritionSource: string | null;
   nutritionProvenance: string | null;
   qualityScore: number | null;
   metabolicScore: number | null;
   proteinScore: number | null;
   fiberScore: number | null;
+  energyDensityScore: number | null;
+  processingScore: number | null;
   satietyScoreNumeric: number | null;
   bloodSugarRiskScore: number | null;
 }
@@ -90,6 +94,14 @@ function readRichText(property: NotionProperty | undefined) {
   return value || null;
 }
 
+function readDateProperty(property: NotionProperty | undefined) {
+  if (!property || property.type !== "date") {
+    return null;
+  }
+
+  return property.date?.start ?? null;
+}
+
 function readNumberProperty(property: NotionProperty | undefined) {
   if (!property || property.type !== "number") {
     return null;
@@ -135,16 +147,16 @@ function readTextLike(page: PageObjectResponse, propertyNames: string[]) {
   return null;
 }
 
-function parseScoreFromNotes(notes: string | null, label: string) {
-  if (!notes) {
-    return null;
+function readDate(page: PageObjectResponse, propertyNames: string[]) {
+  for (const propertyName of propertyNames) {
+    const value = readDateProperty(getProperty(page, propertyName));
+
+    if (value) {
+      return value;
+    }
   }
 
-  const pattern = new RegExp(`${label}:\\s*(\\d+(?:\\.\\d+)?)\\/10`, "i");
-  const match = notes.match(pattern);
-  const value = match ? Number(match[1]) : NaN;
-
-  return Number.isFinite(value) ? value : null;
+  return null;
 }
 
 export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
@@ -153,12 +165,67 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
   }
 
   const notes = readRichText(getProperty(page, "Notes"));
+  const nutrition = {
+    calories: readNumber(page, ["Calories", "Energy (kcal)", "Energy Kcal"]),
+    protein: readNumber(page, ["Protein (g)", "Protein g", "Protein"]),
+    carbs: readNumber(page, [
+      "Carbohydrates (g)",
+      "Carbs (g)",
+      "Carbs",
+      "Carbohydrate (g)",
+      "Carbohydrates"
+    ]),
+    fat: readNumber(page, ["Fat (g)", "Total Fat (g)", "Fat"]),
+    fiber: readNumber(page, ["Fiber (g)", "Fibre (g)", "Fiber"]),
+    sodium: readNumber(page, ["Sodium (mg)", "Sodium"]),
+    sugar: readNumber(page, [
+      "Sugar (g)",
+      "Sugar",
+      "Sugars (g)",
+      "Total Sugars (g)",
+      "Total Sugar (g)"
+    ])
+  };
+  const explicitNutritionConfidence = readTextLike(page, [
+    "Nutrition Confidence",
+    "Nutrient Confidence",
+    "Confidence"
+  ]);
+  const explicitNutritionSource = readTextLike(page, [
+    "Nutrition Source",
+    "Nutrition Data Source",
+    "Source Name",
+    "Source Type"
+  ]);
+  const explicitNutritionProvenance = readTextLike(page, [
+    "Nutrition Provenance",
+    "Nutrition Source Notes"
+  ]);
+  const explicitQualityScore = readNumber(page, [
+    "Meal Quality Score",
+    "Quality Score"
+  ]);
+  const backfill = backfillMealMetadata({
+    notes,
+    nutrition,
+    nutritionConfidence: explicitNutritionConfidence,
+    nutritionSource: explicitNutritionSource,
+    nutritionProvenance: explicitNutritionProvenance,
+    qualityScore: explicitQualityScore,
+    metabolicScore: readNumber(page, ["Metabolic Score"]),
+    proteinScore: readNumber(page, ["Protein Score"]),
+    fiberScore: readNumber(page, ["Fiber Score"]),
+    energyDensityScore: readNumber(page, ["Energy Density Score"]),
+    processingScore: readNumber(page, ["Processing Score"]),
+    satietyScoreNumeric: readNumber(page, ["Satiety Score"]),
+    bloodSugarRiskScore: readNumber(page, ["Blood Sugar Risk Score"])
+  });
 
   return {
     id: page.id,
     url: page.url,
     mealName: readTitle(getProperty(page, "Meal Name")) || "Untitled meal",
-    createdAt: page.created_time,
+    createdAt: readDate(page, ["Meal Date", "Date", "Logged At"]) ?? page.created_time,
     cuisine: readSelect(getProperty(page, "Cuisine")),
     mealType: readSelect(getProperty(page, "Meal Type")),
     proteinLevel: readSelect(getProperty(page, "Protein Level")),
@@ -169,46 +236,23 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     weeknightFriendly: readCheckbox(getProperty(page, "Weeknight Friendly")),
     comfortMeal: readCheckbox(getProperty(page, "Comfort Meal")),
     notes,
-    calories: readNumber(page, ["Calories", "Energy (kcal)", "Energy Kcal"]),
-    proteinG: readNumber(page, ["Protein (g)", "Protein g", "Protein"]),
-    carbohydratesG: readNumber(page, [
-      "Carbohydrates (g)",
-      "Carbs (g)",
-      "Carbohydrate (g)",
-      "Carbohydrates"
-    ]),
-    fatG: readNumber(page, ["Fat (g)", "Total Fat (g)", "Fat"]),
-    fiberG: readNumber(page, ["Fiber (g)", "Fibre (g)", "Fiber"]),
-    sodiumMg: readNumber(page, ["Sodium (mg)", "Sodium"]),
-    sugarG: readNumber(page, [
-      "Sugar (g)",
-      "Sugars (g)",
-      "Total Sugars (g)",
-      "Total Sugar (g)"
-    ]),
-    nutritionConfidence: readTextLike(page, [
-      "Nutrition Confidence",
-      "Nutrient Confidence",
-      "Confidence"
-    ]),
-    nutritionProvenance: readTextLike(page, [
-      "Nutrition Source",
-      "Nutrition Provenance",
-      "Source Name",
-      "Source Type"
-    ]),
-    qualityScore: readNumber(page, ["Meal Quality Score", "Quality Score"]),
-    metabolicScore:
-      readNumber(page, ["Metabolic Score"]) ??
-      parseScoreFromNotes(notes, "Metabolic"),
-    proteinScore:
-      readNumber(page, ["Protein Score"]) ?? parseScoreFromNotes(notes, "Protein"),
-    fiberScore:
-      readNumber(page, ["Fiber Score"]) ?? parseScoreFromNotes(notes, "Fiber"),
-    satietyScoreNumeric:
-      readNumber(page, ["Satiety Score"]) ?? parseScoreFromNotes(notes, "Satiety"),
-    bloodSugarRiskScore:
-      readNumber(page, ["Blood Sugar Risk Score"]) ??
-      parseScoreFromNotes(notes, "Blood Sugar Risk")
+    calories: nutrition.calories,
+    proteinG: nutrition.protein,
+    carbohydratesG: nutrition.carbs,
+    fatG: nutrition.fat,
+    fiberG: nutrition.fiber,
+    sodiumMg: nutrition.sodium,
+    sugarG: nutrition.sugar,
+    nutritionConfidence: backfill.nutritionConfidence,
+    nutritionSource: backfill.nutritionSource,
+    nutritionProvenance: backfill.nutritionProvenance,
+    qualityScore: backfill.qualityScore,
+    metabolicScore: backfill.metabolicScore,
+    proteinScore: backfill.proteinScore,
+    fiberScore: backfill.fiberScore,
+    energyDensityScore: backfill.energyDensityScore,
+    processingScore: backfill.processingScore,
+    satietyScoreNumeric: backfill.satietyScoreNumeric,
+    bloodSugarRiskScore: backfill.bloodSugarRiskScore
   };
 }

@@ -157,6 +157,7 @@ export function DashboardClient() {
           <TargetProgress dashboard={dashboard} />
           <TargetSettings targets={targets} onTargetsChange={setTargets} />
           <QualitySummary dashboard={dashboard} />
+          <DataReliabilitySummary dashboard={dashboard} />
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
             <SmartInsights insights={dashboard.insights} />
             <WeeklySummary dashboard={dashboard} />
@@ -319,14 +320,24 @@ function QualitySummary({ dashboard }: { dashboard: DashboardViewModel }) {
       />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          helper={<QualitySummaryText score={dashboard.today.averageQualityScore} />}
+          helper={
+            <QualitySummaryText
+              sample={dashboard.today.qualitySample}
+              score={dashboard.today.averageQualityScore}
+            />
+          }
           icon={Gauge}
           label="Today quality"
           tone={todayState === "strong" ? "positive" : todayState === "attention" ? "warning" : "neutral"}
           value={formatScore(dashboard.today.averageQualityScore)}
         />
         <MetricCard
-          helper={<QualitySummaryText score={dashboard.week.averageQualityScore} />}
+          helper={
+            <QualitySummaryText
+              sample={dashboard.week.qualitySample}
+              score={dashboard.week.averageQualityScore}
+            />
+          }
           icon={CalendarDays}
           label="Weekly quality"
           tone={weekState === "strong" ? "positive" : weekState === "attention" ? "warning" : "neutral"}
@@ -347,11 +358,70 @@ function QualitySummary({ dashboard }: { dashboard: DashboardViewModel }) {
   );
 }
 
-function QualitySummaryText({ score }: { score: number | null }) {
+function QualitySummaryText({
+  sample,
+  score
+}: {
+  sample: DashboardViewModel["today"]["qualitySample"];
+  score: number | null;
+}) {
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex flex-wrap items-center gap-2">
       <MealQualityBadge score={score} />
+      <span>{sample.label}</span>
     </span>
+  );
+}
+
+function DataReliabilitySummary({ dashboard }: { dashboard: DashboardViewModel }) {
+  const mix = dashboard.week.sourceMix;
+  const calorieSample = dashboard.week.nutritionCompleteness.calories;
+  const proteinSample = dashboard.week.nutritionCompleteness.protein;
+  const fiberSample = dashboard.week.nutritionCompleteness.fiber;
+
+  return (
+    <section className="space-y-3">
+      <SectionHeading
+        helper="Neutral coverage indicators for saved meal records in the current week."
+        title="Data confidence"
+      />
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex flex-wrap gap-2">
+            <NutritionSignalChip tone={mix.structured > 0 ? "steady" : "unavailable"}>
+              {mix.structured} structured
+            </NutritionSignalChip>
+            <NutritionSignalChip tone={mix.estimated > 0 ? "steady" : "unavailable"}>
+              {mix.estimated} estimated
+            </NutritionSignalChip>
+            <NutritionSignalChip tone={mix.userEntered + mix.reviewed > 0 ? "positive" : "unavailable"}>
+              {mix.userEntered + mix.reviewed} manually reviewed
+            </NutritionSignalChip>
+            <NutritionSignalChip tone={mix.backfilled > 0 ? "warning" : "unavailable"}>
+              {mix.backfilled} backfilled
+            </NutritionSignalChip>
+            <NutritionSignalChip tone={mix.missingNutrition > 0 ? "unavailable" : "positive"}>
+              {mix.missingNutrition} missing nutrition
+            </NutritionSignalChip>
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-3">
+            <ReliabilityLine label="Calories" sample={calorieSample.label} />
+            <ReliabilityLine label="Protein" sample={proteinSample.label} />
+            <ReliabilityLine label="Fiber" sample={fiberSample.label} />
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function ReliabilityLine({ label, sample }: { label: string; sample: string }) {
+  return (
+    <div className="rounded-md border bg-background px-3 py-2.5 text-sm">
+      <p className="text-muted-foreground">{label}</p>
+      <p className="mt-1 font-medium">{sample}</p>
+    </div>
   );
 }
 
@@ -406,11 +476,13 @@ function WeeklySummary({ dashboard }: { dashboard: DashboardViewModel }) {
             label="Average protein"
             signal={dashboard.week.trends.proteinConsistency}
             value={formatNutrient(dashboard.week.dailyAverages.protein, "g/day")}
+            detail={dashboard.week.nutritionCompleteness.protein.label}
           />
           <WeeklySignal
             label="Average fiber"
             signal={dashboard.week.trends.fiberConsistency}
             value={formatNutrient(dashboard.week.dailyAverages.fiber, "g/day")}
+            detail={dashboard.week.nutritionCompleteness.fiber.label}
           />
           <WeeklySignal
             label="Calorie variance"
@@ -429,10 +501,12 @@ function WeeklySummary({ dashboard }: { dashboard: DashboardViewModel }) {
 }
 
 function WeeklySignal({
+  detail,
   label,
   signal,
   value
 }: {
+  detail?: string;
   label: string;
   signal: string;
   value: string;
@@ -442,6 +516,7 @@ function WeeklySignal({
       <div className="min-w-0">
         <p className="text-muted-foreground">{label}</p>
         <p className="mt-1 font-medium">{value}</p>
+        {detail ? <p className="mt-1 text-xs text-muted-foreground">{detail}</p> : null}
       </div>
       <NutritionSignalChip tone={signal === "unknown" ? "unavailable" : "steady"}>
         {signal}

@@ -87,8 +87,9 @@ test("Notion mapping persists estimated fields and leaves blank fields unset", (
   assert.deepEqual(properties["Nutrition Source"], {
     select: { name: "user-entered" }
   });
-  assert.match(
-    properties["Nutrition Provenance"].rich_text[0].text.content,
-    /edited during meal review/
-  );
+  const nutritionProvenance = properties["Nutrition Provenance"];
+  assert.ok(nutritionProvenance && "rich_text" in nutritionProvenance);
+  const provenanceText = nutritionProvenance.rich_text[0];
+  assert.ok("text" in provenanceText);
+  assert.match(provenanceText.text.content, /edited during meal review/);
 });

@@ -45,6 +45,24 @@ interface NotionSchemaDatabase {
       dataSourceId: string | null;
     };
   }>;
+  health?: {
+    ok: boolean;
+    missing: Array<{
+      label: string;
+      expectedTypes: string[];
+      functionality: string;
+      required: boolean;
+    }>;
+    incompatible: Array<{
+      label: string;
+      actualName: string;
+      actualType: string;
+      expectedTypes: string[];
+      functionality: string;
+      required: boolean;
+    }>;
+    warnings: string[];
+  };
 }
 
 interface NotionSchemaError {
@@ -401,7 +419,7 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>No authentication is enabled.</p>
+            <p>Private deployment guardrails protect API routes.</p>
             <p>No local database is configured.</p>
             <p>API credentials remain server-only.</p>
           </CardContent>
@@ -917,6 +935,8 @@ function SchemaSummaryCard({
       </div>
 
       <div className="mt-4 space-y-2">
+        {database.health ? <SchemaHealthPanel health={database.health} /> : null}
+
         {database.properties.map((property) => (
           <div className="rounded-md border bg-card px-3 py-2 text-sm" key={property.name}>
             <div className="flex items-center justify-between gap-3">
@@ -939,6 +959,40 @@ function SchemaSummaryCard({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function SchemaHealthPanel({
+  health
+}: {
+  health: NonNullable<NotionSchemaDatabase["health"]>;
+}) {
+  if (health.ok) {
+    return (
+      <div className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
+        Meals schema supports current dashboard reliability fields.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
+      <p className="font-medium text-accent">Meals schema has optional gaps</p>
+      <p className="mt-1 text-muted-foreground">
+        The app will continue running; listed features may use read-time backfill
+        or show partial data.
+      </p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+        {health.warnings.slice(0, 8).map((warning) => (
+          <li key={warning}>{warning}</li>
+        ))}
+      </ul>
+      {health.warnings.length > 8 ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {health.warnings.length - 8} more optional field gaps.
+        </p>
+      ) : null}
     </div>
   );
 }

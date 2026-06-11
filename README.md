@@ -123,6 +123,12 @@ Nutrition behavior:
 - Estimated meals expose coarse review controls before save: serving multiplier `0.5x`, `1x`, `1.5x`, `2x`, plus add/remove butter where relevant.
 - User edits or reviewed estimate adjustments become `user-entered` provenance while preserving blank values as `null`, not zero. Repeated serving and butter changes replace stale review notes so saved provenance stays concise.
 
+Dashboard reliability behavior:
+
+- Historical Meals are enriched at read time only. Existing Notion nutrition and score properties win; legacy Notes scorecards can backfill quality metadata; exact nutrition totals are never invented.
+- `/dashboard` shows compact data confidence indicators for weekly source mix, missing nutrition, backfilled records, and nutrient sample sizes.
+- `/settings` Notion schema diagnostics reports optional Meals field gaps and incompatible property types without mutating Notion schema or blocking the app.
+
 ## Manual Integration Test
 
 1. Copy the example environment file:

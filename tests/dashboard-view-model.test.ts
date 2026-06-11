@@ -8,13 +8,15 @@ const generatedAt = "2026-05-25T12:00:00.000Z";
 function meal(
   id: string,
   loggedAt: string,
-  nutrition: AnalyticsMeal["nutrition"]
+  nutrition: AnalyticsMeal["nutrition"],
+  overrides: Partial<AnalyticsMeal> = {}
 ): AnalyticsMeal {
   return {
     id,
     name: id,
     loggedAt,
-    nutrition
+    nutrition,
+    ...overrides
   };
 }
 
@@ -63,6 +65,7 @@ test("buildDashboardViewModel aggregates today and 7-day nutrition", () => {
   assert.equal(dashboard.week.mealCount, 3);
   assert.equal(dashboard.week.totals.calories, 1800);
   assert.equal(dashboard.week.dailyAverages.calories, 257.1);
+  assert.equal(dashboard.week.nutritionCompleteness.calories.label, "Based on 3 of 3 meals");
 });
 
 test("buildDashboardViewModel preserves missing nutrition as null", () => {
@@ -74,4 +77,35 @@ test("buildDashboardViewModel preserves missing nutrition as null", () => {
   assert.equal(dashboard.today.totals.protein, 0);
   assert.equal(dashboard.today.totals.calories, null);
   assert.equal(dashboard.today.progress.caloriesPct, null);
+});
+
+test("weekly quality needs enough scored meals before showing an average", () => {
+  const dashboard = buildDashboardViewModel(
+    [
+      meal("one-scored", generatedAt, {}, { qualityScore: 80 }),
+      meal("unscored", "2026-05-24T12:00:00.000Z", {})
+    ],
+    { generatedAt }
+  );
+
+  assert.equal(dashboard.week.averageQualityScore, null);
+  assert.equal(dashboard.week.qualitySample.scoredMeals, 1);
+  assert.equal(dashboard.week.qualitySample.isEnoughData, false);
+  assert.equal(dashboard.week.qualitySample.label, "Based on 1 meal; more data needed");
+  assert.equal(dashboard.quality.bestRecentMeal, null);
+});
+
+test("dashboard view model exposes source mix counts", () => {
+  const dashboard = buildDashboardViewModel(
+    [
+      meal("recipe", generatedAt, { calories: 500 }, { source: "recipe" }),
+      meal("manual", generatedAt, { calories: 300 }, { source: "user-entered" }),
+      meal("missing", generatedAt, {})
+    ],
+    { generatedAt }
+  );
+
+  assert.equal(dashboard.today.sourceMix.structured, 1);
+  assert.equal(dashboard.today.sourceMix.userEntered, 1);
+  assert.equal(dashboard.today.sourceMix.missingNutrition, 1);
 });

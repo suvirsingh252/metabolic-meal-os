@@ -1,6 +1,20 @@
 # Architectural Decisions
 
-Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
+Last updated: 2026-05-26 (Nutrition + Quality Backfill Reliability)
+
+## 2026-05-26 — Historical Reliability Is Read-Time And Non-Mutating
+
+Decision: Add a read-time reliability layer for historical Meals: conservative metadata backfill, schema health warnings, dashboard source/completeness indicators, and sparse-data guards without a Notion write-back migration.
+
+Reasoning:
+- Historical records may predate nutrition persistence, quality fields, or provenance fields, so dashboard trust needs visible denominators and source mix.
+- Backfilling derived metadata from existing saved fields and legacy Notes is safer than inventing precise nutrition totals.
+- Operators should see optional Notion schema gaps clearly, but schema changes remain manual and reviewable.
+
+Tradeoffs:
+- Old meals are not rewritten, so Notion rows may still look sparse outside the app.
+- Exact calories/macros are still unknown when not saved.
+- Weekly quality and best/opportunity callouts can be unavailable until enough scored meals exist.
 
 ## 2026-05-25 — Estimate Review Hardening Prioritizes Clarity Over Precision
 

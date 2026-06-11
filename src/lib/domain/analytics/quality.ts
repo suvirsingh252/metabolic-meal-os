@@ -7,6 +7,13 @@ export interface MealQualityResult {
 }
 
 export function scoreMealQuality(meal: AnalyticsMeal): MealQualityResult {
+  if (
+    typeof meal.qualityScore === "number" &&
+    Number.isFinite(meal.qualityScore)
+  ) {
+    return normalizeQuality(meal.qualityScore, ["saved quality score"]);
+  }
+
   const calories = meal.nutrition.calories;
   const protein = meal.nutrition.protein;
   const fiber = meal.nutrition.fiber;

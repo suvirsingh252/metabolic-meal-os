@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
+Last updated: 2026-05-26 (Nutrition + Quality Backfill Reliability)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -93,6 +93,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add editable nutrition totals in the `/analyze` review flow.
 - [x] Add meal quality v1 scoring and dashboard quality surfaces.
 - [x] Add legacy scorecard read-time quality backfill for saved meals without exact nutrition totals.
+- [x] Add Nutrition + Quality Backfill & Reliability Layer v1 with conservative read-time metadata backfill, dashboard source/completeness indicators, sparse-data guards, and Meals schema health warnings.
 
 ## Current Sprint
 
@@ -111,7 +112,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 ## Next Up
 
 - [ ] Add structured ingredient persistence behind the current ingredient suggestion flow.
-- [ ] Add a Notion schema checklist/migration path for explicit nutrition and quality fields, then an operator-triggered backfill job for legacy score fields.
+- [ ] Add an operator-triggered Notion write-back migration only if read-time backfill proves insufficient.
 - [ ] Add meal detail view.
 - [ ] Harden Recipe URL analysis further after more real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, add socket-level IP pinning if needed, and record blocked/problematic domains.
 - [ ] Review whether known Ingredient context improves protein/fiber and blood-sugar reasoning without becoming too numeric.

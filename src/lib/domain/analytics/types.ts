@@ -30,13 +30,17 @@ export interface AnalyticsMeal {
   url?: string | null;
   mealType?: string | null;
   confidence?: string | null;
+  source?: string | null;
   provenance?: string | null;
   ingredientCount?: number | null;
   minimallyProcessedSignal?: "high" | "moderate" | "low" | "unknown" | null;
+  qualityScore?: number | null;
   qualitySignals?: {
     metabolicScore: number;
     proteinScore: number;
     fiberScore: number;
+    energyDensityScore?: number | null;
+    processingScore?: number | null;
     satietyScoreNumeric: number;
     bloodSugarRiskScore: number;
   } | null;
@@ -62,6 +66,33 @@ export interface NutritionProgress {
   fiberPct: number | null;
 }
 
+export interface NutritionCompletenessSummary {
+  knownMeals: number;
+  totalMeals: number;
+  label: string;
+}
+
+export type NutritionCompleteness = Record<
+  NutritionMetric,
+  NutritionCompletenessSummary
+>;
+
+export interface QualitySampleSummary {
+  scoredMeals: number;
+  totalMeals: number;
+  isEnoughData: boolean;
+  label: string;
+}
+
+export interface NutritionSourceMix {
+  structured: number;
+  estimated: number;
+  reviewed: number;
+  userEntered: number;
+  backfilled: number;
+  missingNutrition: number;
+}
+
 export type TrendLabel = "low" | "moderate" | "high" | "unknown";
 
 export interface DashboardInsight {
@@ -82,6 +113,9 @@ export interface DashboardViewModel {
     targets: NutritionTargets;
     progress: NutritionProgress;
     averageQualityScore: number | null;
+    nutritionCompleteness: NutritionCompleteness;
+    qualitySample: QualitySampleSummary;
+    sourceMix: NutritionSourceMix;
   };
   week: {
     startDate: string;
@@ -95,6 +129,9 @@ export interface DashboardViewModel {
       calorieVariance: TrendLabel;
     };
     averageQualityScore: number | null;
+    nutritionCompleteness: NutritionCompleteness;
+    qualitySample: QualitySampleSummary;
+    sourceMix: NutritionSourceMix;
   };
   insights: DashboardInsight[];
   recentMeals: DashboardMealSummary[];

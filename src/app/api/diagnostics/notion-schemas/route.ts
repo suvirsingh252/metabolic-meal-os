@@ -5,6 +5,10 @@ import {
   getNotionMealsEnv
 } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
+import {
+  evaluateMealsSchemaHealth,
+  type MealSchemaHealth
+} from "@/src/lib/notion/schema-health";
 
 export const runtime = "nodejs";
 
@@ -22,6 +26,7 @@ interface SchemaSummary {
       dataSourceId: string | null;
     };
   }>;
+  health?: MealSchemaHealth;
 }
 
 interface SchemaFailure {
@@ -151,6 +156,13 @@ export async function GET() {
 
   const databases = results.filter(
     (result): result is SchemaSummary => !("ok" in result)
+  ).map((database) =>
+    database.key === "meals"
+      ? {
+          ...database,
+          health: evaluateMealsSchemaHealth(database.properties)
+        }
+      : database
   );
   const errors = results.filter(
     (result): result is SchemaFailure => "ok" in result && !result.ok

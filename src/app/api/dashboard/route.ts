@@ -14,7 +14,9 @@ function mapMealSummaryToAnalyticsMeal(meal: MealSummary): AnalyticsMeal {
     url: meal.url,
     mealType: meal.mealType,
     confidence: meal.nutritionConfidence,
+    source: meal.nutritionSource,
     provenance: meal.nutritionProvenance,
+    qualityScore: meal.qualityScore,
     qualitySignals:
       meal.metabolicScore !== null &&
       meal.proteinScore !== null &&
@@ -25,6 +27,8 @@ function mapMealSummaryToAnalyticsMeal(meal: MealSummary): AnalyticsMeal {
             metabolicScore: meal.metabolicScore,
             proteinScore: meal.proteinScore,
             fiberScore: meal.fiberScore,
+            energyDensityScore: meal.energyDensityScore,
+            processingScore: meal.processingScore,
             satietyScoreNumeric: meal.satietyScoreNumeric,
             bloodSugarRiskScore: meal.bloodSugarRiskScore
           }

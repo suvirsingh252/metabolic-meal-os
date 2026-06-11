@@ -168,6 +168,7 @@ The API route is `GET /api/dashboard`.
 - generated timestamp;
 - today totals, targets, target progress, meal count, and average quality;
 - 7-day totals, daily averages, meal count, trend labels, and average quality;
+- today/week nutrition completeness, quality sample size, and nutrition source mix;
 - rule-based insights;
 - recent meals;
 - best recent meal and highest-opportunity recent meal.
@@ -176,13 +177,16 @@ Aggregation rules:
 - missing values remain `null`;
 - zero is preserved as a known value;
 - totals only include nutrients that are present;
+- completeness metadata counts how many meals had each nutrient, so partial historical records do not look complete;
+- weekly quality averages require at least two scored meals; one scored meal is labeled as more data needed;
+- best and highest-opportunity meal callouts require at least two scored meals;
 - estimated or reviewed-estimate calories/protein/fiber can contribute to dashboard totals when saved, but provenance/source distinguish them from structured recipe facts and user-entered values;
 - dashboard cards and chips are designed to preserve unknown nutrition states without forcing zeroes and now wrap labels more reliably on mobile;
 - functions are deterministic and unit tested.
 
 Targets are configurable in the dashboard UI for calories, protein, fiber, and sodium. Current target settings are client-side only through `localStorage` and query params to `/api/dashboard`; there is no server-side user settings persistence yet.
 
-Meal quality v1 is a rule-based 0-100 score using protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. If exact nutrition is unavailable, legacy Analysis Framework scorecards can provide read-time quality backfill. No predictive coaching, ML, or household-level analytics are implemented.
+Meal quality v1 is a rule-based 0-100 score using protein density, fiber density, sodium load, sugar load, ingredient diversity, and minimally processed signal where available. If exact nutrition is unavailable, legacy Analysis Framework scorecards can provide read-time quality backfill. Backfilled source/provenance text includes `notion-backfill` when inferred from saved Notion fields or legacy Notes. No predictive coaching, ML, or household-level analytics are implemented.
 
 ## Planned Provider Abstraction
 
@@ -308,8 +312,14 @@ Nutrition source precedence for new analyses:
 
 Legacy backfill is read-time only:
 - exact nutrition totals are not invented for old meals;
-- quality can be inferred from existing scorecards in Notes;
+- quality, protein score, fiber score, energy density score, processing score, source, provenance, and confidence can be inferred only when existing saved fields or Notes provide evidence;
+- explicit Notion values are never overwritten by read-time backfill;
 - there is no Notion write-back migration job yet.
+
+Schema health checks are read-only:
+- `/api/diagnostics/notion-schemas` evaluates optional Meals fields used by the beta dashboard and persistence behavior;
+- `/settings` surfaces missing or incompatible fields as non-blocking warnings;
+- the app does not create, rename, or migrate Notion properties automatically.
 
 ## Security Considerations
 

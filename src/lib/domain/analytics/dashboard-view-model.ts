@@ -2,6 +2,9 @@ import {
   aggregateNutritionTotals,
   averageNutritionTotals,
   averageMealQuality,
+  buildNutritionCompleteness,
+  buildNutritionSourceMix,
+  buildQualitySampleSummary,
   buildRecentMeals,
   calculateCalorieVariance,
   calculateVarianceLabel,
@@ -38,6 +41,8 @@ export function buildDashboardViewModel(
   );
   const todayTotals = aggregateNutritionTotals(todayMeals);
   const weekTotals = aggregateNutritionTotals(weekMeals);
+  const todayQualitySample = buildQualitySampleSummary(todayMeals, 1);
+  const weekQualitySample = buildQualitySampleSummary(weekMeals, 2);
   const dashboardWithoutInsights = {
     generatedAt,
     today: {
@@ -50,7 +55,10 @@ export function buildDashboardViewModel(
         proteinPct: percentOfTarget(todayTotals.protein, targets.protein),
         fiberPct: percentOfTarget(todayTotals.fiber, targets.fiber)
       },
-      averageQualityScore: averageMealQuality(todayMeals)
+      averageQualityScore: averageMealQuality(todayMeals, 1),
+      nutritionCompleteness: buildNutritionCompleteness(todayMeals),
+      qualitySample: todayQualitySample,
+      sourceMix: buildNutritionSourceMix(todayMeals)
     },
     week: {
       startDate: weekWindow.startDate,
@@ -84,7 +92,10 @@ export function buildDashboardViewModel(
           )
         )
       },
-      averageQualityScore: averageMealQuality(weekMeals)
+      averageQualityScore: averageMealQuality(weekMeals, 2),
+      nutritionCompleteness: buildNutritionCompleteness(weekMeals),
+      qualitySample: weekQualitySample,
+      sourceMix: buildNutritionSourceMix(weekMeals)
     },
     recentMeals: buildRecentMeals(meals, options?.recentMealLimit ?? 5),
     quality: {
