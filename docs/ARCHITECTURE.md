@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-05-25 (Visual + Household Fixture Hardening)
+Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -11,17 +11,19 @@ Metabolic Meal OS uses Next.js App Router with TypeScript and React.
 Frontend surfaces:
 - Server-rendered page shell and static pages where possible.
 - Client components for interactive flows:
+  - `/` Today
   - `/analyze`
   - `/meals`
+  - `/meals/[id]`
   - `/feedback`
   - `/settings`
-- `/` and `/dashboard` share the dashboard intelligence client backed by `/api/dashboard`.
+- `/` renders Today. `/dashboard` remains available as the dashboard intelligence client backed by `/api/dashboard`.
 - Tailwind CSS for styling.
 - Local shadcn-style primitives in `components/ui`.
 - `/analyze` state is reducer-backed in `src/app/analyze/reducer.ts` with controller logic in `src/app/analyze/hooks/use-analyze-controller.ts` and UI sections under `src/app/analyze/components`.
 - `lucide-react` for icons.
 
-The UI is still intentionally MVP-simple: cards, forms, badges, alerts, buttons, and native progressive disclosure. No global state manager is used. `/analyze` has a first household-first hierarchy pass; `/meals`, `/feedback`, and `/settings` still need deeper UX simplification.
+The UI is still intentionally MVP-simple: cards, forms, badges, alerts, buttons, and native progressive disclosure. No global state manager is used. `/analyze` has a first household-first hierarchy pass; Today and Meal Detail now have responsive feedback polish; `/feedback` and `/settings` still need deeper UX simplification.
 
 ## Backend/API Architecture
 
@@ -108,12 +110,18 @@ Meals list:
 3. Server queries the database primary data source.
 4. Server maps Notion pages to `MealSummary`.
 5. `pageSize`, `cursor`, and `search` are supported to avoid unbounded scans.
+6. `/meals/[id]` reads saved meal detail and household feedback summaries server-side for the detail page.
 
 Feedback:
 1. `/feedback` calls `POST /api/notion/log-feedback`.
 2. Server validates `MealFeedbackRequest`.
 3. Server writes to `NOTION_FEEDBACK_DATABASE_ID`.
 4. If a compatible Meal relation property exists, server writes the relation to the selected Meal.
+5. Today and Meal Detail quick feedback actions also call `POST /api/notion/log-feedback` and use the same existing feedback schema.
+6. `src/lib/notion/feedback-summary.ts` reads existing feedback records into per-meal summaries used by Today, Meal Detail, ranking, and household learning UI.
+7. `src/lib/domain/feedback/optimistic.ts` contains shared optimistic update, merge, and local restore helpers for client feedback refresh behavior.
+8. Today's Recent Household Learning strip is derived from existing feedback summaries by `src/lib/domain/feedback/learning-strip.ts`; it does not require new data fields.
+9. Today undo is client-side only: it restores the pre-optimistic summary in the local Today view and preserves that local override against stale refreshes in the current session. It does not delete or reverse Notion history.
 
 Diagnostics:
 1. `/settings` calls `GET /api/diagnostics/notion`.

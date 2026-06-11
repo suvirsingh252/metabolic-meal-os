@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-05-26 (Nutrition + Quality Backfill Reliability)
+Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -39,6 +39,11 @@ Implemented:
 - Meals list loaded from the Notion Meals database.
 - Meal feedback logging to the Notion Meal Feedback database.
 - Saved-meal selection on feedback form, with manual entry fallback.
+- Today is the root experience at `/`; `/dashboard` remains available.
+- Meal Detail is available at `/meals/[id]`, and Today/Meals cards link internally to it.
+- Today and Meal Detail feedback actions save through the existing Notion feedback API, update visible household feedback summaries optimistically, and refresh server data when practical.
+- Today shows a compact Recent Household Learning strip derived from existing feedback summaries.
+- Today feedback undo is client-side only. It restores the local Today view and learning strip but does not delete or reverse Notion history.
 - Ingredient suggestion persistence to Notion Ingredients after meal save. The production `/analyze` flow saves from the editable ingredient textarea, duplicate detection works, and the local code now relates new or duplicate Ingredients back to the saved Meal when a compatible Notion relation property exists.
 - Notion schema diagnostics for Meals, Ingredients, and Meal Feedback from Settings.
 - PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
@@ -138,10 +143,11 @@ Architecture rule:
 ## Current Routes
 
 Pages:
-- `/`: dashboard overview.
-- `/dashboard`: same dashboard intelligence surface as `/`, with daily snapshot, configurable targets, quality summary, insights, weekly trends, and recent meals.
+- `/`: Today, with saved-meal suggestions, quick feedback actions, optimistic feedback summaries, Recent Household Learning, and client-only undo.
+- `/dashboard`: dashboard intelligence surface, with daily snapshot, configurable targets, quality summary, insights, weekly trends, and recent meals.
 - `/analyze`: paste recipe text or URL, call analysis API, review a household-first summary, edit progressively disclosed details, and save to Notion.
 - `/meals`: fetch and display saved meals from Notion.
+- `/meals/[id]`: saved meal detail with household feedback, nutrition/quality context, Notion link, and quick feedback actions.
 - `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback to Notion.
 - `/settings`: Notion diagnostics and server environment status.
 - `/settings`: also includes a diagnostic Ingredient Lookup Test panel backed by the server-side USDA lookup route.
@@ -240,6 +246,7 @@ Pages:
   - Saves the meal name in the feedback title for readability.
   - If `selectedMealId` is present and the Feedback database has a compatible `Meal` relation property, writes the relation to the selected Meal page.
   - If the `Meal` relation property is missing, saves feedback without relation and returns a non-blocking warning.
+  - Used by `/feedback`, Today quick actions, and Meal Detail quick actions. Today and Meal Detail apply local optimistic updates after successful saves; no additional Notion fields are required.
 
 ## Environment Variables
 
@@ -440,10 +447,10 @@ Reasoning:
 1. Review FoodData Central matching quality on a larger household ingredient set and add targeted query expansions only where needed.
 2. Review Evidence-Aware Analysis v3 plus known Ingredient context output quality on real household meals and tighten prompt/schema language if it drifts into medical claims or over-precise nutrition claims.
 3. Test Serving Size Controls v1 on more household shorthand meals and add only deterministic rules with clear provenance.
-4. Continue the household experience audit across save, meals, feedback, and settings flows so the rest of the app matches the simplified `/analyze` hierarchy.
+4. Continue the household experience audit across save, `/feedback`, and settings flows so the rest of the app matches the simplified `/analyze` and Today feedback polish.
 5. Add structured ingredient persistence after confirming the normalized Ingredient relation behavior in production.
 6. Add structured ingredient persistence behind the current string-compatible ingredient flow.
-7. Add meal detail view.
+7. Decide whether a persisted feedback reversal/delete workflow is needed; current Today undo is local UI only and does not alter Notion history.
 8. Harden Recipe URL analysis after real-site testing.
 
 ## Manual Testing Checklist
@@ -468,6 +475,11 @@ Local:
 - Verify ingredient persistence status appears after meal save.
 - Open the Ingredients database and verify new normalized suggestions are created without duplicate repeats.
 - Open `/meals` and verify the saved meal appears.
+- Open a meal detail page from `/meals` or Today and verify household feedback counts render.
+- On Meal Detail, tap `Ate This` or `Loved It`; verify the button shows `Saving...`, duplicate actions are disabled while pending, the card shows success copy, and household feedback counts update without a manual reload.
+- Open `/`, verify Today suggestions and the Recent Household Learning strip render.
+- On a Today card, tap `Ate This` or `Loved It`; verify only that card's feedback buttons are disabled while pending, the clicked button shows `Saving...`, card feedback badges and the learning strip update after success, and `Saved. Undo?` appears.
+- Tap `Undo local view`; verify Today card feedback and the learning strip restore locally and the copy states Notion history was not changed.
 - Open `/feedback`, verify saved meals load in the Meal dropdown.
 - Select a saved meal and verify it fills Feedback Entry.
 - Edit Feedback Entry manually and submit feedback.

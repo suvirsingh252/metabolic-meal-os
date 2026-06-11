@@ -111,7 +111,15 @@ export default async function MealDetailPage({
         ) : null}
       </section>
 
-      <MealDetailActions meal={meal} />
+      <MealDetailActions
+        initialFeedbackSummary={feedbackSummary}
+        key={[
+          meal.id,
+          feedbackSummary.totalEvents,
+          feedbackSummary.lastEatenAt ?? "never"
+        ].join(":")}
+        meal={meal}
+      />
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -196,68 +204,6 @@ export default async function MealDetailPage({
           )}
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Household feedback</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {feedbackSummary.totalEvents > 0 ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <FeedbackStat label="Eaten" value={feedbackSummary.eatenCount} />
-                <FeedbackStat label="Loved" value={feedbackSummary.lovedCount} />
-                <FeedbackStat label="Liked" value={feedbackSummary.likedCount} />
-                <FeedbackStat
-                  label="Did not like"
-                  value={feedbackSummary.dislikedCount}
-                />
-                <FeedbackStat
-                  label="Would repeat"
-                  value={feedbackSummary.wouldRepeatCount}
-                />
-                <FeedbackStat
-                  label="Confidence"
-                  value={feedbackSummary.confidence}
-                />
-                <FeedbackStat
-                  label="Last eaten"
-                  value={formatDate(feedbackSummary.lastEatenAt) ?? "Not logged"}
-                />
-              </div>
-              {feedbackSummary.recentNotes.length > 0 ? (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Recent notes</h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    {feedbackSummary.recentNotes.map((note) => (
-                      <li key={note}>{note}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <EmptyText>No recent feedback notes are available.</EmptyText>
-              )}
-            </>
-          ) : (
-            <EmptyText>This meal has not been rated yet.</EmptyText>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function FeedbackStat({
-  label,
-  value
-}: {
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="rounded-md border bg-background p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-lg font-semibold capitalize">{value}</p>
     </div>
   );
 }

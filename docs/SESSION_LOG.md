@@ -1757,3 +1757,37 @@ Next recommended actions:
 - Run `npm run lint` and `npm run build` after docs settle.
 - Test the `/analyze` controls visually on desktop/mobile.
 - Add more household shorthand fixtures only after seeing real inputs.
+
+# 2026-06-11 Beta 2 Feedback Refresh Polish
+
+Goals:
+- Close the current Beta 2 feedback polish session without adding a database, infrastructure, or Notion schema changes.
+- Make Meal Detail and Today feedback actions feel immediate and trustworthy for household use.
+
+Completed work:
+- Added Meal Detail Feedback Refresh v1.1: after successful `Ate This`, `Loved It`, `Did Not Like`, or `Would Make Again`, the detail page updates the visible household feedback summary optimistically, disables duplicate submits while pending, shows calm success/error copy, and calls `router.refresh()`.
+- Added Today Feedback Refresh v1: Today cards now use shared optimistic feedback summary helpers, per-card pending guards, duplicate-submit protection, stale-server conservative merge, and `router.refresh()`.
+- Added Today Recent Household Learning Strip v1 near the top of Today. It is derived only from existing feedback summaries and shows recent Ate This/loved counts or a compact empty state.
+- Added Today Feedback Undo v1. After a successful Today `Ate This` or `Loved It`, the meal card shows `Saved. Undo?` with `Undo local view`.
+- Today undo restores the pre-optimistic local feedback summary, clears the undo affordance, resets saved button state, updates the learning strip, and protects the local undo from immediate stale refresh overwrite during the current session.
+- Kept all feedback writes on the existing `POST /api/notion/log-feedback` path and the existing Meal Feedback schema.
+- Added shared feedback-domain helpers in `src/lib/domain/feedback/optimistic.ts` and `src/lib/domain/feedback/learning-strip.ts`.
+- Added tests for optimistic feedback summaries, Today card behavior source checks, learning strip states, undo restore behavior, and stale refresh preservation.
+- Updated README, architecture, decisions, handoff, PM handover, known issues, roadmap, and this session log.
+
+Verification:
+- `npm run lint` passed.
+- `npm run typecheck` passed.
+- `npm test` passed: 111 tests.
+- `npm run build` passed.
+- `git diff --check` passed.
+
+Remaining limitations:
+- Today undo is client-only and does not delete or reverse the persisted Notion feedback record.
+- Optimistic UI state can briefly differ from Notion-backed summaries while Notion read consistency catches up.
+- A persisted feedback reversal/delete workflow remains future work and needs explicit product rules plus backend behavior before the UI can claim Notion history changed.
+
+Next recommended actions:
+- Run a manual family-device pass on Today and Meal Detail after deployment.
+- Consider a persisted feedback reversal/delete path only if accidental feedback becomes common enough to justify backend semantics.
+- Continue the household UX pass on `/feedback` and `/settings`, which remain more functional than polished.

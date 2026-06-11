@@ -20,10 +20,15 @@ Follow the mandatory start-of-session and end-of-session procedures in `docs/HAN
 ## Routes
 
 - `/`
+- `/dashboard`
 - `/analyze`
 - `/meals`
+- `/meals/[id]`
 - `/feedback`
 - `/settings`
+
+`/` renders Today. `/dashboard` remains available as the dashboard intelligence
+surface.
 
 ## Development
 
@@ -128,6 +133,14 @@ Dashboard reliability behavior:
 - Historical Meals are enriched at read time only. Existing Notion nutrition and score properties win; legacy Notes scorecards can backfill quality metadata; exact nutrition totals are never invented.
 - `/dashboard` shows compact data confidence indicators for weekly source mix, missing nutrition, backfilled records, and nutrient sample sizes.
 - `/settings` Notion schema diagnostics reports optional Meals field gaps and incompatible property types without mutating Notion schema or blocking the app.
+
+Feedback behavior:
+
+- `/feedback`, Today quick actions, and Meal Detail quick actions save to the existing Notion Meal Feedback database through `POST /api/notion/log-feedback`.
+- Today and Meal Detail update visible household feedback summaries optimistically after successful feedback saves, then refresh server data when practical.
+- Today shows a compact Recent Household Learning strip derived from existing feedback summaries.
+- Today undo is client-side only. It restores the local Today view and learning strip but does not delete or reverse Notion history.
+- No Notion schema changes are required for the Beta 2 feedback refresh, learning strip, or client-only undo slices.
 
 ## Manual Integration Test
 

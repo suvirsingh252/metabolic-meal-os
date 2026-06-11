@@ -1,6 +1,21 @@
 # Architectural Decisions
 
-Last updated: 2026-05-26 (Nutrition + Quality Backfill Reliability)
+Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
+
+## 2026-06-11 — Feedback Refresh Is Optimistic And Schema-Neutral
+
+Decision: Add optimistic feedback refresh to Meal Detail and Today, plus a compact Today household learning strip and client-only undo, without changing Notion schema or adding a new database.
+
+Reasoning:
+- The household app must make feedback actions feel trustworthy immediately; waiting for Notion read consistency makes users wonder whether a tap worked.
+- The existing `POST /api/notion/log-feedback` route and feedback summary behavior are sufficient for this polish slice.
+- A shared optimistic summary helper keeps Today and Meal Detail behavior consistent without introducing global state or new infrastructure.
+- Today's Recent Household Learning strip can be derived from existing per-meal feedback summaries, so no new fields are required.
+
+Tradeoffs:
+- Optimistic updates are local UI state until the server refresh and Notion read path catch up.
+- Today undo is client-only. It restores the local Today view and learning strip but does not delete or reverse the Notion feedback record.
+- A future persisted reversal/delete workflow would need explicit backend behavior and product rules before the UI can claim Notion history was changed.
 
 ## 2026-05-26 — Historical Reliability Is Read-Time And Non-Mutating
 

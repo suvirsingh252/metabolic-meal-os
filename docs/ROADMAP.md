@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-26 (Nutrition + Quality Backfill Reliability)
+Last updated: 2026-06-11 (Beta 2 Feedback Refresh Polish)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -94,6 +94,12 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add meal quality v1 scoring and dashboard quality surfaces.
 - [x] Add legacy scorecard read-time quality backfill for saved meals without exact nutrition totals.
 - [x] Add Nutrition + Quality Backfill & Reliability Layer v1 with conservative read-time metadata backfill, dashboard source/completeness indicators, sparse-data guards, and Meals schema health warnings.
+- [x] Make `/` render Today while preserving `/dashboard`.
+- [x] Add Meal Detail v1 with `/meals/[id]` and internal links from Today and Meals.
+- [x] Add Meal Detail Feedback Refresh v1.1 with optimistic household feedback summary updates and `router.refresh()`.
+- [x] Add Today Feedback Refresh v1 with per-card pending guards, optimistic summary updates, stale-server conservative merge, and `router.refresh()`.
+- [x] Add Today Recent Household Learning Strip v1 from existing feedback summaries.
+- [x] Add Today Feedback Undo v1 as a client-only local view restore without Notion reversal.
 
 ## Current Sprint
 
@@ -113,7 +119,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 
 - [ ] Add structured ingredient persistence behind the current ingredient suggestion flow.
 - [ ] Add an operator-triggered Notion write-back migration only if read-time backfill proves insufficient.
-- [ ] Add meal detail view.
+- [x] Add meal detail view.
 - [ ] Harden Recipe URL analysis further after more real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, add socket-level IP pinning if needed, and record blocked/problematic domains.
 - [ ] Review whether known Ingredient context improves protein/fiber and blood-sugar reasoning without becoming too numeric.
 - [x] Decide first-pass FoodData Central nutrient provenance model with explicit per-100g basis and source metadata.
@@ -124,7 +130,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Simplify `/feedback`, `/meals`, and `/settings` flows after the `/analyze` hierarchy pass.
 - [ ] Add a persisted household preferences source before adding multi-household support.
 - [ ] Add better empty/error states where needed.
-- [ ] Add optimistic refresh after saving to Notion.
+- [x] Add optimistic refresh after feedback saves on Today and Meal Detail.
 - [x] Add basic unit tests for API/domain validation.
 - [x] Tighten save-meal validator: stop defaulting missing v2 fields to 0/empty.
 
@@ -142,6 +148,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Nutrition enrichment with estimates kept separate from canonical recipe data.
 - [ ] Source-attributed analysis explanations with source IDs, confidence, and reviewed guidance language.
 - [ ] Personalized planning using household feedback signals.
+- [ ] Add a persisted feedback reversal/delete path only after explicit product rules and backend behavior exist.
 - [ ] PWA offline shell.
 - [ ] Authentication and household accounts.
 - [ ] Replace beta token/private-mode guardrails with full household authentication and ownership checks.

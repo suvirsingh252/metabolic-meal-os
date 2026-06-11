@@ -1,6 +1,6 @@
 # PM Handover
 
-Last updated: 2026-05-25
+Last updated: 2026-06-11
 
 This is the recommended starting point for a new PM/chat with no prior conversation context. Read this first, then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md` before proposing work.
 
@@ -33,10 +33,15 @@ Live and working:
 - Settings Ingredient picker/enrichment UX so users can enrich existing Notion Ingredients without manually pasting page IDs.
 - Ingredient-aware analysis context: known Notion Ingredients can be read before analysis and included as lightweight household context.
 - Feedback logging, including saved-meal selection and relation write support when the Notion relation exists.
+- Today is the root experience at `/`; `/dashboard` remains available for dashboard intelligence.
+- Meal Detail is available at `/meals/[id]`, with internal links from Today and Meals.
+- Today and Meal Detail feedback actions save to Notion and optimistically refresh visible household feedback summaries.
+- Today includes a Recent Household Learning strip derived from existing feedback summaries.
+- Today feedback undo is client-only. It restores local Today UI state and does not reverse Notion history.
 - PWA/mobile shell: manifest, app metadata, icons, safe-area/mobile layout work.
 - Read-only production smoke-test automation via `npm run smoke:prod`.
 - `/analyze` review UI has a first household-first simplification pass with progressive disclosure.
-- Local dashboard intelligence slice exists but has not been deployed from this session: `/` and `/dashboard` use `/api/dashboard`, `DashboardViewModel`, daily/weekly summaries, insights, configurable targets, recent meals, and meal quality v1.
+- Dashboard intelligence remains available at `/dashboard` through `/api/dashboard`, `DashboardViewModel`, daily/weekly summaries, insights, configurable targets, recent meals, and meal quality v1.
 - Local nutrition persistence v1 exists but has not been deployed from this session: recipe JSON-LD nutrition facts can flow into review, users can edit nutrition totals before save, and Notion writes compatible existing nutrition/quality properties only.
 
 Recently verified production facts:
@@ -84,14 +89,23 @@ Important architecture rules:
 - User can save the meal to Notion; ingredient suggestions persist separately.
 - Review includes editable nutrition totals. Blank values remain unknown; the app distinguishes unknown from zero.
 
-`/` and `/dashboard`:
-- Load dashboard intelligence from `/api/dashboard`.
-- Show daily nutrition, configurable targets, smart insights, weekly trends, recent meals, and quality summaries.
+`/`:
+- Loads Today from saved meals and existing feedback summaries.
+- Shows daily meal suggestions, quick `Ate This` / `Loved It` feedback actions, a compact Recent Household Learning strip, and client-only undo for the latest successful feedback on a card.
+- Feedback actions write to Notion through the existing feedback API and optimistically refresh local card summaries while server data catches up.
+
+`/dashboard`:
+- Loads dashboard intelligence from `/api/dashboard`.
+- Shows daily nutrition, configurable targets, smart insights, weekly trends, recent meals, and quality summaries.
 - Targets for calories, protein, fiber, and sodium are client-side only for now.
 
 `/meals`:
 - Loads saved Meals from Notion.
-- Functional list view only. No filtering, search, or meal detail page yet.
+- Links to `/meals/[id]` detail pages.
+
+`/meals/[id]`:
+- Shows saved meal context, household feedback, nutrition/quality context, and quick feedback actions.
+- Feedback actions write to Notion and optimistically refresh visible household feedback counts.
 
 `/feedback`:
 - Loads saved meals for selection.
@@ -126,6 +140,7 @@ Meal Feedback:
 - Actively used.
 - Stores post-meal feedback.
 - Supports optional relation to Meals when Notion is configured with a compatible relation property.
+- Used by `/feedback`, Today quick actions, and Meal Detail quick actions. No Beta 2 feedback polish schema changes were required.
 
 Weekly Plans:
 - Configured by env/database ID but not actively used yet.
@@ -158,6 +173,7 @@ Safety rules:
 Highest priority:
 - No full authentication. Private deployment/token guardrails exist, but do not broaden public sharing before real auth exists.
 - No automated write-flow smoke tests; current smoke automation is read-only.
+- Today feedback undo is client-only and does not delete/reverse Notion feedback records.
 - Structured ingredient parsing/persistence is pending.
 - No Notion write-back migration exists for legacy nutrition or quality fields.
 - Dashboard targets are client-side only.
@@ -190,7 +206,7 @@ Other debt:
 4. Structured ingredient persistence.
 5. Continue real-world recipe/social URL intake testing and record blocked/problematic domains.
 6. Write-flow smoke tests.
-7. Meal detail page.
+7. Persisted feedback reversal/delete path, only if product rules require it.
 8. Household preference persistence.
 9. Weekly planning later.
 

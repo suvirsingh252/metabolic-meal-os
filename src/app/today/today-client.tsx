@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Check,
@@ -23,9 +24,20 @@ import {
   type MealRecommendation,
   type RecommendationMeal,
   type TodayMealCategory,
-  type TodayViewModel
+  type TodayViewModel,
+  rankRecommendationsForCategory
 } from "@/src/lib/domain/recommendations";
-import type { MealFeedbackSummaryByMealId } from "@/src/lib/domain/feedback";
+import {
+  applyOptimisticFeedbackSummary,
+  buildHouseholdLearningStrip,
+  emptyMealFeedbackSummary,
+  mergeFeedbackSummariesPreservingOptimistic,
+  preserveLocalFeedbackOverrides,
+  restoreFeedbackSummarySnapshot,
+  type HouseholdLearningStripViewModel,
+  type MealFeedbackSummary,
+  type MealFeedbackSummaryByMealId
+} from "@/src/lib/domain/feedback";
 import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 import type { MealFeedbackResult } from "@/src/lib/types/feedback";
@@ -36,6 +48,11 @@ interface TodayResponse {
 }
 
 type SaveState = Record<string, "idle" | "saving" | "saved" | "error">;
+
+interface TodayFeedbackUndoSnapshot {
+  action: "ate" | "loved";
+  previousSummary: MealFeedbackSummary | null;
+}
 
 function mapMealSummary(meal: MealSummary): RecommendationMeal {
   return {
@@ -71,6 +88,7 @@ function getErrorMessage(value: unknown, fallback: string) {
 }
 
 export function TodayClient() {
+  const router = useRouter();
   const [meals, setMeals] = useState<RecommendationMeal[]>([]);
   const [feedbackByMealId, setFeedbackByMealId] =
     useState<MealFeedbackSummaryByMealId>({});
@@ -79,14 +97,32 @@ export function TodayClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [undoByMealId, setUndoByMealId] = useState<
+    Record<string, TodayFeedbackUndoSnapshot>
+  >({});
   const [excludedByCategory, setExcludedByCategory] = useState<
     Partial<Record<TodayMealCategory, string[]>>
   >({});
+  const feedbackByMealIdRef = useRef<MealFeedbackSummaryByMealId>({});
+  const pendingMealIdsRef = useRef<Set<string>>(new Set());
+  const locallyUndoneMealIdsRef = useRef<Set<string>>(new Set());
 
   const suggestions = useMemo(
     () => viewModel?.suggestions ?? {},
     [viewModel?.suggestions]
   );
+  const learningStrip = useMemo(
+    () =>
+      buildHouseholdLearningStrip(feedbackByMealId, {
+        generatedAt: viewModel?.generatedAt
+      }),
+    [feedbackByMealId, viewModel?.generatedAt]
+  );
+
+  function commitFeedbackByMealId(nextFeedback: MealFeedbackSummaryByMealId) {
+    feedbackByMealIdRef.current = nextFeedback;
+    setFeedbackByMealId(nextFeedback);
+  }
 
   const loadMeals = useCallback(async () => {
     setIsLoading(true);
@@ -105,9 +141,16 @@ export function TodayClient() {
 
       const todayData = data as TodayResponse;
       const nextMeals = todayData.meals.map(mapMealSummary);
-      const nextFeedback = todayData.feedbackByMealId ?? {};
+      const nextFeedback = preserveLocalFeedbackOverrides(
+        mergeFeedbackSummariesPreservingOptimistic(
+          feedbackByMealIdRef.current,
+          todayData.feedbackByMealId ?? {}
+        ),
+        feedbackByMealIdRef.current,
+        Array.from(locallyUndoneMealIdsRef.current)
+      );
       setMeals(nextMeals);
-      setFeedbackByMealId(nextFeedback);
+      commitFeedbackByMealId(nextFeedback);
       setViewModel(
         buildTodayViewModel(nextMeals, { feedbackByMealId: nextFeedback })
       );
@@ -179,9 +222,21 @@ export function TodayClient() {
     recommendation: MealRecommendation,
     sentiment: "ate" | "loved"
   ) {
-    const stateKey = `${recommendation.meal.id}:${sentiment}`;
-    const today = new Date().toISOString().slice(0, 10);
+    if (pendingMealIdsRef.current.has(recommendation.meal.id)) {
+      return;
+    }
 
+    const stateKey = `${recommendation.meal.id}:${sentiment}`;
+    const createdAt = new Date().toISOString();
+    const today = createdAt.slice(0, 10);
+    const note =
+      sentiment === "loved"
+        ? `Loved It logged from Today on ${today}.`
+        : `Ate This logged from Today on ${today}.`;
+
+    locallyUndoneMealIdsRef.current.delete(recommendation.meal.id);
+    pendingMealIdsRef.current.add(recommendation.meal.id);
+    setUndoByMealId((previous) => removeMealKey(previous, recommendation.meal.id));
     setSaveState((previous) => ({ ...previous, [stateKey]: "saving" }));
     setSaveMessage(null);
 
@@ -201,16 +256,14 @@ export function TodayClient() {
           hungerLater: "Satisfied",
           cravingsLater: false,
           wouldRepeat: true,
-          notes:
-            sentiment === "loved"
-              ? `Loved It logged from Today on ${today}.`
-              : `Ate This logged from Today on ${today}.`
+          notes: note
         })
       });
       const data: unknown = await response.json();
 
       if (!response.ok) {
         setSaveState((previous) => ({ ...previous, [stateKey]: "error" }));
+        pendingMealIdsRef.current.delete(recommendation.meal.id);
         setSaveMessage(
           getErrorMessage(data, "Unable to save meal feedback right now.")
         );
@@ -218,16 +271,89 @@ export function TodayClient() {
       }
 
       const result = data as MealFeedbackResult;
+      const previousFeedback = feedbackByMealIdRef.current;
+      const previousSnapshot = previousFeedback[recommendation.meal.id] ?? null;
+      const previousSummary =
+        previousSnapshot ?? emptyMealFeedbackSummary(recommendation.meal.id);
+      const optimisticSummary = applyOptimisticFeedbackSummary(
+        previousSummary,
+        sentiment,
+        {
+          createdAt,
+          note
+        }
+      );
+      const nextFeedback = {
+        ...previousFeedback,
+        [recommendation.meal.id]: optimisticSummary
+      };
+
+      commitFeedbackByMealId(nextFeedback);
+      setViewModel((current) =>
+        current
+          ? applyOptimisticTodayRecommendation(
+              current,
+              meals,
+              recommendation,
+              nextFeedback
+            )
+          : current
+      );
       setSaveState((previous) => ({ ...previous, [stateKey]: "saved" }));
+      setUndoByMealId((previous) => ({
+        ...previous,
+        [recommendation.meal.id]: {
+          action: sentiment,
+          previousSummary: previousSnapshot
+        }
+      }));
+      pendingMealIdsRef.current.delete(recommendation.meal.id);
       setSaveMessage(
         result.warning
           ? `Saved feedback. ${result.warning}`
           : "Saved feedback to Notion."
       );
+      router.refresh();
     } catch {
       setSaveState((previous) => ({ ...previous, [stateKey]: "error" }));
+      pendingMealIdsRef.current.delete(recommendation.meal.id);
       setSaveMessage("Unable to reach the feedback service. Try again.");
     }
+  }
+
+  function handleUndo(recommendation: MealRecommendation) {
+    const undoSnapshot = undoByMealId[recommendation.meal.id];
+
+    if (!undoSnapshot || pendingMealIdsRef.current.has(recommendation.meal.id)) {
+      return;
+    }
+
+    const nextFeedback = restoreFeedbackSummarySnapshot(
+      feedbackByMealIdRef.current,
+      recommendation.meal.id,
+      undoSnapshot.previousSummary
+    );
+
+    locallyUndoneMealIdsRef.current.add(recommendation.meal.id);
+    commitFeedbackByMealId(nextFeedback);
+    setViewModel((current) =>
+      current
+        ? applyOptimisticTodayRecommendation(
+            current,
+            meals,
+            recommendation,
+            nextFeedback
+          )
+        : current
+    );
+    setSaveState((previous) =>
+      removeMealKey(
+        removeMealKey(previous, `${recommendation.meal.id}:ate`),
+        `${recommendation.meal.id}:loved`
+      )
+    );
+    setUndoByMealId((previous) => removeMealKey(previous, recommendation.meal.id));
+    setSaveMessage("Undo applied in this Today view. Notion history was not changed.");
   }
 
   return (
@@ -249,6 +375,8 @@ export function TodayClient() {
             : `${meals.length} saved meals checked for today's ideas.`}
         </div>
       </section>
+
+      <HouseholdLearningStrip learning={learningStrip} />
 
       {loadError ? (
         <div className="space-y-3">
@@ -311,8 +439,10 @@ export function TodayClient() {
                 onAteThis={() => void logFeedback(recommendation, "ate")}
                 onLovedIt={() => void logFeedback(recommendation, "loved")}
                 onSuggestAnother={() => handleSuggestAnother(category)}
+                onUndo={() => handleUndo(recommendation)}
                 recommendation={recommendation}
                 saveState={saveState}
+                undoSnapshot={undoByMealId[recommendation.meal.id] ?? null}
               />
             ) : null;
           })}
@@ -335,6 +465,50 @@ export function TodayClient() {
   );
 }
 
+function removeMealKey<TValue extends Record<string, unknown>>(
+  values: TValue,
+  key: string
+): TValue {
+  const next = { ...values };
+  delete next[key];
+  return next;
+}
+
+function HouseholdLearningStrip({
+  learning
+}: {
+  learning: HouseholdLearningStripViewModel;
+}) {
+  return (
+    <section
+      aria-label="Recent household learning"
+      className="rounded-md border bg-card p-3"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Recent household learning</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {learning.headline}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {learning.hasRecentFeedback ? (
+            learning.items.map((item) => (
+              <Badge className="bg-muted text-muted-foreground" key={item.id}>
+                {item.text}
+              </Badge>
+            ))
+          ) : (
+            <Badge className="bg-muted text-muted-foreground">
+              {learning.emptyText}
+            </Badge>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function TodayActionFallback() {
   return (
     <div className="flex flex-wrap gap-2">
@@ -354,6 +528,39 @@ function TodayActionFallback() {
   );
 }
 
+function applyOptimisticTodayRecommendation(
+  viewModel: TodayViewModel,
+  meals: RecommendationMeal[],
+  recommendation: MealRecommendation,
+  feedbackByMealId: MealFeedbackSummaryByMealId
+): TodayViewModel {
+  const rankedRecommendation = rankRecommendationsForCategory(
+    meals,
+    recommendation.category,
+    {
+      generatedAt: viewModel.generatedAt,
+      feedbackByMealId
+    }
+  ).find((candidate) => candidate.meal.id === recommendation.meal.id);
+  const nextRecommendation =
+    rankedRecommendation ??
+    ({
+      ...recommendation,
+      feedbackSummary: feedbackByMealId[recommendation.meal.id] ?? null,
+      confidenceNote: feedbackByMealId[recommendation.meal.id]
+        ? "Based on your saved meals and household feedback."
+        : "Based on your saved meals."
+    } satisfies MealRecommendation);
+
+  return {
+    ...viewModel,
+    suggestions: {
+      ...viewModel.suggestions,
+      [recommendation.category]: nextRecommendation
+    }
+  };
+}
+
 interface SuggestionCardProps {
   category: TodayMealCategory;
   recommendation: MealRecommendation;
@@ -361,6 +568,8 @@ interface SuggestionCardProps {
   onAteThis: () => void;
   onLovedIt: () => void;
   onSuggestAnother: () => void;
+  onUndo: () => void;
+  undoSnapshot: TodayFeedbackUndoSnapshot | null;
 }
 
 function SuggestionCard({
@@ -369,10 +578,15 @@ function SuggestionCard({
   saveState,
   onAteThis,
   onLovedIt,
-  onSuggestAnother
+  onSuggestAnother,
+  onUndo,
+  undoSnapshot
 }: SuggestionCardProps) {
   const ateState = saveState[`${recommendation.meal.id}:ate`] ?? "idle";
   const lovedState = saveState[`${recommendation.meal.id}:loved`] ?? "idle";
+  const pendingAction =
+    ateState === "saving" ? "ate" : lovedState === "saving" ? "loved" : null;
+  const feedbackSummary = recommendation.feedbackSummary;
 
   return (
     <Card>
@@ -405,6 +619,37 @@ function SuggestionCard({
         <p className="text-sm text-muted-foreground">
           {recommendation.confidenceNote}
         </p>
+        {feedbackSummary && feedbackSummary.totalEvents > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <Badge className="bg-muted text-muted-foreground">
+              Eaten {feedbackSummary.eatenCount}
+            </Badge>
+            {feedbackSummary.lovedCount > 0 ? (
+              <Badge className="bg-muted text-muted-foreground">
+                Loved {feedbackSummary.lovedCount}
+              </Badge>
+            ) : null}
+            {feedbackSummary.wouldRepeatCount > 0 ? (
+              <Badge className="bg-muted text-muted-foreground">
+                Would repeat {feedbackSummary.wouldRepeatCount}
+              </Badge>
+            ) : null}
+          </div>
+        ) : null}
+        {undoSnapshot ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+            <span>Saved. Undo?</span>
+            <Button
+              className="h-7 px-2 text-xs"
+              disabled={pendingAction !== null}
+              onClick={onUndo}
+              type="button"
+              variant="ghost"
+            >
+              Undo local view
+            </Button>
+          </div>
+        ) : null}
         <div className="grid gap-2 sm:grid-cols-2">
           <Button asChild variant="secondary">
             <a href={getMealDetailPath(recommendation.meal.id)}>
@@ -413,7 +658,7 @@ function SuggestionCard({
             </a>
           </Button>
           <Button
-            disabled={ateState === "saving"}
+            disabled={pendingAction !== null}
             onClick={onAteThis}
             type="button"
             variant="secondary"
@@ -425,10 +670,10 @@ function SuggestionCard({
             ) : (
               <Check className="h-4 w-4" />
             )}
-            Ate This
+            {ateState === "saving" ? "Saving..." : "Ate This"}
           </Button>
           <Button
-            disabled={lovedState === "saving"}
+            disabled={pendingAction !== null}
             onClick={onLovedIt}
             type="button"
             variant="secondary"
@@ -438,7 +683,7 @@ function SuggestionCard({
             ) : (
               <Heart className="h-4 w-4" />
             )}
-            Loved It
+            {lovedState === "saving" ? "Saving..." : "Loved It"}
           </Button>
           <Button onClick={onSuggestAnother} type="button" variant="ghost">
             <RefreshCw className="h-4 w-4" />
