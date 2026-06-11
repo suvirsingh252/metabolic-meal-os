@@ -1,5 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Home, MessageSquare, Settings, Utensils } from "lucide-react";
+import {
+  BarChart3,
+  Home,
+  LayoutDashboard,
+  MessageSquare,
+  Settings,
+  Utensils
+} from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -10,8 +17,13 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   {
     href: "/",
-    label: "Dashboard",
+    label: "Today",
     icon: Home
+  },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard
   },
   {
     href: "/analyze",

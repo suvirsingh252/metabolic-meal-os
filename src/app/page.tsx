@@ -1,5 +1,5 @@
-import { DashboardClient } from "@/src/app/dashboard/dashboard-client";
+import { TodayClient } from "@/src/app/today/today-client";
 
 export default function HomePage() {
-  return <DashboardClient />;
+  return <TodayClient />;
 }

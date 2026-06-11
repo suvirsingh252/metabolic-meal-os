@@ -53,7 +53,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
 
-        <nav className="grid grid-cols-5 border-t bg-card md:hidden">
+        <nav
+          className="grid border-t bg-card md:hidden"
+          style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
+        >
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href;
