@@ -40,6 +40,31 @@ export interface SaveIntakeResult {
   analyzeUrl: string;
 }
 
+type NotionProperty = { name?: string; type?: string };
+
+function getPropertyType(
+  properties: Record<string, unknown> | undefined,
+  propertyName: string
+): string | undefined {
+  const property = properties?.[propertyName];
+  if (
+    typeof property === "object" &&
+    property !== null &&
+    "type" in property &&
+    typeof (property as NotionProperty).type === "string"
+  ) {
+    return (property as NotionProperty).type;
+  }
+  return undefined;
+}
+
+function buildTextLikeProperty(type: string | undefined, value: string): unknown {
+  if (type === "select") {
+    return { select: { name: value } };
+  }
+  return { rich_text: [{ text: { content: value } }] };
+}
+
 export async function saveIntakeToNotion(
   input: SaveIntakeInput
 ): Promise<SaveIntakeResult | null> {
@@ -51,6 +76,21 @@ export async function saveIntakeToNotion(
   }
 
   const notion = getNotionClient(apiKey);
+  let parent:
+    | { database_id: string }
+    | { data_source_id: string } = { database_id: dbId };
+  let schemaProperties: Record<string, unknown> | undefined;
+
+  try {
+    const dataSource = await notion.dataSources.retrieve({ data_source_id: dbId });
+    if (isPageObject(dataSource)) {
+      schemaProperties = dataSource.properties;
+      parent = { data_source_id: dbId };
+    }
+  } catch {
+    // Older configurations may still provide a database id. In that case, keep
+    // the legacy parent shape and default optional text-like properties to rich text.
+  }
 
   const properties: Record<string, unknown> = {
     Name: {
@@ -79,13 +119,14 @@ export async function saveIntakeToNotion(
   }
 
   if (input.source) {
-    properties["Source"] = {
-      rich_text: [{ text: { content: input.source.slice(0, 200) } }]
-    };
+    properties["Source"] = buildTextLikeProperty(
+      getPropertyType(schemaProperties, "Source"),
+      input.source.slice(0, 200)
+    );
   }
 
   const page = await notion.pages.create({
-    parent: { database_id: dbId },
+    parent,
     properties: properties as Parameters<typeof notion.pages.create>[0]["properties"]
   });
 
