@@ -1,6 +1,16 @@
 # Architectural Decisions
 
-Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
+Last updated: 2026-06-11 (Beta 3.6 iPhone Share Intake)
+
+## 2026-06-11 — Beta 3.6 iPhone Share Intake Uses Dedicated Token And Optional Persistence
+
+Decision: Use a separate `IOS_SHORTCUT_TOKEN` for the iOS Shortcut endpoint rather than sharing `APP_AUTH_TOKEN`. Persist intake to an optional dedicated Notion database, and let the analyze page load the record server-side from the Notion page ID.
+
+Reasoning:
+- The iOS Shortcut is a separate automated client, not a browser session. Sharing the general `APP_AUTH_TOKEN` would expose it to the Shortcut definition (accessible in iCloud/device backup). A dedicated token limits blast radius if rotated.
+- Intake persistence is optional so the endpoint works before the Notion Intake database is created. Families can try the Shortcut, see the analyzeUrl, and add persistence later.
+- `/analyze` was the most natural entry point. Converting it to a server component allows Notion fetch at request time without a separate client-side API call.
+- Classification is heuristic (path-based for recipe URLs, domain-based for social). Social fallback copy warns users not to rely on automatic parsing of captions/ingredients.
 
 ## 2026-06-11 — Beta 3.5 Trust Depends On Active Data-Source Persistence
 

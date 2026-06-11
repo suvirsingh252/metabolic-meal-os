@@ -41,9 +41,12 @@ export function looksLikeSharedUrl(value: string) {
   );
 }
 
-export function useAnalyzeController() {
+export function useAnalyzeController(initialRecipeText?: string) {
   const reviewResultRef = useRef<HTMLDivElement | null>(null);
-  const [state, dispatch] = useReducer(analyzeReducer, initialAnalyzeState);
+  const [state, dispatch] = useReducer(analyzeReducer, {
+    ...initialAnalyzeState,
+    recipeText: initialRecipeText ?? initialAnalyzeState.recipeText
+  });
 
   const trimmedRecipeTextLength = state.recipeText.trim().length;
   const inputLooksLikeUrl = looksLikeSharedUrl(state.recipeText);

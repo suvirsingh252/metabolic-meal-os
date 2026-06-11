@@ -1,5 +1,69 @@
 # Session Log
 
+## 2026-06-11 Beta 3.6 iPhone Share Intake v1
+
+Goal:
+- Add an iOS Shortcut endpoint so recipe URLs, social post URLs, or copied recipe text can be sent from the iPhone Share Sheet into Metabolic Meal OS for analysis.
+
+Implementation:
+- Added `POST /api/intake/share` with `IOS_SHORTCUT_TOKEN` bearer auth (separate from `APP_AUTH_TOKEN`).
+- Endpoint validates the token, reads and size-limits the JSON body, classifies the payload as `recipe-url`, `social-url`, `plain-text`, or `unknown-url` using `src/lib/intake/classify.ts` (path-based recipe heuristics and a social domain list covering Instagram, TikTok, Pinterest, Facebook, YouTube, youtu.be, Threads, X.com, Twitter).
+- Saves an intake record to a dedicated Notion Meal Intake database when `NOTION_MEAL_INTAKE_DATABASE_ID` is configured; gracefully returns without crashing when the var is absent.
+- Returns `{ ok, intakeId, classification, message, analyzeUrl }` where `analyzeUrl` is `/analyze?intake=<notionPageId>`.
+- Updated `middleware.ts` to accept `IOS_SHORTCUT_TOKEN` bearer for `/api/intake/share` specifically, so the iOS Shortcut only needs one token.
+- Converted `/analyze/page.tsx` to a server component that reads `?intake=<id>`, fetches the Notion intake record server-side via `fetchIntakeRecord`, and passes it to new `AnalyzeClient` ("use client") component.
+- `AnalyzeClient` wraps existing analyze UI, adds `IntakeBridgePanel` when intake record is present (amber banner: imported label, classification chip, source chip, URL/text preview, social fallback copy, continue instructions).
+- `useAnalyzeController` accepts optional `initialRecipeText` so the textarea is pre-filled with the intake URL or text.
+- `src/lib/intake/notion.ts` saves and retrieves intake records. `fetchIntakeRecord` is safe: returns null on missing apiKey, missing DB, or any Notion fetch error.
+
+Files changed:
+- `src/lib/intake/types.ts` (new)
+- `src/lib/intake/classify.ts` (new)
+- `src/lib/intake/notion.ts` (new)
+- `src/app/api/intake/share/route.ts` (new)
+- `src/app/analyze/components/intake-bridge-panel.tsx` (new)
+- `src/app/analyze/analyze-client.tsx` (new)
+- `src/app/analyze/page.tsx` (converted to server component)
+- `src/app/analyze/hooks/use-analyze-controller.ts` (optional initialRecipeText param)
+- `middleware.ts` (IOS_SHORTCUT_TOKEN support for intake path)
+- `.env.example` (IOS_SHORTCUT_TOKEN, NOTION_MEAL_INTAKE_DATABASE_ID)
+- `tests/intake-share.test.ts` (new, 30 tests)
+- `README.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md` (updated)
+
+Tests added (30 new):
+- classifyInput: recipe URL (allrecipes, simplyrecipes), social URL (instagram, tiktok, youtube, youtu.be, pinterest, x.com), unknown URL, plain text, URL priority over text, empty returns unknown-url.
+- normalizeUrl: adds https scheme, preserves existing scheme, trims whitespace.
+- parseUrl: parses valid URL, returns null for invalid.
+- Token validation: valid accepted, invalid 401, missing 401, unconfigured 503.
+- Payload validation: valid URL, valid social, valid text, empty 400, whitespace-only 400, non-object 400.
+- Notion DB config: missing env returns undefined, set env returns value.
+
+Quality gates:
+- `npm run lint`: passed.
+- `npm run typecheck`: passed.
+- `npm test`: 149 tests, 0 failures (was 119 before this session).
+- `npm run build`: passed, `/api/intake/share` listed as Dynamic route.
+
+Required Vercel env vars:
+- `IOS_SHORTCUT_TOKEN` — required for Shortcut auth; choose a long random string.
+- `NOTION_MEAL_INTAKE_DATABASE_ID` — optional; enables intake persistence.
+
+Required Notion database:
+- Database name: Meal Intake (shared with Notion integration).
+- Properties: Name (Title), URL (URL), Raw Text (Text), Source (Text), Status (Select: Pending/Analyzed/Error), Created At (Date), Error (Text).
+
+Manual setup steps:
+1. Create Meal Intake Notion database with above schema.
+2. Share with Notion integration.
+3. Copy database ID to `NOTION_MEAL_INTAKE_DATABASE_ID` in Vercel.
+4. Generate `IOS_SHORTCUT_TOKEN` and set in Vercel.
+5. Create iPhone Shortcut per README iPhone Shortcut Setup section.
+
+Not regressed:
+- Existing `/analyze` free-text and URL analysis flow untouched.
+- All pre-existing 119 tests pass.
+- Dashboard, Meals, Feedback, Notion persistence unchanged.
+
 ## 2026-06-11 Beta 3.5 Functional Audit & Production Hardening
 
 Goal:

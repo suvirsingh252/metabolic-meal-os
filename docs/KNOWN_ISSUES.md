@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
+Last updated: 2026-06-11 (Beta 3.6 iPhone Share Intake)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -13,6 +13,14 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] In-app browser localhost testing has sometimes been blocked by `net::ERR_BLOCKED_BY_CLIENT`; use command-line checks or a normal browser if this recurs.
 - [ ] In-app browser form filling can fail when the virtual clipboard is unavailable; use command-line API checks or a normal browser for generated `/analyze` result testing if this recurs.
 - [ ] Multiple Next dev servers can remain running on alternate ports after interrupted sessions; check with `lsof -ti :3011` or inspect `.next/dev/logs`.
+
+## Beta 3.6 Intake Known Limitations
+
+- [ ] Intake URL classification is heuristic: recipe-URL detection is path-based (`/recipe`, `/recipes`, etc.) and may misclassify uncommon recipe sites with non-standard paths as `unknown-url`.
+- [ ] Social URL parsing (Instagram, TikTok, YouTube) does not extract caption/ingredients from server-side fetches. Users must paste the caption or recipe text manually for complete analysis.
+- [ ] The intake bridge panel pre-fills the analyze textarea but does not automatically trigger analysis. The user must tap Analyze Recipe.
+- [ ] iPhone Shortcut setup is manual: no automated provisioning or QR code. See README for step-by-step instructions.
+- [ ] `NOTION_MEAL_INTAKE_DATABASE_ID` must be set manually; there is no in-app database creation or migration flow.
 
 ## Technical Debt
 

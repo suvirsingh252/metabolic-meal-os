@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
+Last updated: 2026-06-11 (Beta 3.6 iPhone Share Intake)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -39,6 +39,17 @@ Backend work is implemented through App Router API routes:
 - `src/app/api/notion/save-meal/route.ts`
 - `src/app/api/notion/save-ingredients/route.ts`
 - `src/app/api/notion/log-feedback/route.ts`
+- `src/app/api/intake/share/route.ts` — iPhone Share Sheet intake (Beta 3.6)
+
+Intake flow (Beta 3.6):
+- `POST /api/intake/share` authenticates via `IOS_SHORTCUT_TOKEN` bearer (separate from `APP_AUTH_TOKEN`).
+- Classifies the payload as `recipe-url`, `social-url`, `plain-text`, or `unknown-url`.
+- Persists the intake record to a dedicated Notion Meal Intake database when `NOTION_MEAL_INTAKE_DATABASE_ID` is set.
+- Returns an `analyzeUrl` of the form `/analyze?intake=<notionPageId>`.
+- `/analyze` is a server component that reads the `intake` query param, fetches the record from Notion, and passes it to `AnalyzeClient` as pre-filled text or URL.
+- If `NOTION_MEAL_INTAKE_DATABASE_ID` is absent, the endpoint returns a useful response without crashing and `analyzeUrl` falls back to `/analyze`.
+- Classification logic lives in `src/lib/intake/classify.ts`. Notion persistence lives in `src/lib/intake/notion.ts`.
+- The middleware was updated to allow `IOS_SHORTCUT_TOKEN` bearer specifically for `/api/intake/share`, so the Shortcut does not need `APP_AUTH_TOKEN`.
 
 API routes:
 - run server-side only.

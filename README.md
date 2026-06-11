@@ -22,10 +22,12 @@ Follow the mandatory start-of-session and end-of-session procedures in `docs/HAN
 - `/`
 - `/dashboard`
 - `/analyze`
+- `/analyze?intake=<id>` — pre-filled from iPhone Share Sheet intake
 - `/meals`
 - `/meals/[id]`
 - `/feedback`
 - `/settings`
+- `POST /api/intake/share` — iPhone Shortcut intake endpoint
 
 `/` renders Today. `/dashboard` remains available as the dashboard intelligence
 surface.
@@ -70,6 +72,8 @@ Required Vercel environment variables:
 - `NOTION_FEEDBACK_DATABASE_ID`
 - `NOTION_WEEKLY_PLANS_DATABASE_ID`
 - `NOTION_MEAL_TEMPLATES_DATABASE_ID`
+- `IOS_SHORTCUT_TOKEN` — secret token for the iPhone Share Sheet Shortcut (Beta 3.6)
+- `NOTION_MEAL_INTAKE_DATABASE_ID` — optional; enables intake persistence (Beta 3.6)
 
 Redeploy after changes by pushing to the connected GitHub branch or using Vercel Dashboard -> Deployments -> Redeploy.
 
@@ -80,6 +84,7 @@ Deployment checklist:
 - All Notion database IDs configured.
 - Meals and Feedback databases shared with the Notion integration.
 - `/settings` Notion diagnostics passes on the Vercel URL.
+- `IOS_SHORTCUT_TOKEN` set and iPhone Shortcut configured (see iPhone Shortcut Setup below).
 
 ## iPhone Testing And Home Screen
 
@@ -106,6 +111,61 @@ PWA notes:
 - The app includes a web app manifest at `/manifest.webmanifest`.
 - Current icons are simple original placeholder SVG and generated PNG assets in `public/icons`.
 - There is no service worker or offline mode yet.
+
+## iPhone Shortcut Setup (Beta 3.6)
+
+The iPhone Share Sheet Shortcut lets you send recipe URLs, social post URLs, or copied recipe text from any app directly into Metabolic Meal OS for analysis.
+
+### Notion Intake Database
+
+Before setting up the Shortcut, create a new Notion database called **Meal Intake** and share it with your Notion integration. Add these properties:
+
+| Property | Type |
+|---|---|
+| Name | Title |
+| URL | URL |
+| Raw Text | Text |
+| Source | Text |
+| Status | Select (options: Pending, Analyzed, Error) |
+| Created At | Date |
+| Error | Text |
+
+Copy the database ID from the Notion URL and set `NOTION_MEAL_INTAKE_DATABASE_ID` in Vercel.
+
+### Shortcut steps
+
+1. Open the **Shortcuts** app on your iPhone.
+2. Tap **+** to create a new shortcut. Name it **Send to Metabolic Meal OS**.
+3. Tap the info icon and enable **Use as Share Sheet**.
+4. Under **Share Sheet Types**, enable **URLs**, **Text**, and **Safari Web Pages**.
+5. Add a **Get Details of Safari Web Page** action (for URLs).
+6. Add a **Get Variable** step to capture the shared URL or text.
+7. Add a **Get Current Date** action and format it as ISO 8601.
+8. Add a **Get Contents of URL** action with these settings:
+   - **URL**: `https://metabolic-meal-os.vercel.app/api/intake/share`
+   - **Method**: POST
+   - **Headers**:
+     - `Authorization`: `Bearer <your IOS_SHORTCUT_TOKEN>`
+     - `Content-Type`: `application/json`
+   - **Request Body** (JSON):
+     ```json
+     {
+       "url": "<Shortcut variable: URL if sharing a URL>",
+       "text": "<Shortcut variable: Text if sharing text>",
+       "source": "ios-shortcut",
+       "sharedAt": "<Shortcut variable: formatted date>"
+     }
+     ```
+9. Add an **Open URLs** action using the `analyzeUrl` field from the JSON response.
+
+The Shortcut will POST the content and open the analyze page pre-filled with the URL or text.
+
+### Token security
+
+- `IOS_SHORTCUT_TOKEN` is a private server-only secret. Choose a long random string.
+- Set it in Vercel Project Settings (not `NEXT_PUBLIC_*`).
+- Add it to the Shortcut Authorization header exactly as `Bearer <token>`.
+- Rotate it if the Shortcut is shared or the device is compromised.
 
 ## Analyze Meal API
 

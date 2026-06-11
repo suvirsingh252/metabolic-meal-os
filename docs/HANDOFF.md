@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
+Last updated: 2026-06-11 (Beta 3.6 iPhone Share Intake)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -49,6 +49,7 @@ Implemented:
 - Beta 3.5 functional audit: local end-to-end verification found and fixed a critical nutrition persistence bug. `save-meal` now reads the active Meals data source before optional writes, so compatible nutrition/source/quality fields persist and dashboard aggregation reflects them.
 - Beta 3.5 verified known meal lifecycle: Analyze generated `755 kcal`, `26 g protein`, `15 g fiber`, `medium` confidence, `estimated` source, and provenance; after Save, Notion retrieval returned the same nutrition fields and `/api/dashboard` counted them in today/week totals.
 - Beta 3.5 mobile hardening: Today `Suggest Another` rotates through alternatives after temporary exclusions exhaust, recommendation copy no longer treats repeated saved records as feedback success, and Meals title links have block-level mobile tap targets.
+- Beta 3.6 iPhone Share Intake: `POST /api/intake/share` accepts iOS Shortcut POSTs with `IOS_SHORTCUT_TOKEN` bearer auth, classifies URL/text as `recipe-url`, `social-url`, `plain-text`, or `unknown-url`, persists intake to optional Notion Meal Intake database, and returns `analyzeUrl` with intake page ID. `/analyze?intake=<id>` loads the intake record server-side and shows an amber bridge panel with classification, source, preview, and social fallback copy. The `AnalyzeClient` is pre-filled with the URL or text. The middleware was updated to accept `IOS_SHORTCUT_TOKEN` specifically for the intake path.
 - Analyze now has staged loading copy for long analysis runs and tells users detailed meals can take about 20-30 seconds.
 - Feedback quick actions now have explicit semantics: `Ate This` logs eaten only, `Loved It` logs eaten/loved/worth repeating, and Meal Detail `Would Make Again` is repeat-only in household summaries.
 - Dashboard starts with household takeaways before detailed metrics and keeps data coverage/source diagnostics behind Advanced data coverage.

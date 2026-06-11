@@ -26,6 +26,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow the iOS Shortcut intake endpoint to authenticate with its own dedicated token.
+  const intakeToken = process.env.IOS_SHORTCUT_TOKEN?.trim();
+  if (
+    intakeToken &&
+    bearer === intakeToken &&
+    request.nextUrl.pathname === "/api/intake/share"
+  ) {
+    return NextResponse.next();
+  }
+
   return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 }
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
+Last updated: 2026-06-11 (Beta 3.6 iPhone Share Intake)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -104,6 +104,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add Today `Why this meal?` explanations generated from deterministic recommendation score components.
 - [x] Complete Beta 3 usability closeout: replace Notion-facing copy in normal flows with Meal OS language, move external links/raw notes into Advanced details, clarify quick feedback semantics, add Analyze staged loading, add Dashboard household takeaways, and reorganize Meal Detail around household summary.
 - [x] Complete Beta 3.5 functional audit and critical hardening: verified Analyze -> Save -> Notion -> Meals -> Dashboard lifecycle, fixed active data-source nutrition persistence, supported numeric nutrition confidence, hardened mobile `Suggest Another`, corrected overclaiming recommendation copy, and improved Meals mobile tap targets.
+- [x] Add Beta 3.6 iPhone Share Intake: `POST /api/intake/share` with `IOS_SHORTCUT_TOKEN` auth, URL/text classification, optional Notion intake persistence, and `/analyze?intake=<id>` bridge panel with social URL fallback UX.
 
 ## Current Sprint
 
