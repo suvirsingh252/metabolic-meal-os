@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getCurrentPlannerWeek,
+  getPlannerSlotKey,
+  groupPlannerSlotsByDateAndSlot,
+  mealSlots,
   validateMealId,
   validatePlanDate,
-  validatePlannerMutation
+  validatePlannerMutation,
+  type PlannerSlot
 } from "@/src/lib/domain/planner";
 
 test("planner week renders Monday through Sunday", () => {
@@ -81,6 +85,69 @@ test("planner validates status and slot enums", () => {
         status: "Done"
       }),
     /Status/
+  );
+});
+
+test("planner supports all meal slots in display order", () => {
+  assert.deepEqual(mealSlots, ["Breakfast", "Lunch", "Dinner", "Snack"]);
+});
+
+test("planner keeps same-date meal slots separate", () => {
+  const slots: PlannerSlot[] = [
+    {
+      id: "breakfast-page",
+      planDate: "2026-06-11",
+      mealSlot: "Breakfast",
+      status: "Planned",
+      source: "Manual",
+      meal: {
+        id: "breakfast-meal",
+        name: "Oats",
+        url: ""
+      },
+      householdNotes: null
+    },
+    {
+      id: "dinner-page",
+      planDate: "2026-06-11",
+      mealSlot: "Dinner",
+      status: "Cooked",
+      source: "Manual",
+      meal: {
+        id: "dinner-meal",
+        name: "Dal",
+        url: ""
+      },
+      householdNotes: null
+    }
+  ];
+
+  const grouped = groupPlannerSlotsByDateAndSlot(slots);
+
+  assert.equal(
+    grouped.get(getPlannerSlotKey("2026-06-11", "Breakfast"))?.meal?.name,
+    "Oats"
+  );
+  assert.equal(
+    grouped.get(getPlannerSlotKey("2026-06-11", "Dinner"))?.meal?.name,
+    "Dal"
+  );
+});
+
+test("planner mutation validation accepts non-dinner meal slots", () => {
+  assert.deepEqual(
+    validatePlannerMutation({
+      planDate: "2026-06-11",
+      slot: "Breakfast",
+      action: "status",
+      status: "Skipped"
+    }),
+    {
+      planDate: "2026-06-11",
+      slot: "Breakfast",
+      action: "status",
+      status: "Skipped"
+    }
   );
 });
 

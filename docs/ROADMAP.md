@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-11 (Weekly Dinner Planner v1)
+Last updated: 2026-06-11 (Weekly Planner v1.1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -107,6 +107,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Complete Beta 3.5 functional audit and critical hardening: verified Analyze -> Save -> Notion -> Meals -> Dashboard lifecycle, fixed active data-source nutrition persistence, supported numeric nutrition confidence, hardened mobile `Suggest Another`, corrected overclaiming recommendation copy, and improved Meals mobile tap targets.
 - [x] Add Beta 3.6 iPhone Share Intake: `POST /api/intake/share` with `IOS_SHORTCUT_TOKEN` auth, URL/text classification, optional Notion intake persistence, and `/analyze?intake=<id>` bridge panel with social URL fallback UX.
 - [x] Add Weekly Dinner Planner v1: Notion-backed current-week dinner slots, saved-meal assignment, clear, status updates, setup diagnostics, and schema-safe writes.
+- [x] Expand Planner v1.1 to Breakfast, Lunch, Dinner, and Snack slots without adding AI generation.
 
 ## Current Sprint
 

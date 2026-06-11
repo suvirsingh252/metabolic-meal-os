@@ -1,4 +1,4 @@
-export const mealSlots = ["Dinner", "Lunch", "Breakfast", "Snack"] as const;
+export const mealSlots = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
 export type MealSlot = (typeof mealSlots)[number];
 
 export const plannerStatuses = [
@@ -54,6 +54,19 @@ export interface PlannerMutationInput {
   action: "assign" | "clear" | "status";
   mealId?: string;
   status?: PlannerStatus;
+}
+
+export function getPlannerSlotKey(planDate: string, slot: MealSlot) {
+  return `${planDate}:${slot}`;
+}
+
+export function groupPlannerSlotsByDateAndSlot(slots: PlannerSlot[]) {
+  return new Map(
+    slots.map((slot) => [
+      getPlannerSlotKey(slot.planDate, slot.mealSlot),
+      slot
+    ])
+  );
 }
 
 export function isMealSlot(value: unknown): value is MealSlot {

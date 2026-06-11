@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-11 (Weekly Dinner Planner v1)
+Last updated: 2026-06-11 (Weekly Planner v1.1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -22,12 +22,11 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] iPhone Shortcut setup is manual: no automated provisioning or QR code. See README for step-by-step instructions.
 - [ ] `NOTION_MEAL_INTAKE_DATABASE_ID` must be set manually; there is no in-app database creation or migration flow.
 
-## Planner v1 Known Limitations
+## Planner v1.1 Known Limitations
 
 - [ ] `NOTION_MEAL_PLAN_SOURCE_ID` must be set manually and the Meal Plan data source/database must be shared with the Notion integration. `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
-- [ ] Planner v1 is dinner-only in the UI even though rows include `Meal Slot` for future expansion.
 - [ ] Planner assignment uses existing saved Meals only. There is no AI week generation, grocery-list generation, drag-and-drop, or meal invention.
-- [ ] Clearing a dinner removes the Meal relation and resets status/source, but it does not archive/delete the Notion Meal Plan row.
+- [ ] Clearing a planned meal removes the Meal relation and resets status/source, but it does not archive/delete the Notion Meal Plan row.
 
 ## Technical Debt
 

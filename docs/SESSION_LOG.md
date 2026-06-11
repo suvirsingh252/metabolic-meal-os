@@ -1,5 +1,20 @@
 # Session Log
 
+## 2026-06-11 Weekly Planner v1.1 Multi-Slot Expansion
+
+Goal:
+- Expand `/planner` from Dinner-only planning to Breakfast, Lunch, Dinner, and Snack while keeping Notion writes keyed by date plus meal slot.
+
+Implementation:
+- Updated the planner API read query to load all current-week Meal Plan rows instead of only Dinner rows.
+- Updated the planner client to render all configured meal slots inside each day.
+- Each slot can choose a saved meal, assign it, clear it, and update status independently.
+- Saved meal options are grouped with matching Meal Type first when matching metadata exists.
+- Added tests proving same-day Breakfast and Dinner remain separate planner entries.
+
+Out of scope:
+- AI-generated meal suggestions, grocery lists, web recipe search, and macro optimization.
+
 ## 2026-06-11 Weekly Dinner Planner v1
 
 Goal:

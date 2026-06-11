@@ -6,8 +6,8 @@ export default function PlannerPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Weekly Planner"
-        title="Dinner plan"
-        description="Plan this week's dinners from saved meals."
+        title="Meal plan"
+        description="Plan this week's meals from saved meals."
       />
       <PlannerClient />
     </div>

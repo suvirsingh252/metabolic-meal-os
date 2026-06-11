@@ -296,7 +296,7 @@ export async function getWeeklyDinnerPlanner(): Promise<PlannerViewModel> {
   const [plans, mealsResult] = await Promise.all([
     notion.dataSources.query({
       data_source_id: schema.dataSourceId,
-      page_size: 25,
+      page_size: 100,
       filter: {
         and: [
           {
@@ -309,12 +309,6 @@ export async function getWeeklyDinnerPlanner(): Promise<PlannerViewModel> {
             property: "Plan Date",
             date: {
               on_or_before: days[6].date
-            }
-          },
-          {
-            property: "Meal Slot",
-            select: {
-              equals: "Dinner"
             }
           }
         ]

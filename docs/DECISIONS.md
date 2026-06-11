@@ -1,6 +1,16 @@
 # Architectural Decisions
 
-Last updated: 2026-06-11 (Weekly Dinner Planner v1)
+Last updated: 2026-06-11 (Weekly Planner v1.1)
+
+## 2026-06-11 — Weekly Planner v1.1 Expands To All Meal Slots
+
+Decision: Keep the same Notion Meal Plan data source and date+slot write model, but render Breakfast, Lunch, Dinner, and Snack on `/planner`.
+
+Reasoning:
+- The v1 data model already used `Meal Slot`, so expanding the UI does not require a schema change.
+- Writes must stay keyed by `Plan Date + Meal Slot` so assigning Breakfast cannot overwrite Dinner on the same date.
+- Saved meal options can prefer matching `Meal Type` groups without preventing a household from assigning another saved meal when metadata is sparse.
+- AI planning, grocery lists, recipe search, and macro optimization remain out of scope.
 
 ## 2026-06-11 — Weekly Planner v1 Is Dinner-Only And Notion-Backed
 

@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-11 (Weekly Dinner Planner v1)
+Last updated: 2026-06-11 (Weekly Planner v1.1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -40,7 +40,7 @@ Backend work is implemented through App Router API routes:
 - `src/app/api/notion/save-meal/route.ts`
 - `src/app/api/notion/save-ingredients/route.ts`
 - `src/app/api/notion/log-feedback/route.ts`
-- `src/app/api/planner/route.ts` — Weekly Dinner Planner v1
+- `src/app/api/planner/route.ts` — Weekly Planner v1.1
 - `src/app/api/intake/share/route.ts` — iPhone Share Sheet intake (Beta 3.6)
 
 Intake flow (Beta 3.6):
@@ -142,11 +142,11 @@ Feedback:
 9. Quick action semantics are explicit in the UI and domain helpers: `Ate This` records eaten only; `Loved It` records eaten, loved, and worth repeating; Meal Detail `Would Make Again` is treated as repeat-only in household summaries.
 10. Today undo is client-side only: it restores the pre-optimistic summary in the local Today view and preserves that local override against stale refreshes in the current session. It does not delete or reverse persisted feedback history.
 
-Weekly Dinner Planner:
+Weekly Planner:
 1. `/planner` renders `src/app/planner/planner-client.tsx`.
 2. Client loads planner state from `GET /api/planner` and saved meal options from `GET /api/notion/meals?pageSize=100`.
-3. `src/lib/notion/meal-plan.ts` reads `NOTION_MEAL_PLAN_SOURCE_ID` directly, or falls back to `NOTION_MEAL_PLAN_DATABASE_ID` and retrieves the primary data source, then validates required properties and queries current-week Dinner rows.
-4. Planner rows use `Plan Date`, `Meal Slot`, `Meal`, `Status`, `Source`, and `Household Notes`; only Dinner is shown in v1.
+3. `src/lib/notion/meal-plan.ts` reads `NOTION_MEAL_PLAN_SOURCE_ID` directly, or falls back to `NOTION_MEAL_PLAN_DATABASE_ID` and retrieves the primary data source, then validates required properties and queries current-week rows.
+4. Planner rows use `Plan Date`, `Meal Slot`, `Meal`, `Status`, `Source`, and `Household Notes`; Breakfast, Lunch, Dinner, and Snack are shown in v1.1.
 5. `POST /api/planner` validates `planDate` as `YYYY-MM-DD`, `slot`, `status`, and Notion meal page IDs before writing.
 6. Assign upserts one row per date/slot with `Source: Manual` and `Status: Planned`; clear removes only the Meal relation and resets status to Planned; status updates only the Status property.
 7. Missing Meal Plan source/database config returns setup diagnostics instead of crashing. Incomplete schema also blocks writes and surfaces safe setup messages.
