@@ -122,7 +122,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] If optional nutrition and quality properties are added to Notion Meals, confirm new saves populate them.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
-- [ ] Verify `/planner` against the production Meal Plan database after adding `NOTION_MEAL_PLAN_DATABASE_ID`.
+- [ ] Verify `/planner` against the production Meal Plan data source after adding `NOTION_MEAL_PLAN_SOURCE_ID`.
 
 ## Next Up
 

@@ -50,7 +50,7 @@ Implemented:
 - Beta 3.5 verified known meal lifecycle: Analyze generated `755 kcal`, `26 g protein`, `15 g fiber`, `medium` confidence, `estimated` source, and provenance; after Save, Notion retrieval returned the same nutrition fields and `/api/dashboard` counted them in today/week totals.
 - Beta 3.5 mobile hardening: Today `Suggest Another` rotates through alternatives after temporary exclusions exhaust, recommendation copy no longer treats repeated saved records as feedback success, and Meals title links have block-level mobile tap targets.
 - Beta 3.6 iPhone Share Intake: `POST /api/intake/share` accepts iOS Shortcut POSTs with `IOS_SHORTCUT_TOKEN` bearer auth, classifies URL/text as `recipe-url`, `social-url`, `plain-text`, or `unknown-url`, persists intake to optional Notion Meal Intake database, and returns `analyzeUrl` with intake page ID. `/analyze?intake=<id>` loads the intake record server-side and shows an amber bridge panel with classification, source, preview, and social fallback copy. The `AnalyzeClient` is pre-filled with the URL or text. The middleware was updated to accept `IOS_SHORTCUT_TOKEN` specifically for the intake path.
-- Weekly Dinner Planner v1: `/planner` loads the current Monday-Sunday dinner plan from a dedicated Notion Meal Plan database, offers saved Meals as assignment options, can clear a planned dinner, and can mark `Planned`, `Cooked`, `Skipped`, or `Swapped`. The model includes `Meal Slot` for future meal slots, but the UI is dinner-only. Missing planner config or schema gaps show safe diagnostics and block writes without crashing.
+- Weekly Dinner Planner v1: `/planner` loads the current Monday-Sunday dinner plan from a dedicated Notion Meal Plan data source, offers saved Meals as assignment options, can clear a planned dinner, and can mark `Planned`, `Cooked`, `Skipped`, or `Swapped`. The model includes `Meal Slot` for future meal slots, but the UI is dinner-only. Missing planner config or schema gaps show safe diagnostics and block writes without crashing. Prefer `NOTION_MEAL_PLAN_SOURCE_ID`; `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
 - Analyze now has staged loading copy for long analysis runs and tells users detailed meals can take about 20-30 seconds.
 - Feedback quick actions now have explicit semantics: `Ate This` logs eaten only, `Loved It` logs eaten/loved/worth repeating, and Meal Detail `Would Make Again` is repeat-only in household summaries.
 - Dashboard starts with household takeaways before detailed metrics and keeps data coverage/source diagnostics behind Advanced data coverage.
@@ -114,7 +114,7 @@ Manual Vercel/Notion verification required after deploying Beta 3.5:
 9. Mobile deployment has no horizontal overflow on Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail.
 10. Today `Suggest Another` works on phone-sized viewports for categories with alternatives.
 11. No user-facing copy implies feedback can be persistently undone unless that feature is actually implemented.
-12. `/planner` loads on the Vercel URL; with `NOTION_MEAL_PLAN_DATABASE_ID` configured, assign, clear, and status updates work against the Meal Plan database.
+12. `/planner` loads on the Vercel URL; with `NOTION_MEAL_PLAN_SOURCE_ID` configured, assign, clear, and status updates work against the Meal Plan data source.
 
 ## Current Architecture
 

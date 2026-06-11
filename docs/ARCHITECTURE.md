@@ -145,11 +145,11 @@ Feedback:
 Weekly Dinner Planner:
 1. `/planner` renders `src/app/planner/planner-client.tsx`.
 2. Client loads planner state from `GET /api/planner` and saved meal options from `GET /api/notion/meals?pageSize=100`.
-3. `src/lib/notion/meal-plan.ts` reads `NOTION_MEAL_PLAN_DATABASE_ID`, retrieves the active Meal Plan data source, validates required properties, and queries current-week Dinner rows.
+3. `src/lib/notion/meal-plan.ts` reads `NOTION_MEAL_PLAN_SOURCE_ID` directly, or falls back to `NOTION_MEAL_PLAN_DATABASE_ID` and retrieves the primary data source, then validates required properties and queries current-week Dinner rows.
 4. Planner rows use `Plan Date`, `Meal Slot`, `Meal`, `Status`, `Source`, and `Household Notes`; only Dinner is shown in v1.
 5. `POST /api/planner` validates `planDate` as `YYYY-MM-DD`, `slot`, `status`, and Notion meal page IDs before writing.
 6. Assign upserts one row per date/slot with `Source: Manual` and `Status: Planned`; clear removes only the Meal relation and resets status to Planned; status updates only the Status property.
-7. Missing `NOTION_MEAL_PLAN_DATABASE_ID` returns setup diagnostics instead of crashing. Incomplete schema also blocks writes and surfaces safe setup messages.
+7. Missing Meal Plan source/database config returns setup diagnostics instead of crashing. Incomplete schema also blocks writes and surfaces safe setup messages.
 
 Diagnostics:
 1. `/settings` calls `GET /api/diagnostics/notion`.

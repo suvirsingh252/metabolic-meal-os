@@ -8,6 +8,7 @@ export interface ServerEnv {
   NOTION_WEEKLY_PLANS_DATABASE_ID: string;
   NOTION_MEAL_TEMPLATES_DATABASE_ID: string;
   NOTION_MEAL_PLAN_DATABASE_ID?: string;
+  NOTION_MEAL_PLAN_SOURCE_ID?: string;
 }
 
 export type OpenAIEnv = Pick<ServerEnv, "OPENAI_API_KEY">;
@@ -26,7 +27,8 @@ export type NotionIngredientsEnv = Pick<
 >;
 export interface NotionMealPlanEnv {
   NOTION_API_KEY: string;
-  NOTION_MEAL_PLAN_DATABASE_ID: string;
+  NOTION_MEAL_PLAN_DATABASE_ID?: string;
+  NOTION_MEAL_PLAN_SOURCE_ID?: string;
 }
 export type FullNotionEnv = Pick<
   ServerEnv,
@@ -144,16 +146,21 @@ export function getOptionalNotionMealPlanEnv(): NotionMealPlanEnv | null {
 
   const NOTION_API_KEY = process.env.NOTION_API_KEY?.trim();
   const NOTION_MEAL_PLAN_DATABASE_ID =
-    process.env.NOTION_MEAL_PLAN_DATABASE_ID?.trim() ||
+    process.env.NOTION_MEAL_PLAN_DATABASE_ID?.trim();
+  const NOTION_MEAL_PLAN_SOURCE_ID =
     process.env.NOTION_MEAL_PLAN_SOURCE_ID?.trim();
 
-  if (!NOTION_API_KEY || !NOTION_MEAL_PLAN_DATABASE_ID) {
+  if (
+    !NOTION_API_KEY ||
+    (!NOTION_MEAL_PLAN_DATABASE_ID && !NOTION_MEAL_PLAN_SOURCE_ID)
+  ) {
     return null;
   }
 
   return {
     NOTION_API_KEY,
-    NOTION_MEAL_PLAN_DATABASE_ID
+    NOTION_MEAL_PLAN_DATABASE_ID,
+    NOTION_MEAL_PLAN_SOURCE_ID
   };
 }
 

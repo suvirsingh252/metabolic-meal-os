@@ -9,7 +9,7 @@ Decision: Add `/planner` as a small Notion-backed dinner planner using a dedicat
 Reasoning:
 - The immediate family need is to assign saved dinners to the current week, clear them, and mark what happened.
 - Saved Meals already contain the household meal archive, so planner v1 should relate to those records rather than inventing meals or nutrition.
-- Missing planner configuration must not break the deployed app; `/planner` and Settings diagnostics should explain setup gaps and block writes safely.
+- Missing planner configuration must not break the deployed app; `/planner` and Settings diagnostics should explain setup gaps and block writes safely. Prefer `NOTION_MEAL_PLAN_SOURCE_ID` because planner reads and writes target the active Notion data source.
 - AI weekly generation, grocery lists, and drag-and-drop are intentionally deferred until manual planning behavior is trusted.
 
 Implementation:

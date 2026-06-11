@@ -10,7 +10,10 @@ import {
   type PlannerSlot,
   type PlannerViewModel
 } from "@/src/lib/domain/planner";
-import { getOptionalNotionMealPlanEnv } from "@/src/lib/env";
+import {
+  getOptionalNotionMealPlanEnv,
+  type NotionMealPlanEnv
+} from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 import { queryMealSummaries } from "@/src/lib/notion/meals-query";
@@ -142,11 +145,30 @@ function relation(pageId: string | null) {
   };
 }
 
-async function readPlannerSchema(notion: NotionClient, databaseId: string) {
+async function getPlannerDataSourceId(
+  notion: NotionClient,
+  env: NotionMealPlanEnv
+) {
+  if (env.NOTION_MEAL_PLAN_SOURCE_ID) {
+    return env.NOTION_MEAL_PLAN_SOURCE_ID;
+  }
+
+  if (!env.NOTION_MEAL_PLAN_DATABASE_ID) {
+    throw new Error("Meal Plan data source is not configured.");
+  }
+
   const database = await notion.databases.retrieve({
-    database_id: databaseId
+    database_id: env.NOTION_MEAL_PLAN_DATABASE_ID
   });
-  const dataSourceId = getPrimaryDataSourceId(database);
+
+  return getPrimaryDataSourceId(database);
+}
+
+async function readPlannerSchema(
+  notion: NotionClient,
+  env: NotionMealPlanEnv
+) {
+  const dataSourceId = await getPlannerDataSourceId(notion, env);
   const dataSource = await notion.dataSources.retrieve({
     data_source_id: dataSourceId
   });
@@ -196,7 +218,7 @@ function missingPlannerConfig(): PlannerViewModel {
         {
           code: "missing-config",
           message:
-            "Weekly Planner needs NOTION_MEAL_PLAN_DATABASE_ID before plans can be loaded or saved."
+            "Weekly Planner needs NOTION_MEAL_PLAN_SOURCE_ID or NOTION_MEAL_PLAN_DATABASE_ID before plans can be loaded or saved."
         }
       ]
     }
@@ -256,10 +278,7 @@ export async function getWeeklyDinnerPlanner(): Promise<PlannerViewModel> {
   }
 
   const notion = getNotionClient(env.NOTION_API_KEY);
-  const schema = await readPlannerSchema(
-    notion,
-    env.NOTION_MEAL_PLAN_DATABASE_ID
-  );
+  const schema = await readPlannerSchema(notion, env);
 
   if (!schema.ok || !schema.dataSourceId) {
     return {
@@ -363,10 +382,7 @@ export async function writePlannerMutation(input: PlannerMutationInput) {
   }
 
   const notion = getNotionClient(env.NOTION_API_KEY);
-  const schema = await readPlannerSchema(
-    notion,
-    env.NOTION_MEAL_PLAN_DATABASE_ID
-  );
+  const schema = await readPlannerSchema(notion, env);
 
   if (!schema.ok || !schema.dataSourceId) {
     throw new Error("Weekly Planner Notion schema is incomplete.");
@@ -402,7 +418,8 @@ export async function writePlannerMutation(input: PlannerMutationInput) {
 
     const page = await notion.pages.create({
       parent: {
-        database_id: env.NOTION_MEAL_PLAN_DATABASE_ID
+        data_source_id: schema.dataSourceId,
+        type: "data_source_id"
       },
       properties: {
         ...properties,
@@ -448,19 +465,19 @@ export async function getPlannerSchemaDiagnostics() {
       key: "planner" as const,
       ok: false,
       error:
-        "Meal Plan is not configured. Add NOTION_MEAL_PLAN_DATABASE_ID in Vercel."
+        "Meal Plan is not configured. Add NOTION_MEAL_PLAN_SOURCE_ID in Vercel."
     };
   }
 
   const notion = getNotionClient(env.NOTION_API_KEY);
-  const schema = await readPlannerSchema(
-    notion,
-    env.NOTION_MEAL_PLAN_DATABASE_ID
-  );
+  const schema = await readPlannerSchema(notion, env);
 
   return {
     key: "planner" as const,
-    id: env.NOTION_MEAL_PLAN_DATABASE_ID,
+    id:
+      env.NOTION_MEAL_PLAN_SOURCE_ID ??
+      env.NOTION_MEAL_PLAN_DATABASE_ID ??
+      "unknown",
     title: "Meal Plan",
     properties: requiredPlannerProperties.map((property) => ({
       name: property.name,

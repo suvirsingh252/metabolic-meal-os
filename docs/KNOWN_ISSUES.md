@@ -24,7 +24,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 
 ## Planner v1 Known Limitations
 
-- [ ] `NOTION_MEAL_PLAN_DATABASE_ID` must be set manually and the Meal Plan database must be shared with the Notion integration.
+- [ ] `NOTION_MEAL_PLAN_SOURCE_ID` must be set manually and the Meal Plan data source/database must be shared with the Notion integration. `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
 - [ ] Planner v1 is dinner-only in the UI even though rows include `Meal Slot` for future expansion.
 - [ ] Planner assignment uses existing saved Meals only. There is no AI week generation, grocery-list generation, drag-and-drop, or meal invention.
 - [ ] Clearing a dinner removes the Meal relation and resets status/source, but it does not archive/delete the Notion Meal Plan row.
@@ -87,7 +87,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Household metadata projection/filtering depends on optional Notion properties. Existing databases without those properties still operate as single-household private stores.
 - [ ] Ingredient enrichment is explicit/manual only from Settings or direct API calls; it does not run during meal analysis or ingredient suggestion persistence.
 - [ ] Canada grocery, nutrition, Open Food Facts, and weather integrations are adapter stubs only. Recipe parser has an active shared-URL implementation, but it remains intentionally dependency-free.
-- [ ] Legacy Weekly Plans and Meal Templates database IDs exist but are not used by `/planner`; the new planner uses `NOTION_MEAL_PLAN_DATABASE_ID`.
+- [ ] Legacy Weekly Plans and Meal Templates database IDs exist but are not used by `/planner`; the new planner uses `NOTION_MEAL_PLAN_SOURCE_ID`.
 - [ ] Production smoke-test automation is read-only by design and does not cover OpenAI analysis or Notion write flows.
 - [ ] Beta 3.5 added local write-flow verification for Analyze -> Save -> Notion -> Meals -> Dashboard, but production write-flow smoke automation is still manual because it creates Notion records.
 - [ ] Beta 2/Beta 3 feedback refresh, learning strip, usability copy, and client-only undo required no Notion schema changes. Richer feedback analytics or persisted undo/reversal would need explicit backend and schema/product decisions.

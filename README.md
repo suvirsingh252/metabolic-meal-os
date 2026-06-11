@@ -71,7 +71,8 @@ Required Vercel environment variables:
 - `NOTION_MEALS_DATABASE_ID`
 - `NOTION_INGREDIENTS_DATABASE_ID`
 - `NOTION_FEEDBACK_DATABASE_ID`
-- `NOTION_MEAL_PLAN_DATABASE_ID` — enables `/planner`; the page shows setup diagnostics if absent
+- `NOTION_MEAL_PLAN_SOURCE_ID` — enables `/planner`; use the active Meal Plan data source ID
+- `NOTION_MEAL_PLAN_DATABASE_ID` — optional fallback if using the parent database ID instead of the data source ID
 - `NOTION_WEEKLY_PLANS_DATABASE_ID`
 - `NOTION_MEAL_TEMPLATES_DATABASE_ID`
 - `IOS_SHORTCUT_TOKEN` — secret token for the iPhone Share Sheet Shortcut (Beta 3.6)
@@ -85,7 +86,7 @@ Deployment checklist:
 - Notion API key configured.
 - All Notion database IDs configured.
 - Meals and Feedback databases shared with the Notion integration.
-- Meal Plan database shared with the Notion integration if Planner is enabled.
+- Meal Plan data source/database shared with the Notion integration if Planner is enabled.
 - `/settings` Notion diagnostics passes on the Vercel URL.
 - `/planner` loads; if configured, the current week dinner slots can be assigned, cleared, and marked cooked/skipped/swapped.
 - `IOS_SHORTCUT_TOKEN` set and iPhone Shortcut configured (see iPhone Shortcut Setup below).
@@ -224,7 +225,7 @@ Planner behavior:
 - It renders the current Monday-Sunday week and dinner slots only. The data model still writes `Meal Slot` so lunch, breakfast, and snack can be added later without changing the core row shape.
 - Saved meals from the existing Meals database are the only assignable options. The planner does not invent meals, generate weeks, or build grocery lists.
 - The planner can assign a saved meal, clear a planned meal relation, and update status to `Planned`, `Cooked`, `Skipped`, or `Swapped`.
-- If `NOTION_MEAL_PLAN_DATABASE_ID` is missing or the Meal Plan schema is incomplete, `/planner` shows setup diagnostics and blocks writes without crashing.
+- If `NOTION_MEAL_PLAN_SOURCE_ID` or `NOTION_MEAL_PLAN_DATABASE_ID` is missing, or the Meal Plan schema is incomplete, `/planner` shows setup diagnostics and blocks writes without crashing.
 
 Meal Plan Notion database:
 
