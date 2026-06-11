@@ -65,3 +65,18 @@ test("summarizeMealFeedback captures disliked and mixed feedback", () => {
   assert.equal(summaries["meal-2"]?.wouldNotRepeatCount, 1);
   assert.equal(summaries["meal-2"]?.confidence, "medium");
 });
+
+test("summarizeMealFeedback exposes recent feedback notes without schema changes", () => {
+  const summaries = summarizeMealFeedback([
+    event({ notes: "Newest note" }),
+    event({ notes: "Older note" }),
+    event({ notes: "Oldest kept note" }),
+    event({ notes: "Extra old note" })
+  ]);
+
+  assert.deepEqual(summaries["meal-1"]?.recentNotes, [
+    "Newest note",
+    "Older note",
+    "Oldest kept note"
+  ]);
+});

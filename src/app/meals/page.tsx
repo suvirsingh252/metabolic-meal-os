@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   CheckCircle2,
   ExternalLink,
@@ -14,6 +15,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 
 interface MealsResponse {
@@ -132,16 +134,23 @@ function MealCard({ meal }: { meal: MealSummary }) {
     <div className="rounded-md border bg-background p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{meal.mealName}</h2>
+          <h2 className="text-lg font-semibold">
+            <Link
+              className="transition-colors hover:text-primary"
+              href={getMealDetailPath(meal.id)}
+            >
+              {meal.mealName}
+            </Link>
+          </h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {badges.map((badge) => (
               <Badge key={badge}>{badge}</Badge>
             ))}
           </div>
         </div>
-        <Button asChild size="sm" variant="secondary">
+        <Button asChild size="sm" variant="ghost">
           <a href={meal.url} rel="noreferrer" target="_blank">
-            Open
+            Notion
             <ExternalLink className="h-4 w-4" />
           </a>
         </Button>
@@ -158,6 +167,9 @@ function MealCard({ meal }: { meal: MealSummary }) {
         <MealFlag checked={meal.weeknightFriendly} label="Weeknight Friendly" />
         <MealFlag checked={meal.comfortMeal} label="Comfort Meal" />
       </div>
+      <Button asChild className="mt-4 w-full sm:w-auto" variant="secondary">
+        <Link href={getMealDetailPath(meal.id)}>View meal</Link>
+      </Button>
     </div>
   );
 }

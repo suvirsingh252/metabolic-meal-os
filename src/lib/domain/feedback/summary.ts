@@ -24,6 +24,7 @@ export interface MealFeedbackSummary {
   lastPositiveAt: string | null;
   netPreferenceScore: number;
   confidence: "none" | "low" | "medium" | "high";
+  recentNotes: string[];
 }
 
 export type MealFeedbackSummaryByMealId = Record<string, MealFeedbackSummary>;
@@ -106,7 +107,8 @@ export function summarizeMealFeedback(
         wouldNotRepeatCount: 0,
         lastEatenAt: null,
         lastPositiveAt: null,
-        netPreferenceScore: 0
+        netPreferenceScore: 0,
+        recentNotes: []
       };
     const loved = isLovedEvent(event);
     const positive = isPositiveEvent(event);
@@ -140,6 +142,13 @@ export function summarizeMealFeedback(
       summary.netPreferenceScore -= 2;
     }
 
+    if (event.notes?.trim()) {
+      summary.recentNotes = [
+        ...summary.recentNotes.filter((note) => note !== event.notes?.trim()),
+        event.notes.trim()
+      ].slice(0, 3);
+    }
+
     summaries[event.mealId] = summary;
   }
 
@@ -169,6 +178,7 @@ export function emptyMealFeedbackSummary(
     lastEatenAt: null,
     lastPositiveAt: null,
     netPreferenceScore: 0,
-    confidence: "none"
+    confidence: "none",
+    recentNotes: []
   };
 }

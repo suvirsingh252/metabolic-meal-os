@@ -180,7 +180,8 @@ test("ranking boosts meals loved by household feedback", () => {
       lastEatenAt: "2026-05-01T12:00:00.000Z",
       lastPositiveAt: "2026-05-01T12:00:00.000Z",
       netPreferenceScore: 10,
-      confidence: "medium"
+      confidence: "medium",
+      recentNotes: []
     }
   };
 
@@ -211,7 +212,8 @@ test("ranking temporarily de-prioritizes recently eaten feedback", () => {
       lastEatenAt: "2026-06-10T08:00:00.000Z",
       lastPositiveAt: "2026-06-10T08:00:00.000Z",
       netPreferenceScore: 18,
-      confidence: "medium"
+      confidence: "medium",
+      recentNotes: []
     }
   };
 
@@ -245,7 +247,8 @@ test("ranking lowers meals with repeated negative feedback", () => {
       lastEatenAt: "2026-05-01T12:00:00.000Z",
       lastPositiveAt: "2026-04-15T12:00:00.000Z",
       netPreferenceScore: -8,
-      confidence: "medium"
+      confidence: "medium",
+      recentNotes: []
     }
   };
 

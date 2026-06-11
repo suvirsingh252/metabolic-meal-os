@@ -23,6 +23,7 @@ import {
   type TodayViewModel
 } from "@/src/lib/domain/recommendations";
 import type { MealFeedbackSummaryByMealId } from "@/src/lib/domain/feedback";
+import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 import type { MealFeedbackResult } from "@/src/lib/types/feedback";
 
@@ -259,10 +260,8 @@ export function TodayClient() {
             {viewModel.freshIdeas.map((idea) => (
               <a
                 className="rounded-md border bg-card p-4 transition-colors hover:bg-secondary/60"
-                href={idea.meal.url}
+                href={getMealDetailPath(idea.meal.id)}
                 key={idea.meal.id}
-                rel="noreferrer"
-                target="_blank"
               >
                 <Badge>New Idea</Badge>
                 <h3 className="mt-3 font-semibold leading-tight">
@@ -378,7 +377,7 @@ function SuggestionCard({
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           <Button asChild variant="secondary">
-            <a href={recommendation.meal.url} rel="noreferrer" target="_blank">
+            <a href={getMealDetailPath(recommendation.meal.id)}>
               <ExternalLink className="h-4 w-4" />
               View Meal
             </a>
