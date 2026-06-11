@@ -3,6 +3,84 @@ import test from "node:test";
 import { classifyInput, normalizeUrl, parseUrl } from "@/src/lib/intake/classify";
 import { getIntakeDbId } from "@/src/lib/intake/notion";
 
+// --- openUrl construction ---
+
+function buildAnalyzeUrl(origin: string, intakeId?: string): string {
+  const base = `${origin}/analyze`;
+  return intakeId ? `${base}?intake=${intakeId}` : base;
+}
+
+function extractOrigin(requestUrl: string): string {
+  try {
+    return new URL(requestUrl).origin;
+  } catch {
+    return "https://metabolic-meal-os.vercel.app";
+  }
+}
+
+test("openUrl: uses request origin (not hardcoded production URL)", () => {
+  const origin = extractOrigin("https://metabolic-meal-os-due4.vercel.app/api/intake/share");
+  assert.equal(origin, "https://metabolic-meal-os-due4.vercel.app");
+});
+
+test("openUrl: pathname is /analyze without intake id", () => {
+  const url = buildAnalyzeUrl("https://metabolic-meal-os-due4.vercel.app");
+  assert.equal(new URL(url).pathname, "/analyze");
+  assert.equal(new URL(url).search, "");
+});
+
+test("openUrl: pathname is /analyze with intake query param", () => {
+  const id = "abc123de-f456-789a-bcde-f01234567890";
+  const url = buildAnalyzeUrl("https://metabolic-meal-os-due4.vercel.app", id);
+  assert.equal(new URL(url).pathname, "/analyze");
+  assert.equal(new URL(url).searchParams.get("intake"), id);
+});
+
+test("openUrl: does not contain /api/intake or /intake prefix", () => {
+  const url = buildAnalyzeUrl("https://example.vercel.app", "some-id");
+  assert.ok(!url.includes("/api/intake"), "must not start with /api/intake");
+  assert.ok(!url.includes("/intake/analyze"), "must not use /intake/analyze");
+  assert.equal(new URL(url).pathname, "/analyze");
+});
+
+test("openUrl: production URL fallback when request URL is malformed", () => {
+  const origin = extractOrigin("not-a-url");
+  assert.equal(origin, "https://metabolic-meal-os.vercel.app");
+});
+
+test("openUrl: due4 deployment returns due4 origin (not production)", () => {
+  const origin = extractOrigin("https://metabolic-meal-os-due4.vercel.app/api/intake/share");
+  const url = buildAnalyzeUrl(origin, "test-id-123");
+  assert.ok(url.startsWith("https://metabolic-meal-os-due4.vercel.app"), "must use due4 origin");
+  assert.ok(!url.startsWith("https://metabolic-meal-os.vercel.app/"), "must not use prod origin");
+});
+
+// --- /analyze page searchParams handling ---
+
+function resolveIntakeId(searchParams: Record<string, string | undefined>): string | undefined {
+  const raw = searchParams["intake"];
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+test("/analyze: no intake param returns undefined intakeId", () => {
+  assert.equal(resolveIntakeId({}), undefined);
+});
+
+test("/analyze: intake param extracts correctly", () => {
+  const id = "abc123de-f456-789a-bcde-f01234567890";
+  assert.equal(resolveIntakeId({ intake: id }), id);
+});
+
+test("/analyze: whitespace-only intake param returns undefined", () => {
+  assert.equal(resolveIntakeId({ intake: "   " }), undefined);
+});
+
+test("/analyze: non-string intake param returns undefined", () => {
+  assert.equal(resolveIntakeId({ intake: undefined }), undefined);
+});
+
 // --- classifyInput ---
 
 test("classifyInput: recipe URL from allrecipes", () => {
