@@ -130,6 +130,7 @@ Nutrition behavior:
 
 Dashboard reliability behavior:
 
+- Beta 3.5 audit verified the full Analyze -> Save -> Notion -> Meals -> Dashboard nutrition lifecycle with a known meal. New saves now inspect the active Notion data source before writing optional nutrition fields, so compatible Meals properties receive calories, protein, fiber, nutrition source/provenance/confidence, and meal quality.
 - Historical Meals are enriched at read time only. Existing Notion nutrition and score properties win; legacy Notes scorecards can backfill quality metadata; exact nutrition totals are never invented.
 - `/dashboard` starts with household takeaways: what Meal OS learned, what to do next, and how confident the dashboard is. Technical data coverage indicators live under Advanced data coverage.
 - `/settings` Notion schema diagnostics reports optional Meals field gaps and incompatible property types without mutating Notion schema or blocking the app.
@@ -151,6 +152,7 @@ Recommendation behavior:
 - No OpenAI call, generated recommendation, or new Notion property is used for recommendation ranking.
 - With no feedback history, preference remains neutral and Today falls back to stable saved-meal metadata scoring.
 - Today cards show 2-4 plain household reasons and include an expandable `Why this meal?` explanation generated from the same deterministic score components.
+- Beta 3.5 hardening fixed mobile `Suggest Another` cycling so categories with alternatives can keep rotating after temporary exclusions are exhausted, and repeated-saved-meal reasons no longer imply household success unless feedback supports that claim.
 
 Beta 3 usability behavior:
 

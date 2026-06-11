@@ -1,6 +1,34 @@
 # Architectural Decisions
 
-Last updated: 2026-06-11 (Beta 3 Usability Closeout)
+Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
+
+## 2026-06-11 — Beta 3.5 Trust Depends On Active Data-Source Persistence
+
+Decision: Treat the active Notion data source, not the parent database object, as the source of truth for optional Meals schema detection during `save-meal`.
+
+Reasoning:
+- The Beta 3.5 lifecycle audit showed Analyze generated nutrition and Save succeeded, but Notion retrieval and Dashboard still showed nutrition as unavailable.
+- Schema diagnostics already read the active data source and showed compatible nutrition fields existed; `save-meal` was checking a different schema surface before optional writes.
+- A family cannot trust Dashboard if nutrition appears in review but is silently skipped before persistence.
+
+Fix:
+- `POST /api/notion/save-meal` now retrieves the primary Meals data source before mapping optional nutrition/source/quality fields.
+- The live numeric `Nutrition Confidence` property is supported with `low=1`, `medium=2`, `high=3` and maps back to labels on read.
+- No automatic Notion schema mutation was added.
+
+## 2026-06-11 — Recommendation Copy Must Not Overclaim Feedback
+
+Decision: Keep Today recommendation reasons tied to real evidence and allow `Suggest Another` to cycle through available category options after temporary exclusions are exhausted.
+
+Reasoning:
+- The audit required checking whether labels such as loved, worth repeating, or recently successful were supported by data.
+- Repeated saved meal records are useful variety evidence, but they are not the same as household feedback.
+- Mobile users reported `Suggest Another` as broken; exhausting the temporary exclusion list made a normal interaction look like a dead end.
+
+Fix:
+- Repeated saved meal copy now says `Repeated in saved meals.` instead of implying success.
+- Feedback-backed reasons still come from Meal Feedback summaries.
+- `Suggest Another` now falls back to the rest of the category when exclusions exhaust the pool.
 
 ## 2026-06-11 — Beta 3 Usability Uses Household Language And Progressive Disclosure
 

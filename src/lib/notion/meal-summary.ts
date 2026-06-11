@@ -134,6 +134,30 @@ function readNumber(page: PageObjectResponse, propertyNames: string[]) {
   return null;
 }
 
+function readConfidence(page: PageObjectResponse, propertyNames: string[]) {
+  const textValue = readTextLike(page, propertyNames);
+
+  if (textValue) {
+    return textValue;
+  }
+
+  const numberValue = readNumber(page, propertyNames);
+
+  if (numberValue === null) {
+    return null;
+  }
+
+  if (numberValue >= 3) {
+    return "high";
+  }
+
+  if (numberValue >= 2) {
+    return "medium";
+  }
+
+  return "low";
+}
+
 function readTextLike(page: PageObjectResponse, propertyNames: string[]) {
   for (const propertyName of propertyNames) {
     const property = getProperty(page, propertyName);
@@ -186,7 +210,7 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
       "Total Sugar (g)"
     ])
   };
-  const explicitNutritionConfidence = readTextLike(page, [
+  const explicitNutritionConfidence = readConfidence(page, [
     "Nutrition Confidence",
     "Nutrient Confidence",
     "Confidence"

@@ -44,17 +44,13 @@ test("schema health accepts concise nutrition aliases", () => {
   assert.equal(health.missing.some((field) => field.label === "Sugar"), false);
 });
 
-test("schema health reports numeric nutrition confidence as incompatible", () => {
+test("schema health accepts numeric nutrition confidence", () => {
   const health = evaluateMealsSchemaHealth([
     { name: "Nutrition Confidence", type: "number" }
   ]);
 
-  assert.deepEqual(health.incompatible.find((field) => field.label === "Nutrition Confidence"), {
-    label: "Nutrition Confidence",
-    actualName: "Nutrition Confidence",
-    actualType: "number",
-    expectedTypes: ["select", "rich_text"],
-    functionality: "saved low/medium/high confidence labels",
-    required: false
-  });
+  assert.equal(
+    health.incompatible.some((field) => field.label === "Nutrition Confidence"),
+    false
+  );
 });

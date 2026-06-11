@@ -164,6 +164,21 @@ test("suggest another returns another valid candidate without repeating current 
   assert.equal(alternative?.meal.id, "second");
 });
 
+test("suggest another cycles again after temporary exclusions exhaust a category", () => {
+  const meals = [
+    meal({ id: "first", mealName: "First dinner", qualityScore: 90 }),
+    meal({ id: "second", mealName: "Second dinner", qualityScore: 80 }),
+    meal({ id: "third", mealName: "Third dinner", qualityScore: 70 })
+  ];
+
+  const alternative = getAlternativeSuggestion(meals, "Dinner", "third", {
+    generatedAt,
+    excludedMealIds: ["first", "second", "third"]
+  });
+
+  assert.equal(alternative?.meal.id, "first");
+});
+
 test("ranking boosts meals loved by household feedback", () => {
   const meals = [
     meal({ id: "loved", mealName: "Loved dinner", qualityScore: 75 }),

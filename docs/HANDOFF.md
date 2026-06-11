@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-11 (Beta 3 Usability Closeout)
+Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -46,6 +46,9 @@ Implemented:
 - Today feedback undo is client-side only. It restores the local Today view and learning strip but does not delete or reverse persisted feedback history.
 - Today recommendations now use Adaptive Recommendation Engine v1: deterministic component scoring from saved meal metadata and existing household feedback summaries, with preference score, recency score, variety penalty, saved scheduling metadata score, and expandable `Why this meal?` explanations.
 - Beta 3 usability closeout: normal household flows now use Meal OS language instead of Notion-facing copy. Analyze says `Save meal` / `Saved to Meal OS`, Meals describes saved meals, Feedback uses Meal OS success copy, and external saved-record links are only under Advanced details where kept.
+- Beta 3.5 functional audit: local end-to-end verification found and fixed a critical nutrition persistence bug. `save-meal` now reads the active Meals data source before optional writes, so compatible nutrition/source/quality fields persist and dashboard aggregation reflects them.
+- Beta 3.5 verified known meal lifecycle: Analyze generated `755 kcal`, `26 g protein`, `15 g fiber`, `medium` confidence, `estimated` source, and provenance; after Save, Notion retrieval returned the same nutrition fields and `/api/dashboard` counted them in today/week totals.
+- Beta 3.5 mobile hardening: Today `Suggest Another` rotates through alternatives after temporary exclusions exhaust, recommendation copy no longer treats repeated saved records as feedback success, and Meals title links have block-level mobile tap targets.
 - Analyze now has staged loading copy for long analysis runs and tells users detailed meals can take about 20-30 seconds.
 - Feedback quick actions now have explicit semantics: `Ate This` logs eaten only, `Loved It` logs eaten/loved/worth repeating, and Meal Detail `Would Make Again` is repeat-only in household summaries.
 - Dashboard starts with household takeaways before detailed metrics and keeps data coverage/source diagnostics behind Advanced data coverage.
@@ -97,15 +100,18 @@ Not implemented yet:
 - Automatic USDA lookup/enrichment during meal analysis or ingredient suggestion persistence.
 - Multi-household Notion partitioning.
 
-Manual Vercel/Notion verification required after deploying Beta 3 usability:
+Manual Vercel/Notion verification required after deploying Beta 3.5:
 1. Analyze still saves meals successfully to Notion.
-2. Saved meals appear in Meals with Meal OS wording, not Notion wording.
-3. Today feedback writes to Notion as expected.
-4. `Ate This`, `Loved It`, and `Would Make Again` semantics appear correctly in saved feedback summaries.
-5. Dashboard household takeaways update after feedback/data changes.
-6. Meal Detail shows household summary first and hides raw notes/external links under Advanced details.
-7. Mobile deployment has no horizontal overflow on Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail.
-8. No user-facing copy implies feedback can be persistently undone unless that feature is actually implemented.
+2. Newly saved meals with estimated nutrition populate Calories, Protein, Fiber, Nutrition Source, Nutrition Provenance, Nutrition Confidence, and Meal Quality Score in Notion when compatible properties exist.
+3. `/api/notion/meals` retrieves those values and `/api/dashboard` aggregates them.
+4. Saved meals appear in Meals with Meal OS wording, not Notion wording.
+5. Today feedback writes to Notion as expected.
+6. `Ate This`, `Loved It`, and `Would Make Again` semantics appear correctly in saved feedback summaries.
+7. Dashboard household takeaways update after feedback/data changes.
+8. Meal Detail shows household summary first and hides raw notes/external links under Advanced details.
+9. Mobile deployment has no horizontal overflow on Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail.
+10. Today `Suggest Another` works on phone-sized viewports for categories with alternatives.
+11. No user-facing copy implies feedback can be persistently undone unless that feature is actually implemented.
 
 ## Current Architecture
 

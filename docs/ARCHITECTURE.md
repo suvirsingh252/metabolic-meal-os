@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-11 (Beta 3 Usability Closeout)
+Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -101,8 +101,13 @@ Meal save:
 1. User edits analysis on `/analyze`.
 2. Client calls `POST /api/notion/save-meal`.
 3. Server validates `MealAnalysisResult`.
-4. Server maps fields to Notion properties.
+4. Server retrieves the Meals database primary data source and maps fields only to compatible active data-source properties.
 5. Server writes to `NOTION_MEALS_DATABASE_ID`.
+
+Beta 3.5 persistence hardening:
+- `save-meal` inspects the same active Notion data source used by schema diagnostics before optional writes. This prevents nutrition/source/quality fields from being silently skipped when the parent database object does not expose the active data-source properties.
+- Numeric `Nutrition Confidence` properties are supported for the current live schema by writing `low=1`, `medium=2`, and `high=3`; saved pages map those values back to labels on read.
+- Verified lifecycle meal: free-text analysis generated `755 kcal`, `26 g protein`, `15 g fiber`, `medium` confidence, `estimated` source, and provenance; after save these values were retrieved from Notion and aggregated into `/api/dashboard`.
 
 Meals list:
 1. `/meals` calls `GET /api/notion/meals`.
@@ -233,6 +238,8 @@ Graceful degradation:
 - If feedback summaries are missing or empty, preference score is `0`, confidence can remain low, and ranking falls back to saved meal metadata plus recency.
 - If no saved meals exist, Today keeps the existing empty state and does not invent meals.
 - No Notion schema changes or additional properties are required.
+- `Suggest Another` uses temporary client exclusions but falls back to the rest of the category when those exclusions exhaust the pool, so mobile users can keep rotating through available saved options.
+- Badge copy distinguishes duplicated saved meals from feedback-backed household success; repeated saved meals display as repeated records, not as proof that the household liked the meal.
 
 ## Planned Provider Abstraction
 

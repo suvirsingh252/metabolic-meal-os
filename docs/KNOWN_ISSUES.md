@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-11 (Beta 3 Usability Closeout)
+Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -74,6 +74,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Canada grocery, nutrition, Open Food Facts, and weather integrations are adapter stubs only. Recipe parser has an active shared-URL implementation, but it remains intentionally dependency-free.
 - [ ] Weekly Plans and Meal Templates database IDs exist but are not fully used.
 - [ ] Production smoke-test automation is read-only by design and does not cover OpenAI analysis or Notion write flows.
+- [ ] Beta 3.5 added local write-flow verification for Analyze -> Save -> Notion -> Meals -> Dashboard, but production write-flow smoke automation is still manual because it creates Notion records.
 - [ ] Beta 2/Beta 3 feedback refresh, learning strip, usability copy, and client-only undo required no Notion schema changes. Richer feedback analytics or persisted undo/reversal would need explicit backend and schema/product decisions.
 
 ## Manual Notion Schema Gap
@@ -87,7 +88,7 @@ Ask the operator whether they want to add these compatible Meals properties:
 - `Fiber` or `Fiber (g)` — Number
 - `Sodium` or `Sodium (mg)` — Number
 - `Sugar` or `Sugar (g)` — Number
-- `Nutrition Confidence` — Select or Rich text for current high/medium/low compatibility. If this must be Number, update app mapping first.
+- `Nutrition Confidence` — Select or Rich text, or Number using `1=low`, `2=medium`, `3=high`.
 - `Nutrition Provenance` — Select or Rich text
 - `Nutrition Source` — Select or Rich text
 - `Meal Quality Score` — Number

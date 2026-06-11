@@ -202,9 +202,13 @@ export function TodayClient() {
       return;
     }
 
+    const nextExcludedMealIds = excludedMealIds.includes(alternative.meal.id)
+      ? [current.meal.id, alternative.meal.id]
+      : [...excludedMealIds, alternative.meal.id];
+
     setExcludedByCategory((previous) => ({
       ...previous,
-      [category]: [...excludedMealIds, alternative.meal.id]
+      [category]: nextExcludedMealIds
     }));
     setViewModel({
       ...viewModel,
@@ -744,8 +748,12 @@ function toHouseholdRecommendationReason(reason: string) {
     return "Adds variety to the week.";
   }
 
-  if (/repeat|worked|popular/i.test(reason)) {
+  if (/worked/i.test(reason)) {
     return "Similar meals have worked well.";
+  }
+
+  if (/repeat|popular/i.test(reason)) {
+    return "Repeated in saved meals.";
   }
 
   if (/quality|rated|metadata|nutrition/i.test(reason)) {

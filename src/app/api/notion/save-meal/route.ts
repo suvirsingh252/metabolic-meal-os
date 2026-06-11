@@ -52,6 +52,20 @@ function getProperties(database: unknown) {
   return {};
 }
 
+function getPrimaryDataSourceId(database: unknown) {
+  if (
+    isRecord(database) &&
+    Array.isArray(database.data_sources) &&
+    database.data_sources.length > 0 &&
+    isRecord(database.data_sources[0]) &&
+    typeof database.data_sources[0].id === "string"
+  ) {
+    return database.data_sources[0].id;
+  }
+
+  throw new Error("Meals database did not return a queryable data source.");
+}
+
 function findProperty(
   properties: Record<string, unknown>,
   names: string[],
@@ -163,7 +177,7 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   const nutritionConfidence = findProperty(
     properties,
     ["Nutrition Confidence", "Nutrient Confidence"],
-    ["select", "rich_text"]
+    ["select", "rich_text", "number"]
   );
   const nutritionProvenance = findProperty(
     properties,
@@ -302,7 +316,10 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   if (nutritionConfidence) {
     schema.nutritionConfidence = {
       name: nutritionConfidence[0],
-      type: getPropertyType(nutritionConfidence[1]) as "select" | "rich_text"
+      type: getPropertyType(nutritionConfidence[1]) as
+        | "select"
+        | "rich_text"
+        | "number"
     };
   }
   if (nutritionProvenance) {
@@ -373,7 +390,10 @@ export async function POST(request: Request) {
     const database = await notion.databases.retrieve({
       database_id: NOTION_MEALS_DATABASE_ID
     });
-    const sourceSchema = getMealSourcePropertySchema(database);
+    const dataSource = await notion.dataSources.retrieve({
+      data_source_id: getPrimaryDataSourceId(database)
+    });
+    const sourceSchema = getMealSourcePropertySchema(dataSource);
 
     const ownership = getConfiguredHouseholdMetadata();
     const page = await notion.pages.create({

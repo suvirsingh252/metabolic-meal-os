@@ -93,3 +93,30 @@ test("Notion mapping persists estimated fields and leaves blank fields unset", (
   assert.ok("text" in provenanceText);
   assert.match(provenanceText.text.content, /edited during meal review/);
 });
+
+test("Notion mapping supports numeric nutrition confidence schemas", () => {
+  const properties = mapMealAnalysisToNotionProperties(
+    {
+      ...baseMeal,
+      nutritionEstimate: {
+        totals: {
+          calories: 330,
+          protein: 8,
+          carbs: null,
+          fat: null,
+          fiber: 6,
+          sodium: null,
+          sugar: null
+        },
+        confidence: "medium",
+        provenance: "Reviewed estimate",
+        source: "estimated"
+      }
+    },
+    {
+      nutritionConfidence: { name: "Nutrition Confidence", type: "number" }
+    }
+  );
+
+  assert.deepEqual(properties["Nutrition Confidence"], { number: 2 });
+});

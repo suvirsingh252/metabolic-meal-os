@@ -205,7 +205,7 @@ function MealCard({ meal }: { meal: MealSummary }) {
         <div>
           <h2 className="text-lg font-semibold">
             <Link
-              className="transition-colors hover:text-primary"
+              className="block transition-colors hover:text-primary"
               href={getMealDetailPath(meal.id)}
             >
               {meal.mealName}
@@ -244,7 +244,12 @@ function MealCard({ meal }: { meal: MealSummary }) {
         <MealFlag checked={meal.comfortMeal} label="Comfort Meal" />
       </div>
       <Button asChild className="mt-4 w-full sm:w-auto" variant="secondary">
-        <Link href={getMealDetailPath(meal.id)}>View meal</Link>
+        <Link
+          aria-label={`View meal: ${meal.mealName}`}
+          href={getMealDetailPath(meal.id)}
+        >
+          View meal
+        </Link>
       </Button>
     </div>
   );

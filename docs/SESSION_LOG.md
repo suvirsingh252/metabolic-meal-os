@@ -1,5 +1,50 @@
 # Session Log
 
+## 2026-06-11 Beta 3.5 Functional Audit & Production Hardening
+
+Goal:
+- Verify whether a family can trust Analyze, Today, Dashboard, Meals, and Feedback before Beta 4 work, then implement only Critical/Major fixes.
+
+Audit findings:
+- Critical: Analyze generated nutrition and Save succeeded, but Notion retrieval and Dashboard dropped nutrition totals. Root cause was `save-meal` reading optional property support from the parent database object instead of the active Meals data source. Schema diagnostics correctly saw the active data source, but save mapping did not.
+- Major: The live Meals schema used numeric `Nutrition Confidence`; the app previously treated that as incompatible, so confidence could not round-trip.
+- Major: Mobile Today `Suggest Another` could dead-end after temporary exclusions exhausted a category. This made the phone interaction feel broken even when saved alternatives existed.
+- Major: Recommendation reason copy could turn repeated saved records into a stronger household-success claim than the underlying data supported.
+- Major: Meals page title links had an inline tap target that did not consistently line up with the visible heading on mobile automation. The title link is now block-level and View meal links have explicit labels.
+- Dashboard usefulness: after persistence is fixed, dashboard totals and completeness are honest and useful for saved nutrition, but it still depends on enough recent meals with actual nutrition. Unknown sodium/sugar/fat/carbs remain unavailable by design.
+
+Fixes implemented:
+- `POST /api/notion/save-meal` now retrieves the primary Meals data source before mapping optional nutrition/source/quality properties.
+- Numeric `Nutrition Confidence` is supported as `1=low`, `2=medium`, `3=high` and maps back to labels on read.
+- Today `Suggest Another` falls back to the category pool when temporary exclusions exhaust alternatives.
+- Today badge copy now says `Repeated in saved meals.` for repeat-record evidence instead of implying feedback-backed success.
+- Meals title links are block-level mobile tap targets; View meal links include meal-specific accessible labels.
+- Added regression tests for numeric confidence mapping, schema health compatibility, confidence readback, and recommendation cycling.
+
+Verification evidence:
+- Local commands passed: `npm run lint`, `npm run typecheck`, `npm test` (119 tests), and `npm run build`.
+- Known meal lifecycle after fix: `Beta 3.5 Audit Fixed - Gobi Paranthas with Butter, Plain Yogurt, and Salad` saved to Notion page `37c682da-780a-814d-a4a7-e862647a6764`; retrieval returned `755 kcal`, `26 g protein`, `15 g fiber`, `medium` confidence, `estimated` source, full provenance, and `74` quality score.
+- Dashboard aggregation after fix: today/week totals included `755 kcal`, `26 g protein`, `15 g fiber`; source mix counted `estimated: 1` and missing nutrition only for older incomplete rows.
+- Browser mobile viewport at 390px verified Today, Analyze, Meals, Meal Detail, Dashboard, and Feedback with no horizontal overflow.
+- Today mobile verification: Lunch `Suggest Another` changed Air-Fried Bhindi Masala to Chole Bhature; `Ate This` saved feedback and local undo restored the view; Today View Meal opened Meal Detail.
+- Analyze mobile verification: free-text analysis generated a result, showed nutrition review and save controls, and browser Save returned `Saved to Meal OS.` with ingredient relation success.
+- URL analysis verification: an Allrecipes URL returned external `403` and the app showed clear paste-caption/ingredients fallback copy without horizontal overflow.
+- Meals mobile verification: list showed persisted nutrition for newly saved meals and coordinate tap on a meal title opened `/meals/[id]` detail with Advanced details available.
+- Dashboard mobile verification: showed populated calories/protein/fiber totals plus unavailable sodium with coverage copy, not fake zeroes.
+- Feedback mobile verification: saved-meal selection and Save feedback form were visible and scrollable.
+
+Trust rating after fixes:
+- Analyze: Green for free-text/manual analysis and save flow; Yellow for arbitrary URL analysis because external sites can block server fetches.
+- Today: Green for deterministic recommendations and quick feedback; Yellow because undo remains local-only by product decision.
+- Dashboard: Yellow/Green. It now reflects persisted nutrition correctly, but usefulness still depends on enough meals with saved nutrition.
+- Meals: Green for retrieval, nutrition display, and detail navigation after mobile tap-target hardening.
+- Feedback: Green for append-only feedback recording; Yellow only for lack of persisted undo/reversal.
+
+Remaining/deferred:
+- Production write-flow smoke tests still need an explicit disposable-record opt-in and cleanup policy.
+- On-device iPhone Safari production pass is still recommended after deployment.
+- Legacy meals are not backfilled with exact nutrition; read-time metadata backfill remains conservative.
+
 ## 2026-06-11 Beta 3 Usability Closeout
 
 Goal:

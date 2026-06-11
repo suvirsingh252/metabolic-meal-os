@@ -141,10 +141,23 @@ export function getAlternativeSuggestion(
   currentMealId: string,
   options: RankRecommendationOptions
 ) {
+  const excludedMealIds = Array.from(
+    new Set([...(options.excludedMealIds ?? []), currentMealId])
+  );
+  const nextSuggestion =
+    rankRecommendationsForCategory(meals, category, {
+      ...options,
+      excludedMealIds
+    })[0] ?? null;
+
+  if (nextSuggestion || excludedMealIds.length <= 1) {
+    return nextSuggestion;
+  }
+
   return (
     rankRecommendationsForCategory(meals, category, {
       ...options,
-      excludedMealIds: [...(options.excludedMealIds ?? []), currentMealId]
+      excludedMealIds: [currentMealId]
     })[0] ?? null
   );
 }

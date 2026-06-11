@@ -52,3 +52,23 @@ test("Notion meal summary preserves explicit provenance while backfilling qualit
   assert.equal(meal?.qualityScore, 74);
   assert.equal(meal?.proteinScore, 7);
 });
+
+test("Notion meal summary maps numeric nutrition confidence to labels", () => {
+  const meal = mapNotionPageToMealSummary({
+    id: "meal-3",
+    url: "https://notion.so/meal-3",
+    created_time: "2026-05-20T10:00:00.000Z",
+    properties: {
+      "Meal Name": {
+        type: "title",
+        title: [{ plain_text: "Audit meal" }]
+      },
+      "Nutrition Confidence": {
+        type: "number",
+        number: 2
+      }
+    }
+  });
+
+  assert.equal(meal?.nutritionConfidence, "medium");
+});

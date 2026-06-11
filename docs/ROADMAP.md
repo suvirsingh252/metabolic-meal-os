@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-11 (Beta 3 Usability Closeout)
+Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -103,6 +103,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add Beta 3 Adaptive Recommendation Engine v1 with deterministic preference, recency, variety-penalty, and saved scheduling metadata scoring from existing data.
 - [x] Add Today `Why this meal?` explanations generated from deterministic recommendation score components.
 - [x] Complete Beta 3 usability closeout: replace Notion-facing copy in normal flows with Meal OS language, move external links/raw notes into Advanced details, clarify quick feedback semantics, add Analyze staged loading, add Dashboard household takeaways, and reorganize Meal Detail around household summary.
+- [x] Complete Beta 3.5 functional audit and critical hardening: verified Analyze -> Save -> Notion -> Meals -> Dashboard lifecycle, fixed active data-source nutrition persistence, supported numeric nutrition confidence, hardened mobile `Suggest Another`, corrected overclaiming recommendation copy, and improved Meals mobile tap targets.
 
 ## Current Sprint
 
@@ -115,7 +116,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Harden recipe parser robustness for first-pass representative recipe and social/shared URL intake.
 - [ ] Continue real-world recipe/social URL testing and record domains that are blocked, login-gated, or script-rendered.
 - [ ] If optional source properties are added to Notion Meals, confirm manual saves populate them.
-- [ ] If optional nutrition and quality properties are added to Notion Meals, confirm new saves populate them.
+- [x] If optional nutrition and quality properties are added to Notion Meals, confirm new saves populate them.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
 
@@ -128,7 +129,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Review whether known Ingredient context improves protein/fiber and blood-sugar reasoning without becoming too numeric.
 - [x] Decide first-pass FoodData Central nutrient provenance model with explicit per-100g basis and source metadata.
 - [ ] Add optional Meals Notion source fields manually or document the exact schema setup.
-- [ ] Add optional Meals Notion nutrition and quality fields manually, then verify `/api/dashboard` and new saves use them.
+- [x] Add optional Meals Notion nutrition and quality fields manually, then verify `/api/dashboard` and new saves use them.
+- [ ] Add production write-flow smoke automation with explicit opt-in cleanup rules for disposable Notion records.
 - [ ] Run an on-device iPhone Safari pass against the deployed app for `/analyze` estimate review and `/dashboard` cards.
 - [ ] Add a richer household recipe feedback UI/database slice using `HouseholdRecipeFeedback`.
 - [ ] Simplify `/feedback`, `/meals`, and `/settings` flows after the `/analyze` hierarchy pass.

@@ -48,7 +48,7 @@ export const expectedMealFields: ExpectedMealField[] = [
   field("fiberScore", "Fiber Score", ["Fiber Score"], ["number"], "quality scorecard backfill"),
   field("energyDensityScore", "Energy Density Score", ["Energy Density Score"], ["number"], "quality scorecard backfill"),
   field("processingScore", "Processing Score", ["Processing Score"], ["number"], "quality scorecard backfill"),
-  field("nutritionConfidence", "Nutrition Confidence", ["Nutrition Confidence", "Nutrient Confidence"], ["select", "rich_text"], "saved low/medium/high confidence labels"),
+  field("nutritionConfidence", "Nutrition Confidence", ["Nutrition Confidence", "Nutrient Confidence"], ["select", "rich_text", "number"], "saved low/medium/high confidence labels"),
   field("nutritionSource", "Nutrition Source", ["Nutrition Source", "Nutrition Data Source"], ["select", "rich_text"], "nutrition source mix indicators"),
   field("nutritionProvenance", "Nutrition Provenance", ["Nutrition Provenance", "Nutrition Source Notes"], ["select", "rich_text"], "nutrition provenance and backfill explanations"),
   field("mealDate", "Meal Date", ["Meal Date", "Date", "Logged At"], ["date"], "date-based dashboard grouping")

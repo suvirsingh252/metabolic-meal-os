@@ -1,6 +1,6 @@
 # PM Handover
 
-Last updated: 2026-06-11
+Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
 
 This is the recommended starting point for a new PM/chat with no prior conversation context. Read this first, then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md` before proposing work.
 
@@ -40,11 +40,11 @@ Live and working:
 - Today feedback undo is client-only. It restores local Today UI state and does not reverse persisted feedback history.
 - Today recommendations now use deterministic adaptive scoring from saved meal metadata and existing household feedback summaries. Ranking has no AI calls, no new Notion fields, and card-level `Why this meal?` explanations.
 - Beta 3 usability closeout is local and ready for deployment: normal household flows use Meal OS language instead of Notion-facing copy; external saved-record links and raw notes are under Advanced details; Analyze has staged loading copy; Dashboard starts with household takeaways; Meal Detail starts with a household summary.
+- Beta 3.5 functional audit is local and ready for deployment: critical nutrition persistence is fixed against the active Notion Meals data source, numeric Nutrition Confidence is supported, Dashboard aggregation reflects newly saved nutrition, mobile Today `Suggest Another` rotates correctly for categories with alternatives, and Meals detail links have reliable phone tap targets.
 - PWA/mobile shell: manifest, app metadata, icons, safe-area/mobile layout work.
 - Read-only production smoke-test automation via `npm run smoke:prod`.
 - `/analyze` review UI has a first household-first simplification pass with progressive disclosure.
-- Dashboard intelligence remains available at `/dashboard` through `/api/dashboard`, `DashboardViewModel`, daily/weekly summaries, insights, configurable targets, recent meals, and meal quality v1.
-- Local nutrition persistence v1 exists but has not been deployed from this session: recipe JSON-LD nutrition facts can flow into review, users can edit nutrition totals before save, and Notion writes compatible existing nutrition/quality properties only.
+- Dashboard intelligence remains available at `/dashboard` through `/api/dashboard`, `DashboardViewModel`, daily/weekly summaries, insights, configurable targets, recent meals, and meal quality v1. Beta 3.5 verified a known saved meal round-tripped `755 kcal`, `26 g protein`, `15 g fiber`, `medium` confidence, `estimated` source, provenance, and quality into Notion retrieval and dashboard totals.
 
 Recently verified production facts:
 - Evidence-Aware Analysis v3 works in production.
@@ -180,6 +180,7 @@ Safety rules:
 Highest priority:
 - No full authentication. Private deployment/token guardrails exist, but do not broaden public sharing before real auth exists.
 - No automated write-flow smoke tests; current smoke automation is read-only.
+- Production write-flow verification still needs manual or explicitly opted-in automation because it creates Notion records.
 - Today feedback undo is client-only and does not delete/reverse Notion feedback records.
 - Persisted feedback reversal/delete remains deferred; do not imply feedback can be durably undone until a backend behavior exists.
 - Recommendation scoring is deterministic v1 and unpersisted; there is no recommendation audit log or planning workflow yet.
@@ -209,12 +210,12 @@ Other debt:
 
 ## 9. Recommended Next Slices
 
-1. Deploy and manually verify Beta 3 usability behavior on Vercel/Notion.
-2. Add a Notion schema checklist/migration path for explicit nutrition and quality fields, then an operator-triggered backfill job for legacy score fields.
-3. UX pass across `/settings` and any remaining admin/operator surfaces.
-4. Structured ingredient persistence.
-5. Continue real-world recipe/social URL intake testing and record blocked/problematic domains.
-6. Write-flow smoke tests.
+1. Deploy and manually verify Beta 3.5 functional hardening on Vercel/Notion, including nutrition lifecycle, Today mobile actions, Meals detail links, Dashboard aggregation, and Feedback writes.
+2. Add production write-flow smoke tests with explicit disposable-record opt-in and cleanup rules.
+3. Add a Notion schema checklist/migration path for any remaining explicit nutrition and quality fields, then an operator-triggered backfill job for legacy score fields.
+4. UX pass across `/settings` and any remaining admin/operator surfaces.
+5. Structured ingredient persistence.
+6. Continue real-world recipe/social URL intake testing and record blocked/problematic domains.
 7. Persisted feedback reversal/delete path, only if product rules require it.
 8. Household preference persistence.
 9. Weekly planning later.

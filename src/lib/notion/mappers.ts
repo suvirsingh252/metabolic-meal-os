@@ -96,7 +96,7 @@ export interface MealSourcePropertySchema {
   fiberG?: { name: string; type: "number" };
   sodiumMg?: { name: string; type: "number" };
   sugarG?: { name: string; type: "number" };
-  nutritionConfidence?: { name: string; type: "select" | "rich_text" };
+  nutritionConfidence?: { name: string; type: "select" | "rich_text" | "number" };
   nutritionProvenance?: { name: string; type: "select" | "rich_text" };
   nutritionSource?: { name: string; type: "select" | "rich_text" };
   mealQualityScore?: { name: string; type: "number" };
@@ -208,7 +208,7 @@ function applyMealSourceProperties(
       schema.sugarG,
       meal.nutritionEstimate.totals.sugar
     );
-    applyTextLikeProperty(
+    applyConfidenceProperty(
       properties,
       schema.nutritionConfidence,
       meal.nutritionEstimate.confidence
@@ -279,6 +279,31 @@ function applyTextLikeProperty(
 
   properties[property.name] =
     property.type === "select" ? select(value) : richText(value);
+}
+
+function applyConfidenceProperty(
+  properties: PageProperties,
+  property: { name: string; type: "select" | "rich_text" | "number" } | undefined,
+  value: string | null | undefined
+) {
+  if (!property || !value) {
+    return;
+  }
+
+  if (property.type !== "number") {
+    applyTextLikeProperty(
+      properties,
+      { name: property.name, type: property.type },
+      value
+    );
+    return;
+  }
+
+  const normalizedValue = value.toLowerCase();
+  const confidenceNumber =
+    normalizedValue === "high" ? 3 : normalizedValue === "medium" ? 2 : 1;
+
+  properties[property.name] = number(confidenceNumber);
 }
 
 export function mapMealFeedbackToNotionProperties(
