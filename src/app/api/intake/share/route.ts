@@ -43,19 +43,43 @@ function extractPayload(body: unknown): IntakeSharePayload | NextResponse {
     );
   }
 
+  const input = typeof body.input === "string" ? body.input.trim() : undefined;
   const url = typeof body.url === "string" ? body.url.trim() : undefined;
   const text = typeof body.text === "string" ? body.text.trim() : undefined;
   const source = typeof body.source === "string" ? body.source.trim() : undefined;
   const sharedAt = typeof body.sharedAt === "string" ? body.sharedAt.trim() : undefined;
 
-  if (!url && !text) {
+  if (!input && !url && !text) {
     return NextResponse.json(
-      { error: "Provide at least one of: url, text." },
+      { error: "Provide input, url, or text." },
       { status: 400 }
     );
   }
 
-  return { url, text, source, sharedAt };
+  return { input, url, text, source, sharedAt };
+}
+
+function normalizePayloadInput(payload: IntakeSharePayload): {
+  rawUrl?: string;
+  text?: string;
+} {
+  if (payload.input) {
+    const parsed = parseUrl(payload.input);
+    if (parsed) {
+      return { rawUrl: payload.input };
+    }
+    return { text: payload.input };
+  }
+
+  return { rawUrl: payload.url, text: payload.text };
+}
+
+function getBaseUrl(request: Request): string {
+  try {
+    return new URL(request.url).origin;
+  } catch {
+    return PROD_BASE_URL;
+  }
 }
 
 export async function POST(request: Request) {
@@ -68,12 +92,14 @@ export async function POST(request: Request) {
   const payload = extractPayload(body);
   if (payload instanceof NextResponse) return payload;
 
-  const { url: rawUrl, text, source, sharedAt } = payload;
+  const { rawUrl, text } = normalizePayloadInput(payload);
+  const { source, sharedAt } = payload;
 
   const normalizedUrl = rawUrl ? normalizeUrl(rawUrl) : undefined;
   const validUrl = normalizedUrl && parseUrl(normalizedUrl) ? normalizedUrl : undefined;
   const classification = classifyInput(validUrl, text);
   const createdAt = sharedAt ?? new Date().toISOString();
+  const baseUrl = getBaseUrl(request);
 
   const dbId = getIntakeDbId();
 
@@ -82,7 +108,8 @@ export async function POST(request: Request) {
       ok: true,
       classification,
       message: "Intake received but storage is not configured",
-      analyzeUrl: `${PROD_BASE_URL}/analyze`
+      analyzeUrl: `${baseUrl}/analyze`,
+      openUrl: `${baseUrl}/analyze`
     });
   }
 
@@ -92,7 +119,8 @@ export async function POST(request: Request) {
       rawText: text,
       source,
       classification,
-      createdAt
+      createdAt,
+      baseUrl
     });
 
     if (!result) {
@@ -100,7 +128,8 @@ export async function POST(request: Request) {
         ok: true,
         classification,
         message: "Intake received but storage is not configured",
-        analyzeUrl: `${PROD_BASE_URL}/analyze`
+        analyzeUrl: `${baseUrl}/analyze`,
+        openUrl: `${baseUrl}/analyze`
       });
     }
 
@@ -109,7 +138,8 @@ export async function POST(request: Request) {
       intakeId: result.id,
       classification,
       message: "Recipe received",
-      analyzeUrl: result.analyzeUrl
+      analyzeUrl: result.analyzeUrl,
+      openUrl: result.analyzeUrl
     });
   } catch (error) {
     console.error("Intake share save failed", error);

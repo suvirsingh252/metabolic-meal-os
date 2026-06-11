@@ -18,6 +18,7 @@ export interface IntakeRecord {
 }
 
 export interface IntakeSharePayload {
+  input?: string;
   url?: string;
   text?: string;
   source?: string;

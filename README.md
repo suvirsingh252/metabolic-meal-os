@@ -137,28 +137,28 @@ Copy the database ID from the Notion URL and set `NOTION_MEAL_INTAKE_DATABASE_ID
 1. Open the **Shortcuts** app on your iPhone.
 2. Tap **+** to create a new shortcut. Name it **Send to Metabolic Meal OS**.
 3. Tap the info icon and enable **Use as Share Sheet**.
-4. Under **Share Sheet Types**, enable **URLs**, **Text**, and **Safari Web Pages**.
-5. Add a **Get Details of Safari Web Page** action (for URLs).
-6. Add a **Get Variable** step to capture the shared URL or text.
-7. Add a **Get Current Date** action and format it as ISO 8601.
+4. Under **Share Sheet Types**, enable **URLs**, **Text**, **Safari Web Pages**, **Rich Text**, and **Apps** if available.
+5. Set **If there's no input** to **Continue**.
+6. Add a **Get Text from Input** action using **Shortcut Input**.
+7. Add a **Dictionary** action:
+   ```json
+   {
+     "input": "<Shortcut variable: Text>",
+     "source": "ios-shortcut",
+     "sharedAt": "<Shortcut variable: Current Date>"
+   }
+   ```
 8. Add a **Get Contents of URL** action with these settings:
-   - **URL**: `https://metabolic-meal-os.vercel.app/api/intake/share`
+   - **URL**: `https://metabolic-meal-os-due4.vercel.app/api/intake/share`
    - **Method**: POST
    - **Headers**:
      - `Authorization`: `Bearer <your IOS_SHORTCUT_TOKEN>`
-     - `Content-Type`: `application/json`
-   - **Request Body** (JSON):
-     ```json
-     {
-       "url": "<Shortcut variable: URL if sharing a URL>",
-       "text": "<Shortcut variable: Text if sharing text>",
-       "source": "ios-shortcut",
-       "sharedAt": "<Shortcut variable: formatted date>"
-     }
-     ```
-9. Add an **Open URLs** action using the `analyzeUrl` field from the JSON response.
+     - `Accept`: `application/json`
+   - **Request Body**: JSON
+   - **JSON body**: Dictionary from step 7
+9. Add a **Show Result** action using **Contents of URL**.
 
-The Shortcut will POST the content and open the analyze page pre-filled with the URL or text.
+For now, the Shortcut only shows the server response. Later, add **Get Dictionary from Contents of URL**, get `openUrl`, convert it to a URL, and open it.
 
 ### Token security
 

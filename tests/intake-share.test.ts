@@ -142,11 +142,34 @@ function validatePayload(body: unknown): { ok: boolean; status: number; reason?:
     return { ok: false, status: 400, reason: "not-object" };
   }
   const b = body as Record<string, unknown>;
+  const input = typeof b.input === "string" ? b.input.trim() : undefined;
   const url = typeof b.url === "string" ? b.url.trim() : undefined;
   const text = typeof b.text === "string" ? b.text.trim() : undefined;
-  if (!url && !text) return { ok: false, status: 400, reason: "empty" };
+  if (!input && !url && !text) return { ok: false, status: 400, reason: "empty" };
   return { ok: true, status: 200 };
 }
+
+function normalizePayloadInput(body: { input?: string; url?: string; text?: string }): {
+  rawUrl?: string;
+  text?: string;
+} {
+  if (body.input?.trim()) {
+    const parsed = parseUrl(body.input);
+    if (parsed) return { rawUrl: body.input.trim() };
+    return { text: body.input.trim() };
+  }
+  return { rawUrl: body.url?.trim(), text: body.text?.trim() };
+}
+
+test("payload validation: single input URL accepted", () => {
+  const result = validatePayload({ input: "https://instagram.com/p/abc" });
+  assert.equal(result.ok, true);
+});
+
+test("payload validation: single input plain text accepted", () => {
+  const result = validatePayload({ input: "Boil pasta for 8 minutes with salt." });
+  assert.equal(result.ok, true);
+});
 
 test("payload validation: valid recipe URL accepted", () => {
   const result = validatePayload({ url: "https://allrecipes.com/recipe/123" });
@@ -175,10 +198,28 @@ test("payload validation: whitespace-only text rejected", () => {
   assert.equal(result.status, 400);
 });
 
+test("payload validation: whitespace-only input rejected", () => {
+  const result = validatePayload({ input: "   " });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+});
+
 test("payload validation: non-object body rejected", () => {
   const result = validatePayload("just a string");
   assert.equal(result.ok, false);
   assert.equal(result.status, 400);
+});
+
+test("payload normalization: input URL becomes rawUrl", () => {
+  const result = normalizePayloadInput({ input: "instagram.com/p/abc" });
+  assert.equal(result.rawUrl, "instagram.com/p/abc");
+  assert.equal(result.text, undefined);
+});
+
+test("payload normalization: input text becomes text", () => {
+  const result = normalizePayloadInput({ input: "A copied recipe paragraph" });
+  assert.equal(result.rawUrl, undefined);
+  assert.equal(result.text, "A copied recipe paragraph");
 });
 
 // --- Notion DB config ---

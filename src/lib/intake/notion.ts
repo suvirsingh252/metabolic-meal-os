@@ -1,8 +1,6 @@
 import { getNotionClient } from "@/src/lib/notion/client";
 import type { IntakeClassification, IntakeRecord, IntakeStatus } from "@/src/lib/intake/types";
 
-const PROD_BASE_URL = "https://metabolic-meal-os.vercel.app";
-
 export function getIntakeDbId(): string | undefined {
   if (typeof window !== "undefined") return undefined;
   return process.env.NOTION_MEAL_INTAKE_DATABASE_ID?.trim() || undefined;
@@ -34,6 +32,7 @@ export interface SaveIntakeInput {
   source?: string;
   classification: IntakeClassification;
   createdAt: string;
+  baseUrl?: string;
 }
 
 export interface SaveIntakeResult {
@@ -90,7 +89,8 @@ export async function saveIntakeToNotion(
     properties: properties as Parameters<typeof notion.pages.create>[0]["properties"]
   });
 
-  const analyzeUrl = `${PROD_BASE_URL}/analyze?intake=${page.id}`;
+  const baseUrl = input.baseUrl ?? "https://metabolic-meal-os.vercel.app";
+  const analyzeUrl = `${baseUrl}/analyze?intake=${page.id}`;
 
   return { id: page.id, analyzeUrl };
 }
