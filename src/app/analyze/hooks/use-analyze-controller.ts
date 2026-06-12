@@ -45,6 +45,40 @@ const requestSourceClassifications: Record<SourceClassification, string> = {
   plain_text: "plain-text"
 };
 
+type IntakeFeedbackEventName =
+  | "accepted_best_guess"
+  | "edited_title"
+  | "edited_ingredients"
+  | "changed_servings"
+  | "marked_guess_wrong"
+  | "saved_anyway";
+
+function emitIntakeFeedbackEvent(
+  event: IntakeFeedbackEventName,
+  analysis: MealAnalysisResult | null
+) {
+  if (
+    typeof window === "undefined" ||
+    !analysis?.socialRecipeCandidate ||
+    analysis.sourceClassification !== "instagram"
+  ) {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("meal-intake-v2-feedback", {
+      detail: {
+        event,
+        platform: analysis.sourceClassification,
+        canonicalUrl: analysis.sourceUrl ?? null,
+        confidence: analysis.socialRecipeCandidate.confidence,
+        householdId: analysis.householdId ?? null,
+        occurredAt: new Date().toISOString()
+      }
+    })
+  );
+}
+
 export function getErrorMessage(value: unknown) {
   if (
     typeof value === "object" &&
@@ -79,6 +113,9 @@ export function useAnalyzeController(initialRecipeText?: string) {
 
   const trimmedRecipeTextLength = state.recipeText.trim().length;
   const inputLooksLikeUrl = looksLikeSharedUrl(state.recipeText);
+  const currentSource = classifySourceInput(state.recipeText.trim());
+  const usesBestEffortSocialIntake =
+    inputLooksLikeUrl && currentSource === "instagram" && !state.socialFallback;
   const isAnalyzeDisabled = state.isLoading || trimmedRecipeTextLength < 10;
 
   async function submitAnalysis() {
@@ -129,7 +166,7 @@ export function useAnalyzeController(initialRecipeText?: string) {
       if (!response.ok) {
         const message = getErrorMessage(data);
 
-        if (currentInputIsSocialUrl) {
+        if (currentInputIsSocialUrl && currentSource !== "instagram") {
           dispatch({
             type: "socialFallbackDetected",
             message,
@@ -147,6 +184,10 @@ export function useAnalyzeController(initialRecipeText?: string) {
         type: "analysisSucceeded",
         analysis: data as MealAnalysisResult
       });
+      emitIntakeFeedbackEvent(
+        "accepted_best_guess",
+        data as MealAnalysisResult
+      );
       window.requestAnimationFrame(() => {
         reviewResultRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -173,6 +214,7 @@ export function useAnalyzeController(initialRecipeText?: string) {
     }
 
     dispatch({ type: "saveStarted" });
+    emitIntakeFeedbackEvent("saved_anyway", state.analysis);
 
     try {
       const response = await fetch("/api/notion/save-meal", {
@@ -277,6 +319,7 @@ export function useAnalyzeController(initialRecipeText?: string) {
     reviewResultRef,
     trimmedRecipeTextLength,
     inputLooksLikeUrl,
+    usesBestEffortSocialIntake,
     isAnalyzeDisabled,
     handleSubmit,
     handleSaveToNotion,
@@ -284,6 +327,9 @@ export function useAnalyzeController(initialRecipeText?: string) {
       dispatch({ type: "recipeTextChanged", value });
     },
     updateTextField(field: EditableTextField, value: string) {
+      if (field === "mealName") {
+        emitIntakeFeedbackEvent("edited_title", state.analysis);
+      }
       dispatch({ type: "textFieldChanged", field, value });
     },
     updateBooleanField(field: EditableBooleanField, checked: boolean) {
@@ -296,6 +342,7 @@ export function useAnalyzeController(initialRecipeText?: string) {
       dispatch({ type: "arrayFieldChanged", field, value });
     },
     updateIngredientSuggestions(value: string) {
+      emitIntakeFeedbackEvent("edited_ingredients", state.analysis);
       dispatch({ type: "ingredientSuggestionsChanged", value });
     },
     updateGuidanceBasis(value: string) {

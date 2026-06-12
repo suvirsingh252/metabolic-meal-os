@@ -16,6 +16,9 @@ export function AnalyzeClient({ intakeRecord }: Props) {
   const initialRecipeText = intakeRecord?.url ?? intakeRecord?.rawText ?? "";
   const controller = useAnalyzeController(initialRecipeText);
   const { state } = controller;
+  const showInstagramCaptionPrompt =
+    state.analysis?.sourceClassification === "instagram" &&
+    state.analysis.socialRecipeCandidate?.confidence === "low";
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -32,6 +35,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
         inputLooksLikeUrl={controller.inputLooksLikeUrl}
         recipeText={state.recipeText}
         socialFallback={state.socialFallback}
+        usesBestEffortSocialIntake={controller.usesBestEffortSocialIntake}
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-6">
@@ -41,8 +45,10 @@ export function AnalyzeClient({ intakeRecord }: Props) {
           onRecipeTextChange={controller.setRecipeText}
           onSubmit={controller.handleSubmit}
           recipeText={state.recipeText}
+          showInstagramCaptionPrompt={showInstagramCaptionPrompt}
           socialFallback={state.socialFallback}
           trimmedRecipeTextLength={controller.trimmedRecipeTextLength}
+          usesBestEffortSocialIntake={controller.usesBestEffortSocialIntake}
         />
 
         <AnalysisResultPanel

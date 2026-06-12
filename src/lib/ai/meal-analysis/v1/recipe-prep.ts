@@ -18,8 +18,18 @@ import {
 } from "@/src/lib/intake/source-classifier";
 import { normalizeSocialRecipeText } from "@/src/lib/ai/social-recipe-normalization/v1/service";
 import type { SocialRecipeCandidate } from "@/src/lib/ai/social-recipe-normalization/v1/types";
+import {
+  buildInstagramMealCandidate,
+  intakeV2ParserVersion,
+  supportsIntakeV2Instagram
+} from "@/src/lib/intake-v2";
+import type { fetchStaticSocialMetadata } from "@/src/lib/intake-v2/metadata";
 
 const socialParserVersion = "social-normalizer-v1";
+
+interface PrepareRecipeOptions {
+  instagramMetadataLoader?: typeof fetchStaticSocialMetadata;
+}
 
 const sourceClassificationMap: Record<
   SourceClassification,
@@ -102,15 +112,19 @@ function formatSocialCandidateForAnalysis(input: {
 }
 
 export async function prepareRecipeForMealAnalysis(
-  request: MealAnalysisRequest
+  request: MealAnalysisRequest,
+  options: PrepareRecipeOptions = {}
 ) {
-  if (isProbablyUrl(request.recipeText)) {
-    const inputSource = classifySourceInput(request.recipeText);
+  const leadingUrlInput = splitLeadingUrlAndTrailingText(request.recipeText);
+  const routingText = leadingUrlInput?.urlLine ?? request.recipeText;
+
+  if (isProbablyUrl(routingText)) {
+    const inputSource = classifySourceInput(routingText);
 
     if (isSocialSource(inputSource)) {
       const outboundRecipeUrl =
         inputSource === "pinterest"
-          ? readPinterestOutboundRecipeUrl(request.recipeText)
+          ? readPinterestOutboundRecipeUrl(routingText)
           : null;
 
       if (outboundRecipeUrl) {
@@ -128,7 +142,7 @@ export async function prepareRecipeForMealAnalysis(
             parsedRecipe.source.sourceClassification ?? null,
           sourceNotes: [
             ...(parsedRecipe.source.sourceNotes ?? []),
-            `Resolved from Pinterest source: ${request.recipeText}`
+            `Resolved from Pinterest source: ${routingText}`
           ],
           importedAt:
             parsedRecipe.source.importedAt ?? new Date().toISOString(),
@@ -155,13 +169,53 @@ export async function prepareRecipeForMealAnalysis(
         };
       }
 
+      if (
+        inputSource === "instagram" &&
+        supportsIntakeV2Instagram(routingText)
+      ) {
+        const { enrichment, candidate, analysisText } =
+          await buildInstagramMealCandidate(
+            {
+              kind: "url",
+              originalUrl: routingText,
+              sharedText: leadingUrlInput?.trailingText ?? null
+            },
+            options.instagramMetadataLoader
+          );
+        const now = new Date().toISOString();
+
+        return {
+          analysisText,
+          ingredients: candidate.ingredients.map((rawText) => ({ rawText })),
+          instructions: candidate.steps,
+          sourceType: "url" as const,
+          sourceUrl: enrichment.canonicalUrl,
+          sourceName: "Instagram",
+          sourceClassification: "instagram" as const,
+          sourceNotes: [
+            "Social meal intake v2 enriched this Instagram link without login scraping or private APIs.",
+            `Original URL: ${enrichment.originalUrl}`,
+            `Canonical URL: ${enrichment.canonicalUrl}`,
+            `Enrichment status: ${enrichment.status}`,
+            `Normalization confidence: ${candidate.confidence}`,
+            ...candidate.assumptions.map((item) => `Assumption: ${item}`),
+            ...candidate.missingDetails.map((item) => `Missing detail: ${item}`)
+          ],
+          importedAt: now,
+          lastParsedAt: now,
+          parserVersion: intakeV2ParserVersion,
+          socialRecipeCandidate: candidate,
+          nutritionEstimate: null
+        };
+      }
+
       throw new RecipeParserError(
         "Social recipe detected. Paste the caption, ingredient list, rough notes, or spoken recipe summary below and I can normalize it for analysis."
       );
     }
 
     const parsedRecipe = await basicRecipeParserAdapter.parseFromUrl(
-      request.recipeText
+      routingText
     );
 
     return {
@@ -253,5 +307,26 @@ export async function prepareRecipeForMealAnalysis(
     parserVersion: request.sourceType === "url" ? null : manualParserVersion,
     socialRecipeCandidate: null,
     nutritionEstimate: estimateFreeTextNutrition(request.recipeText)
+  };
+}
+
+function splitLeadingUrlAndTrailingText(value: string) {
+  const normalized = value.replace(/\r\n/g, "\n");
+  const [firstLine = "", ...rest] = normalized.split("\n");
+  const urlLine = firstLine.trim();
+
+  if (!urlLine || !isProbablyUrl(urlLine)) {
+    return null;
+  }
+
+  const trailingText = rest
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+
+  return {
+    urlLine,
+    trailingText: trailingText || null
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { FileText, Loader2, Wand2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -13,12 +13,47 @@ const loadingMessages = [
   "Preparing your review..."
 ];
 
+const socialIntakeLoadingMessages = [
+  "Looking for recipe details...",
+  "Checking accessible caption metadata...",
+  "Preparing a best-effort estimate...",
+  "Preparing your review..."
+];
+
+export function getAnalyzePrimaryCtaLabel({
+  isLoading,
+  socialFallback,
+  usesBestEffortSocialIntake,
+  loadingMessage
+}: {
+  isLoading: boolean;
+  socialFallback: AnalyzeState["socialFallback"];
+  usesBestEffortSocialIntake: boolean;
+  loadingMessage: string;
+}) {
+  if (isLoading) {
+    return loadingMessage;
+  }
+
+  if (socialFallback) {
+    return "Analyze pasted social recipe";
+  }
+
+  if (usesBestEffortSocialIntake) {
+    return "Analyze best guess";
+  }
+
+  return "Analyze recipe";
+}
+
 export function MealInputPanel({
   recipeText,
   trimmedRecipeTextLength,
   isAnalyzeDisabled,
   isLoading,
   socialFallback,
+  usesBestEffortSocialIntake,
+  showInstagramCaptionPrompt = false,
   onSubmit,
   onRecipeTextChange
 }: {
@@ -27,11 +62,17 @@ export function MealInputPanel({
   isAnalyzeDisabled: boolean;
   isLoading: boolean;
   socialFallback: AnalyzeState["socialFallback"];
+  usesBestEffortSocialIntake: boolean;
+  showInstagramCaptionPrompt?: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRecipeTextChange: (value: string) => void;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-  const loadingMessage = loadingMessages[loadingMessageIndex];
+  const activeLoadingMessages = usesBestEffortSocialIntake
+    ? socialIntakeLoadingMessages
+    : loadingMessages;
+  const loadingMessage = activeLoadingMessages[loadingMessageIndex];
 
   useEffect(() => {
     if (!isLoading) {
@@ -43,7 +84,7 @@ export function MealInputPanel({
     }, 0);
     const intervalId = window.setInterval(() => {
       setLoadingMessageIndex((current) =>
-        current >= loadingMessages.length - 1 ? current : current + 1
+        current >= activeLoadingMessages.length - 1 ? current : current + 1
       );
     }, 5500);
 
@@ -51,7 +92,30 @@ export function MealInputPanel({
       window.clearTimeout(resetId);
       window.clearInterval(intervalId);
     };
-  }, [isLoading]);
+  }, [activeLoadingMessages.length, isLoading]);
+
+  function focusRecipeText(cursorPosition?: number) {
+    window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+
+      if (!textarea) {
+        return;
+      }
+
+      textarea.focus();
+      const position = cursorPosition ?? textarea.value.length;
+      textarea.setSelectionRange(position, position);
+    });
+  }
+
+  function appendNotesPrompt() {
+    const nextValue = recipeText.trimEnd().includes("\nNotes:")
+      ? recipeText
+      : `${recipeText.trimEnd()}\n\nNotes: `;
+
+    onRecipeTextChange(nextValue);
+    focusRecipeText(nextValue.length);
+  }
 
   return (
     <Card>
@@ -70,6 +134,7 @@ export function MealInputPanel({
             <textarea
               className="min-h-32 w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-72"
               id="recipeText"
+              ref={textareaRef}
               onInput={(event) => {
                 onRecipeTextChange(event.currentTarget.value);
               }}
@@ -88,8 +153,48 @@ export function MealInputPanel({
               Enter at least 10 characters. {trimmedRecipeTextLength} characters
             </p>
             <p className="text-sm text-muted-foreground">
-              This can take about 20-30 seconds for detailed meals.
+              {usesBestEffortSocialIntake
+                ? "Instagram captions may not be visible, but Meal OS can still prepare a reviewable best guess."
+                : "This can take about 20-30 seconds for detailed meals."}
             </p>
+            {usesBestEffortSocialIntake ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  className="rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                  type="button"
+                  onClick={() => {
+                    appendNotesPrompt();
+                  }}
+                >
+                  Add notes
+                </button>
+                <button
+                  className="rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                  type="button"
+                  onClick={() => {
+                    focusRecipeText();
+                  }}
+                >
+                  Edit guess
+                </button>
+              </div>
+            ) : null}
+            {showInstagramCaptionPrompt ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm">
+                <span className="text-muted-foreground">
+                  Have the caption? Paste it to improve this.
+                </span>
+                <button
+                  className="rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                  type="button"
+                  onClick={() => {
+                    appendNotesPrompt();
+                  }}
+                >
+                  Add caption
+                </button>
+              </div>
+            ) : null}
           </div>
           <div className="space-y-2">
             <button
@@ -102,11 +207,12 @@ export function MealInputPanel({
               ) : (
                 <Wand2 className="h-4 w-4" />
               )}
-              {isLoading
-                ? loadingMessage
-                : socialFallback
-                  ? "Analyze pasted social recipe"
-                  : "Analyze recipe"}
+              {getAnalyzePrimaryCtaLabel({
+                isLoading,
+                socialFallback,
+                usesBestEffortSocialIntake,
+                loadingMessage
+              })}
             </button>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
