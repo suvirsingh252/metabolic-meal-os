@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import {
   groupPlannerSlotsByDateAndSlot,
+  getDefaultPlannerDayIndex,
   getPlannerSlotKey,
   mealSlots,
   plannerStatuses,
@@ -305,13 +306,6 @@ export function PlannerClient() {
       ) : null}
     </div>
   );
-}
-
-function getDefaultPlannerDayIndex(planner: PlannerViewModel) {
-  const today = new Date().toISOString().slice(0, 10);
-  const todayIndex = planner.days.findIndex((day) => day.date === today);
-
-  return todayIndex >= 0 ? todayIndex : 0;
 }
 
 function PlannerDayCard({

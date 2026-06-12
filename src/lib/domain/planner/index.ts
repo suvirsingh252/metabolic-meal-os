@@ -1,3 +1,5 @@
+import { formatLocalCalendarDate } from "@/src/lib/date/local-calendar";
+
 export const mealSlots = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
 export type MealSlot = (typeof mealSlots)[number];
 
@@ -139,6 +141,17 @@ export function getCurrentPlannerWeek(today = new Date()): PlannerDay[] {
       })
     };
   });
+}
+
+export function getDefaultPlannerDayIndex(
+  planner: PlannerViewModel,
+  today = new Date(),
+  options: { timeZone?: string } = {}
+) {
+  const todayDate = formatLocalCalendarDate(today, options);
+  const todayIndex = planner.days.findIndex((day) => day.date === todayDate);
+
+  return todayIndex >= 0 ? todayIndex : 0;
 }
 
 export function validatePlannerMutation(value: unknown): PlannerMutationInput {

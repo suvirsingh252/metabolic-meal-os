@@ -25,6 +25,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatLocalCalendarDate } from "@/src/lib/date/local-calendar";
 import {
   buildTodayViewModel,
   getAlternativeSuggestion,
@@ -237,8 +238,9 @@ export function TodayClient() {
     }
 
     const stateKey = `${recommendation.meal.id}:${sentiment}`;
-    const createdAt = new Date().toISOString();
-    const today = createdAt.slice(0, 10);
+    const now = new Date();
+    const createdAt = now.toISOString();
+    const today = formatLocalCalendarDate(now);
     const note =
       sentiment === "loved"
         ? `Loved It logged from Today on ${today}.`

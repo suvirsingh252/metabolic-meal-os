@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { formatLocalCalendarDate } from "@/src/lib/date/local-calendar";
 import {
   getCurrentPlannerWeek,
+  getDefaultPlannerDayIndex,
   getPlannerSlotKey,
   groupPlannerSlotsByDateAndSlot,
   mealSlots,
@@ -18,6 +20,52 @@ test("planner week renders Monday through Sunday", () => {
   assert.equal(days[0].weekday, "Monday");
   assert.equal(days[6].date, "2026-06-14");
   assert.equal(days[6].weekday, "Sunday");
+});
+
+test("local calendar date formatting does not use UTC rollover", () => {
+  const lateEveningInHalifax = new Date("2026-06-12T01:30:00.000Z");
+
+  assert.equal(
+    lateEveningInHalifax.toISOString().slice(0, 10),
+    "2026-06-12"
+  );
+  assert.equal(
+    formatLocalCalendarDate(lateEveningInHalifax, {
+      timeZone: "America/Halifax"
+    }),
+    "2026-06-11"
+  );
+});
+
+test("planner default day uses local calendar date when UTC differs", () => {
+  const planner = {
+    weekStart: "2026-06-08",
+    weekEnd: "2026-06-14",
+    days: getCurrentPlannerWeek(new Date("2026-06-11T12:00:00.000Z")),
+    slots: [],
+    setup: { ok: true, issues: [] }
+  };
+
+  assert.equal(
+    getDefaultPlannerDayIndex(
+      planner,
+      new Date("2026-06-12T01:30:00.000Z"),
+      { timeZone: "America/Halifax" }
+    ),
+    3
+  );
+});
+
+test("planner default day falls back to first day outside displayed week", () => {
+  const planner = {
+    weekStart: "2026-06-08",
+    weekEnd: "2026-06-14",
+    days: getCurrentPlannerWeek(new Date("2026-06-11T12:00:00.000Z")),
+    slots: [],
+    setup: { ok: true, issues: [] }
+  };
+
+  assert.equal(getDefaultPlannerDayIndex(planner, new Date("2026-06-20")), 0);
 });
 
 test("planner validates YYYY-MM-DD real dates", () => {

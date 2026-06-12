@@ -11,7 +11,7 @@ test("planner uses a mobile day selector while preserving desktop week grid", ()
 
   assert.match(planner, /selectedDayIndex/);
   assert.match(planner, /aria-label="Choose planner day"/);
-  assert.match(planner, /findIndex\(\(day\) => day\.date === today\)/);
+  assert.match(planner, /getDefaultPlannerDayIndex/);
   assert.match(planner, /lg:hidden/);
   assert.match(planner, /hidden gap-3 lg:grid lg:grid-cols-7/);
   assert.match(planner, /PlannerDayCard/);

@@ -12,6 +12,7 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatLocalCalendarDate } from "@/src/lib/date/local-calendar";
 import {
   applyOptimisticMealDetailFeedback,
   type MealDetailFeedbackAction
@@ -181,8 +182,9 @@ export function MealDetailActions({
     }
 
     const action = actionCopy[actionId];
-    const createdAt = new Date().toISOString();
-    const today = createdAt.slice(0, 10);
+    const now = new Date();
+    const createdAt = now.toISOString();
+    const today = formatLocalCalendarDate(now);
     const note = `${action.notePrefix} logged from Meal Detail on ${today}.`;
 
     setSaveState((previous) => ({ ...previous, [actionId]: "saving" }));
