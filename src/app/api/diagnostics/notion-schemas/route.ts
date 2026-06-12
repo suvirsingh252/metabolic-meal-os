@@ -7,6 +7,12 @@ import {
 import { getNotionClient } from "@/src/lib/notion/client";
 import { getPlannerSchemaDiagnostics } from "@/src/lib/notion/meal-plan";
 import {
+  getDatabaseTitle,
+  getPrimaryDataSourceId,
+  getPropertyType,
+  isRecord
+} from "@/src/lib/notion/route-helpers";
+import {
   evaluateFeedbackSchemaHealth,
   evaluateIngredientsSchemaHealth,
   evaluateIntakeSchemaHealth,
@@ -45,27 +51,6 @@ interface SchemaFailure {
   error: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function hasTitle(value: unknown): value is { title: Array<{ plain_text?: string }> } {
-  return isRecord(value) && Array.isArray(value.title);
-}
-
-function getDatabaseTitle(database: unknown) {
-  if (!hasTitle(database)) {
-    return "Untitled database";
-  }
-
-  const title = database.title
-    .map((part) => part.plain_text ?? "")
-    .join("")
-    .trim();
-
-  return title || "Untitled database";
-}
-
 function getProperties(database: unknown) {
   if (!isRecord(database) || !isRecord(database.properties)) {
     return [];
@@ -73,10 +58,7 @@ function getProperties(database: unknown) {
 
   return Object.entries(database.properties)
     .map(([name, property]) => {
-      const type =
-        isRecord(property) && typeof property.type === "string"
-          ? property.type
-          : "unknown";
+      const type = getPropertyType(property) ?? "unknown";
       const relationTarget =
         type === "relation" && isRecord(property) && isRecord(property.relation)
           ? {
@@ -98,20 +80,6 @@ function getProperties(database: unknown) {
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    isRecord(database) &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    isRecord(database.data_sources[0]) &&
-    typeof database.data_sources[0].id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Database did not return a queryable data source.");
 }
 
 function getSafeSchemaError(key: DatabaseKey) {

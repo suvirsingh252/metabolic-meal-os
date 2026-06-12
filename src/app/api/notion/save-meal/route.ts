@@ -8,63 +8,18 @@ import {
   type MealSourcePropertySchema
 } from "@/src/lib/notion/mappers";
 import {
+  getNotionPageUrl,
+  getPrimaryDataSourceId,
+  getPropertyRecord,
+  getPropertyType,
+  validationError
+} from "@/src/lib/notion/route-helpers";
+import {
   guardApiRequest,
   readJsonWithLimit
 } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validationError(errors: string[]) {
-  return NextResponse.json(
-    {
-      error: "Meal payload failed validation.",
-      details: errors
-    },
-    { status: 400 }
-  );
-}
-
-function getNotionPageUrl(page: { id: string; url?: string }) {
-  if (!page.url) {
-    throw new Error(`Notion did not return a page URL for page ${page.id}.`);
-  }
-
-  return page.url;
-}
-
-function getPropertyType(property: unknown) {
-  if (isRecord(property) && typeof property.type === "string") {
-    return property.type;
-  }
-
-  return null;
-}
-
-function getProperties(database: unknown) {
-  if (isRecord(database) && isRecord(database.properties)) {
-    return database.properties;
-  }
-
-  return {};
-}
-
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    isRecord(database) &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    isRecord(database.data_sources[0]) &&
-    typeof database.data_sources[0].id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Meals database did not return a queryable data source.");
-}
 
 function findProperty(
   properties: Record<string, unknown>,
@@ -80,316 +35,55 @@ function findProperty(
 }
 
 function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchema {
-  const properties = getProperties(database);
+  const properties = getPropertyRecord(database);
   const schema: MealSourcePropertySchema = {};
+  const fieldSpecs: Array<{
+    key: keyof MealSourcePropertySchema;
+    names: string[];
+    types: string[];
+  }> = [
+    { key: "sourceType", names: ["Source Type", "sourceType"], types: ["select", "rich_text"] },
+    { key: "sourceUrl", names: ["Source URL", "Source Url", "Original Source", "sourceUrl"], types: ["url", "rich_text"] },
+    { key: "sourceName", names: ["Source Name", "sourceName"], types: ["select", "rich_text"] },
+    { key: "sourceClassification", names: ["Source Classification", "sourceClassification"], types: ["select", "rich_text"] },
+    { key: "sourceNotes", names: ["Source Notes", "sourceNotes"], types: ["rich_text"] },
+    { key: "ingredients", names: ["Ingredients", "Recipe Ingredients", "ingredients"], types: ["rich_text"] },
+    { key: "instructions", names: ["Instructions", "Recipe Instructions", "Method", "instructions"], types: ["rich_text"] },
+    { key: "importedAt", names: ["Imported At", "Imported", "importedAt"], types: ["date"] },
+    { key: "lastParsedAt", names: ["Last Parsed At", "Parsed At", "lastParsedAt"], types: ["date"] },
+    { key: "parserVersion", names: ["Parser Version", "parserVersion"], types: ["select", "rich_text"] },
+    { key: "analysisVersion", names: ["Analysis Version", "analysisVersion"], types: ["select", "rich_text"] },
+    { key: "analysisModel", names: ["Analysis Model", "analysisModel"], types: ["select", "rich_text"] },
+    { key: "householdId", names: ["Household ID", "householdId"], types: ["rich_text", "select"] },
+    { key: "createdBy", names: ["Created By", "createdBy"], types: ["rich_text", "select"] },
+    { key: "visibility", names: ["Visibility", "visibility"], types: ["select", "rich_text"] },
+    { key: "schemaVersion", names: ["Schema Version", "schemaVersion"], types: ["select", "rich_text"] },
+    { key: "calories", names: ["Calories", "Energy (kcal)", "Energy Kcal"], types: ["number"] },
+    { key: "proteinG", names: ["Protein (g)", "Protein g", "Protein"], types: ["number"] },
+    { key: "carbohydratesG", names: ["Carbohydrates (g)", "Carbs (g)", "Carbs", "Carbohydrate (g)", "Carbohydrates"], types: ["number"] },
+    { key: "fatG", names: ["Fat (g)", "Total Fat (g)", "Fat"], types: ["number"] },
+    { key: "fiberG", names: ["Fiber (g)", "Fibre (g)", "Fiber"], types: ["number"] },
+    { key: "sodiumMg", names: ["Sodium (mg)", "Sodium"], types: ["number"] },
+    { key: "sugarG", names: ["Sugar (g)", "Sugar", "Sugars (g)", "Total Sugars (g)", "Total Sugar (g)"], types: ["number"] },
+    { key: "nutritionConfidence", names: ["Nutrition Confidence", "Nutrient Confidence"], types: ["select", "rich_text", "number"] },
+    { key: "nutritionProvenance", names: ["Nutrition Provenance", "Nutrition Source Notes"], types: ["select", "rich_text"] },
+    { key: "nutritionSource", names: ["Nutrition Source", "Nutrition Data Source"], types: ["select", "rich_text"] },
+    { key: "mealQualityScore", names: ["Meal Quality Score", "Quality Score"], types: ["number"] },
+    { key: "metabolicScore", names: ["Metabolic Score"], types: ["number"] },
+    { key: "proteinScore", names: ["Protein Score"], types: ["number"] },
+    { key: "fiberScore", names: ["Fiber Score"], types: ["number"] },
+    { key: "satietyScoreNumeric", names: ["Satiety Score"], types: ["number"] },
+    { key: "bloodSugarRiskScore", names: ["Blood Sugar Risk Score"], types: ["number"] },
+    { key: "mealDate", names: ["Meal Date", "Date", "Logged At"], types: ["date"] }
+  ];
 
-  const sourceType = findProperty(properties, ["Source Type", "sourceType"], [
-    "select",
-    "rich_text"
-  ]);
-  const sourceUrl = findProperty(
-    properties,
-    ["Source URL", "Source Url", "Original Source", "sourceUrl"],
-    ["url", "rich_text"]
-  );
-  const sourceName = findProperty(properties, ["Source Name", "sourceName"], [
-    "select",
-    "rich_text"
-  ]);
-  const sourceClassification = findProperty(
-    properties,
-    ["Source Classification", "sourceClassification"],
-    ["select", "rich_text"]
-  );
-  const sourceNotes = findProperty(
-    properties,
-    ["Source Notes", "sourceNotes"],
-    ["rich_text"]
-  );
-  const ingredientsProperty = findProperty(
-    properties,
-    ["Ingredients", "Recipe Ingredients", "ingredients"],
-    ["rich_text"]
-  );
-  const instructionsProperty = findProperty(
-    properties,
-    ["Instructions", "Recipe Instructions", "Method", "instructions"],
-    ["rich_text"]
-  );
-  const importedAt = findProperty(
-    properties,
-    ["Imported At", "Imported", "importedAt"],
-    ["date"]
-  );
-  const lastParsedAt = findProperty(
-    properties,
-    ["Last Parsed At", "Parsed At", "lastParsedAt"],
-    ["date"]
-  );
-  const parserVersion = findProperty(
-    properties,
-    ["Parser Version", "parserVersion"],
-    ["select", "rich_text"]
-  );
-  const analysisVersion = findProperty(
-    properties,
-    ["Analysis Version", "analysisVersion"],
-    ["select", "rich_text"]
-  );
-  const analysisModel = findProperty(
-    properties,
-    ["Analysis Model", "analysisModel"],
-    ["select", "rich_text"]
-  );
-  const householdId = findProperty(
-    properties,
-    ["Household ID", "householdId"],
-    ["rich_text", "select"]
-  );
-  const createdBy = findProperty(properties, ["Created By", "createdBy"], [
-    "rich_text",
-    "select"
-  ]);
-  const visibility = findProperty(properties, ["Visibility", "visibility"], [
-    "select",
-    "rich_text"
-  ]);
-  const schemaVersion = findProperty(
-    properties,
-    ["Schema Version", "schemaVersion"],
-    ["select", "rich_text"]
-  );
-  const calories = findProperty(properties, ["Calories", "Energy (kcal)", "Energy Kcal"], [
-    "number"
-  ]);
-  const proteinG = findProperty(properties, ["Protein (g)", "Protein g", "Protein"], [
-    "number"
-  ]);
-  const carbohydratesG = findProperty(
-    properties,
-    ["Carbohydrates (g)", "Carbs (g)", "Carbs", "Carbohydrate (g)", "Carbohydrates"],
-    ["number"]
-  );
-  const fatG = findProperty(properties, ["Fat (g)", "Total Fat (g)", "Fat"], [
-    "number"
-  ]);
-  const fiberG = findProperty(properties, ["Fiber (g)", "Fibre (g)", "Fiber"], [
-    "number"
-  ]);
-  const sodiumMg = findProperty(properties, ["Sodium (mg)", "Sodium"], [
-    "number"
-  ]);
-  const sugarG = findProperty(
-    properties,
-    ["Sugar (g)", "Sugar", "Sugars (g)", "Total Sugars (g)", "Total Sugar (g)"],
-    ["number"]
-  );
-  const nutritionConfidence = findProperty(
-    properties,
-    ["Nutrition Confidence", "Nutrient Confidence"],
-    ["select", "rich_text", "number"]
-  );
-  const nutritionProvenance = findProperty(
-    properties,
-    ["Nutrition Provenance", "Nutrition Source Notes"],
-    ["select", "rich_text"]
-  );
-  const nutritionSource = findProperty(
-    properties,
-    ["Nutrition Source", "Nutrition Data Source"],
-    ["select", "rich_text"]
-  );
-  const mealQualityScore = findProperty(
-    properties,
-    ["Meal Quality Score", "Quality Score"],
-    ["number"]
-  );
-  const metabolicScore = findProperty(properties, ["Metabolic Score"], ["number"]);
-  const proteinScoreField = findProperty(properties, ["Protein Score"], ["number"]);
-  const fiberScoreField = findProperty(properties, ["Fiber Score"], ["number"]);
-  const satietyScoreNumeric = findProperty(properties, ["Satiety Score"], [
-    "number"
-  ]);
-  const bloodSugarRiskScore = findProperty(
-    properties,
-    ["Blood Sugar Risk Score"],
-    ["number"]
-  );
-  const mealDate = findProperty(properties, ["Meal Date", "Date", "Logged At"], [
-    "date"
-  ]);
+  for (const spec of fieldSpecs) {
+    const field = findProperty(properties, spec.names, spec.types);
+    const type = field ? getPropertyType(field[1]) : null;
 
-  if (sourceType) {
-    schema.sourceType = {
-      name: sourceType[0],
-      type: getPropertyType(sourceType[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (sourceUrl) {
-    schema.sourceUrl = {
-      name: sourceUrl[0],
-      type: getPropertyType(sourceUrl[1]) as "url" | "rich_text"
-    };
-  }
-
-  if (sourceName) {
-    schema.sourceName = {
-      name: sourceName[0],
-      type: getPropertyType(sourceName[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (sourceClassification) {
-    schema.sourceClassification = {
-      name: sourceClassification[0],
-      type: getPropertyType(sourceClassification[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (sourceNotes) {
-    schema.sourceNotes = {
-      name: sourceNotes[0],
-      type: "rich_text"
-    };
-  }
-
-  if (ingredientsProperty) {
-    schema.ingredients = {
-      name: ingredientsProperty[0],
-      type: "rich_text"
-    };
-  }
-
-  if (instructionsProperty) {
-    schema.instructions = {
-      name: instructionsProperty[0],
-      type: "rich_text"
-    };
-  }
-
-  if (importedAt) {
-    schema.importedAt = {
-      name: importedAt[0],
-      type: "date"
-    };
-  }
-
-  if (lastParsedAt) {
-    schema.lastParsedAt = {
-      name: lastParsedAt[0],
-      type: "date"
-    };
-  }
-
-  if (parserVersion) {
-    schema.parserVersion = {
-      name: parserVersion[0],
-      type: getPropertyType(parserVersion[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (analysisVersion) {
-    schema.analysisVersion = {
-      name: analysisVersion[0],
-      type: getPropertyType(analysisVersion[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (analysisModel) {
-    schema.analysisModel = {
-      name: analysisModel[0],
-      type: getPropertyType(analysisModel[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (householdId) {
-    schema.householdId = {
-      name: householdId[0],
-      type: getPropertyType(householdId[1]) as "rich_text" | "select"
-    };
-  }
-
-  if (createdBy) {
-    schema.createdBy = {
-      name: createdBy[0],
-      type: getPropertyType(createdBy[1]) as "rich_text" | "select"
-    };
-  }
-
-  if (visibility) {
-    schema.visibility = {
-      name: visibility[0],
-      type: getPropertyType(visibility[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (schemaVersion) {
-    schema.schemaVersion = {
-      name: schemaVersion[0],
-      type: getPropertyType(schemaVersion[1]) as "select" | "rich_text"
-    };
-  }
-
-  if (calories) schema.calories = { name: calories[0], type: "number" };
-  if (proteinG) schema.proteinG = { name: proteinG[0], type: "number" };
-  if (carbohydratesG) {
-    schema.carbohydratesG = { name: carbohydratesG[0], type: "number" };
-  }
-  if (fatG) schema.fatG = { name: fatG[0], type: "number" };
-  if (fiberG) schema.fiberG = { name: fiberG[0], type: "number" };
-  if (sodiumMg) schema.sodiumMg = { name: sodiumMg[0], type: "number" };
-  if (sugarG) schema.sugarG = { name: sugarG[0], type: "number" };
-  if (nutritionConfidence) {
-    schema.nutritionConfidence = {
-      name: nutritionConfidence[0],
-      type: getPropertyType(nutritionConfidence[1]) as
-        | "select"
-        | "rich_text"
-        | "number"
-    };
-  }
-  if (nutritionProvenance) {
-    schema.nutritionProvenance = {
-      name: nutritionProvenance[0],
-      type: getPropertyType(nutritionProvenance[1]) as "select" | "rich_text"
-    };
-  }
-  if (nutritionSource) {
-    schema.nutritionSource = {
-      name: nutritionSource[0],
-      type: getPropertyType(nutritionSource[1]) as "select" | "rich_text"
-    };
-  }
-  if (mealQualityScore) {
-    schema.mealQualityScore = { name: mealQualityScore[0], type: "number" };
-  }
-  if (metabolicScore) {
-    schema.metabolicScore = { name: metabolicScore[0], type: "number" };
-  }
-  if (proteinScoreField) {
-    schema.proteinScore = { name: proteinScoreField[0], type: "number" };
-  }
-  if (fiberScoreField) {
-    schema.fiberScore = { name: fiberScoreField[0], type: "number" };
-  }
-  if (satietyScoreNumeric) {
-    schema.satietyScoreNumeric = {
-      name: satietyScoreNumeric[0],
-      type: "number"
-    };
-  }
-  if (bloodSugarRiskScore) {
-    schema.bloodSugarRiskScore = {
-      name: bloodSugarRiskScore[0],
-      type: "number"
-    };
-  }
-  if (mealDate) {
-    schema.mealDate = {
-      name: mealDate[0],
-      type: "date"
-    };
+    if (field && type) {
+      schema[spec.key] = { name: field[0], type } as never;
+    }
   }
 
   return schema;
@@ -414,7 +108,7 @@ export async function POST(request: Request) {
   const validatedMeal = validateMealAnalysisResult(body);
 
   if (!validatedMeal.success || !validatedMeal.data) {
-    return validationError(validatedMeal.errors);
+    return validationError("Meal payload failed validation.", validatedMeal.errors);
   }
 
   try {
@@ -424,7 +118,10 @@ export async function POST(request: Request) {
       database_id: NOTION_MEALS_DATABASE_ID
     });
     const dataSource = await notion.dataSources.retrieve({
-      data_source_id: getPrimaryDataSourceId(database)
+      data_source_id: getPrimaryDataSourceId(
+        database,
+        "Meals database did not return a queryable data source."
+      )
     });
     const sourceSchema = getMealSourcePropertySchema(dataSource);
 

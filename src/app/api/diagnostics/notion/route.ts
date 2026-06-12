@@ -1,31 +1,10 @@
 import { NextResponse } from "next/server";
 import { getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
+import { getDatabaseTitle } from "@/src/lib/notion/route-helpers";
 import { guardApiRequest } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
-
-function hasTitle(value: unknown): value is { title: Array<{ plain_text?: string }> } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "title" in value &&
-    Array.isArray(value.title)
-  );
-}
-
-function getDatabaseTitle(database: unknown) {
-  if (!hasTitle(database)) {
-    return "Untitled database";
-  }
-
-  const title = database.title
-    ?.map((part) => part.plain_text ?? "")
-    .join("")
-    .trim();
-
-  return title || "Untitled database";
-}
 
 export async function GET(request: Request) {
   const guardResponse = guardApiRequest(request, {

@@ -1,4 +1,5 @@
 import { getNotionClient } from "@/src/lib/notion/client";
+import { isObjectWithProperties } from "@/src/lib/notion/route-helpers";
 import type { IntakeClassification, IntakeRecord, IntakeStatus } from "@/src/lib/intake/types";
 
 export function getIntakeDbId(): string | undefined {
@@ -83,7 +84,7 @@ export async function saveIntakeToNotion(
 
   try {
     const dataSource = await notion.dataSources.retrieve({ data_source_id: dbId });
-    if (isPageObject(dataSource)) {
+    if (isObjectWithProperties(dataSource)) {
       schemaProperties = dataSource.properties;
       parent = { data_source_id: dbId };
     }
@@ -134,18 +135,6 @@ export async function saveIntakeToNotion(
   const analyzeUrl = `${baseUrl}/analyze?intake=${page.id}`;
 
   return { id: page.id, analyzeUrl };
-}
-
-function isPageObject(page: unknown): page is {
-  id: string;
-  properties: Record<string, unknown>;
-} {
-  return (
-    typeof page === "object" &&
-    page !== null &&
-    "id" in page &&
-    "properties" in page
-  );
 }
 
 function getRichText(prop: unknown): string | undefined {
@@ -233,7 +222,7 @@ export async function fetchIntakeRecord(id: string): Promise<IntakeRecord | null
     const notion = getNotionClient(apiKey);
     const page = await notion.pages.retrieve({ page_id: id });
 
-    if (!isPageObject(page)) {
+    if (!isObjectWithProperties(page)) {
       return null;
     }
 
