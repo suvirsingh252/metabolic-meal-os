@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import {
+  getDeepLinkPreselection,
   groupPlannerSlotsByDateAndSlot,
   getDefaultPlannerDayIndex,
   getPlannerSlotKey,
@@ -60,7 +61,11 @@ function getMealGroupsForSlot(meals: MealSummary[], slot: MealSlot) {
     : [{ label: "Saved meals", meals }];
 }
 
-export function PlannerClient() {
+export function PlannerClient({
+  preselectedMealId = null
+}: {
+  preselectedMealId?: string | null;
+}) {
   const [planner, setPlanner] = useState<PlannerViewModel | null>(null);
   const [meals, setMeals] = useState<MealSummary[]>([]);
   const [selectedMeals, setSelectedMeals] = useState<Record<string, string>>({});
@@ -74,8 +79,24 @@ export function PlannerClient() {
     () => groupPlannerSlotsByDateAndSlot(planner?.slots ?? []),
     [planner]
   );
+  const preselectedMeals = useMemo(() => {
+    if (!preselectedMealId || !planner || meals.length === 0) {
+      return {};
+    }
 
-  const loadPlanner = useCallback(async () => {
+    return getDeepLinkPreselection(
+      preselectedMealId,
+      meals,
+      planner,
+      getDefaultPlannerDayIndex(planner)
+    );
+  }, [meals, planner, preselectedMealId]);
+  const visibleSelectedMeals = useMemo(
+    () => ({ ...preselectedMeals, ...selectedMeals }),
+    [preselectedMeals, selectedMeals]
+  );
+
+  const loadPlanner = useCallback(async (): Promise<PlannerViewModel | null> => {
     setError(null);
 
     try {
@@ -84,18 +105,20 @@ export function PlannerClient() {
 
       if (!response.ok) {
         setError(getErrorMessage(data, "Unable to load planner."));
-        return;
+        return null;
       }
 
       const nextPlanner = data as PlannerViewModel;
       setPlanner(nextPlanner);
       setSelectedDayIndex(getDefaultPlannerDayIndex(nextPlanner));
+      return nextPlanner;
     } catch {
       setError("Unable to reach the planner service. Try again.");
+      return null;
     }
   }, []);
 
-  const loadMeals = useCallback(async () => {
+  const loadMeals = useCallback(async (): Promise<MealSummary[]> => {
     setMealsError(null);
 
     try {
@@ -104,12 +127,15 @@ export function PlannerClient() {
 
       if (!response.ok) {
         setMealsError(getErrorMessage(data, "Unable to load saved meals."));
-        return;
+        return [];
       }
 
-      setMeals((data as MealsResponse).meals);
+      const loaded = (data as MealsResponse).meals;
+      setMeals(loaded);
+      return loaded;
     } catch {
       setMealsError("Unable to reach saved meals. Try again.");
+      return [];
     }
   }, []);
 
@@ -230,6 +256,20 @@ export function PlannerClient() {
             </div>
           )}
 
+          {(() => {
+            const preselectedMeal = preselectedMealId
+              ? meals.find((m) => m.id === preselectedMealId)
+              : null;
+            return preselectedMeal && canWrite ? (
+              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
+                <CalendarDays className="h-4 w-4 shrink-0" />
+                Adding{" "}
+                <strong className="mx-1">{preselectedMeal.mealName}</strong> —
+                select a day and slot, then tap Assign.
+              </div>
+            ) : null;
+          })()}
+
           {error ? (
             <Alert>
               <span className="inline-flex items-center gap-2">
@@ -280,7 +320,7 @@ export function PlannerClient() {
                 isSaving={isSaving}
                 meals={meals}
                 mutatePlanner={mutatePlanner}
-                selectedMeals={selectedMeals}
+                selectedMeals={visibleSelectedMeals}
                 slotsByKey={slotsByKey}
                 updateSelectedMeal={updateSelectedMeal}
               />
@@ -296,7 +336,7 @@ export function PlannerClient() {
                 key={day.date}
                 meals={meals}
                 mutatePlanner={mutatePlanner}
-                selectedMeals={selectedMeals}
+                selectedMeals={visibleSelectedMeals}
                 slotsByKey={slotsByKey}
                 updateSelectedMeal={updateSelectedMeal}
               />

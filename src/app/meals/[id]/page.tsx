@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FamilyAdjustmentsEditor } from "@/src/app/meals/[id]/family-adjustments-editor";
 import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
+import { formatPlannerContextLabel } from "@/src/lib/domain/planner";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
+import { getWeeklyDinnerPlanner } from "@/src/lib/notion/meal-plan";
 
 export const runtime = "nodejs";
 
@@ -70,14 +72,22 @@ export default async function MealDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  let detail;
 
-  try {
-    detail = await getMealDetail(id);
-  } catch (error) {
-    console.error("Meal detail page failure", error);
-    detail = null;
+  const [detailResult, plannerResult] = await Promise.allSettled([
+    getMealDetail(id),
+    getWeeklyDinnerPlanner()
+  ]);
+
+  const detail = detailResult.status === "fulfilled" ? detailResult.value : null;
+  if (detailResult.status === "rejected") {
+    console.error("Meal detail page failure", detailResult.reason);
   }
+
+  const plannerViewModel =
+    plannerResult.status === "fulfilled" && plannerResult.value.setup.ok
+      ? plannerResult.value
+      : null;
+  const plannedSlot = plannerViewModel?.slots.find((s) => s.meal?.id === id) ?? null;
 
   if (!detail) {
     return (
@@ -123,6 +133,14 @@ export default async function MealDetailPage({
           <Badge className="bg-muted text-muted-foreground">
             <CalendarDays className="h-3.5 w-3.5" />
             {feedbackSummary.lastEatenAt ? "Last eaten" : "Saved"} {dateLabel}
+          </Badge>
+        ) : null}
+        {plannerViewModel ? (
+          <Badge className="bg-muted text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {plannedSlot
+              ? formatPlannerContextLabel(plannedSlot, plannerViewModel.days)
+              : "Not planned this week"}
           </Badge>
         ) : null}
       </section>

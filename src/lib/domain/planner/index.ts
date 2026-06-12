@@ -154,6 +154,44 @@ export function getDefaultPlannerDayIndex(
   return todayIndex >= 0 ? todayIndex : 0;
 }
 
+export interface PreselectionMeal {
+  id: string;
+  mealType: string | null;
+}
+
+export function getDeepLinkPreselection(
+  preselectedMealId: string,
+  meals: PreselectionMeal[],
+  planner: PlannerViewModel,
+  defaultDayIndex: number
+): Record<string, string> {
+  const meal = meals.find((m) => m.id === preselectedMealId);
+  if (!meal) return {};
+
+  const targetSlot: MealSlot =
+    mealSlots.find((slot) =>
+      (meal.mealType ?? "").toLowerCase().includes(slot.toLowerCase())
+    ) ?? "Dinner";
+
+  const targetDay = planner.days[defaultDayIndex] ?? planner.days[0];
+  if (!targetDay) return {};
+
+  return { [getPlannerSlotKey(targetDay.date, targetSlot)]: preselectedMealId };
+}
+
+export function formatPlannerContextLabel(
+  slot: Pick<PlannerSlot, "planDate" | "mealSlot" | "status">,
+  days: PlannerDay[]
+): string {
+  const day = days.find((d) => d.date === slot.planDate);
+  const weekday = day?.weekday ?? slot.planDate;
+  const slotLabel = slot.mealSlot.toLowerCase();
+
+  if (slot.status === "Cooked") return `Cooked — ${weekday} ${slotLabel}`;
+  if (slot.status === "Skipped") return `Skipped — ${weekday} ${slotLabel}`;
+  return `Planned for ${weekday} ${slotLabel}`;
+}
+
 export function validatePlannerMutation(value: unknown): PlannerMutationInput {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error("Planner request body must be an object.");
