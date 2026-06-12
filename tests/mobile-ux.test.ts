@@ -11,6 +11,7 @@ test("planner uses a mobile day selector while preserving desktop week grid", ()
 
   assert.match(planner, /selectedDayIndex/);
   assert.match(planner, /aria-label="Choose planner day"/);
+  assert.match(planner, /findIndex\(\(day\) => day\.date === today\)/);
   assert.match(planner, /lg:hidden/);
   assert.match(planner, /hidden gap-3 lg:grid lg:grid-cols-7/);
   assert.match(planner, /PlannerDayCard/);
@@ -44,6 +45,7 @@ test("mobile rendering keeps navigation usable and prevents horizontal overflow"
   const globals = source("src/app/globals.css");
 
   assert.match(shell, /fixed inset-x-0 bottom-0/);
+  assert.match(shell, /pathname === "\/today"/);
   assert.match(shell, /pb-\[env\(safe-area-inset-bottom\)\]/);
   assert.match(globals, /overflow-x-hidden/);
 });

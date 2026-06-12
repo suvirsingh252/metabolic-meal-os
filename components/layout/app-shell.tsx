@@ -26,7 +26,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="ml-auto hidden items-center gap-1 md:flex">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = pathname === item.href;
+              const active =
+                pathname === item.href ||
+                (item.href === "/" && pathname === "/today");
 
               return (
                 <Button
@@ -62,7 +64,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href;
+          const active =
+            pathname === item.href ||
+            (item.href === "/" && pathname === "/today");
 
           return (
             <Link

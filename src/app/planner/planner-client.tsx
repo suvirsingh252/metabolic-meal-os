@@ -86,7 +86,9 @@ export function PlannerClient() {
         return;
       }
 
-      setPlanner(data as PlannerViewModel);
+      const nextPlanner = data as PlannerViewModel;
+      setPlanner(nextPlanner);
+      setSelectedDayIndex(getDefaultPlannerDayIndex(nextPlanner));
     } catch {
       setError("Unable to reach the planner service. Try again.");
     }
@@ -175,6 +177,8 @@ export function PlannerClient() {
   }
 
   const canWrite = Boolean(planner?.setup.ok);
+  const activePlannerDay =
+    planner?.days[selectedDayIndex] ?? planner?.days[0] ?? null;
 
   return (
     <div className="space-y-4">
@@ -268,16 +272,18 @@ export function PlannerClient() {
                 </Button>
               ))}
             </div>
-            <PlannerDayCard
-              canWrite={canWrite}
-              day={planner.days[selectedDayIndex] ?? planner.days[0]}
-              isSaving={isSaving}
-              meals={meals}
-              mutatePlanner={mutatePlanner}
-              selectedMeals={selectedMeals}
-              slotsByKey={slotsByKey}
-              updateSelectedMeal={updateSelectedMeal}
-            />
+            {activePlannerDay ? (
+              <PlannerDayCard
+                canWrite={canWrite}
+                day={activePlannerDay}
+                isSaving={isSaving}
+                meals={meals}
+                mutatePlanner={mutatePlanner}
+                selectedMeals={selectedMeals}
+                slotsByKey={slotsByKey}
+                updateSelectedMeal={updateSelectedMeal}
+              />
+            ) : null}
           </div>
 
           <div className="hidden gap-3 lg:grid lg:grid-cols-7">
@@ -299,6 +305,13 @@ export function PlannerClient() {
       ) : null}
     </div>
   );
+}
+
+function getDefaultPlannerDayIndex(planner: PlannerViewModel) {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayIndex = planner.days.findIndex((day) => day.date === today);
+
+  return todayIndex >= 0 ? todayIndex : 0;
 }
 
 function PlannerDayCard({
