@@ -1,44 +1,57 @@
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  isAuthorizedRequest,
+  shouldAllowUnauthenticated
+} from "@/src/lib/server/auth";
 
 export function middleware(request: NextRequest) {
   const authToken = process.env.APP_AUTH_TOKEN?.trim();
-  const privateMode = process.env.PRIVATE_DEPLOYMENT_MODE?.trim() !== "false";
 
   if (!authToken) {
-    if (privateMode) {
+    if (shouldAllowUnauthenticated()) {
       return NextResponse.next();
     }
 
+    // Fail closed: an unset APP_AUTH_TOKEN must never expose the deployment.
     return NextResponse.json(
       {
         error:
-          "Metabolic Meal OS is configured for private deployment only until authentication is enabled."
+          "Metabolic Meal OS is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out (local development only)."
       },
       { status: 503 }
     );
   }
 
-  const bearer = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
-  const headerToken = request.headers.get("x-app-auth-token");
-  const cookieToken = request.cookies.get("app_auth_token")?.value;
-
-  if (bearer === authToken || headerToken === authToken || cookieToken === authToken) {
+  if (isAuthorizedRequest(request, { allowCookie: true }).ok) {
     return NextResponse.next();
   }
 
   // Allow the iOS Shortcut intake endpoint to authenticate with its own dedicated token.
-  const intakeToken = process.env.IOS_SHORTCUT_TOKEN?.trim();
   if (
-    intakeToken &&
-    bearer === intakeToken &&
-    request.nextUrl.pathname === "/api/intake/share"
+    request.nextUrl.pathname === "/api/intake/share" &&
+    isAuthorizedRequest(request, {
+      expectedToken: process.env.IOS_SHORTCUT_TOKEN,
+      allowCookie: false
+    }).ok
   ) {
     return NextResponse.next();
+  }
+
+  // API callers get JSON, never an HTML redirect.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  if (request.headers.get("accept")?.includes("text/html")) {
+    const loginUrl = new URL("/login", request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/).*)"]
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icons/|login|api/auth/session).*)"
+  ]
 };

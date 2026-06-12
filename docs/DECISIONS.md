@@ -1,6 +1,19 @@
 # Architectural Decisions
 
-Last updated: 2026-06-11 (Beta 5 Family Cookbook)
+Last updated: 2026-06-12 (Private Deployment Auth Release)
+
+## 2026-06-12 — Production Is Private By Default (Fail-Closed Auth)
+
+Decision: Invert the auth default. A missing `APP_AUTH_TOKEN` now denies all traffic with 503 unless the operator explicitly opts out with `ALLOW_UNAUTHENTICATED=true` (legacy `PRIVATE_DEPLOYMENT_MODE=false` is honored for one release with a runtime warning). Centralize all token checks in `src/lib/server/auth.ts` with constant-time comparison, add a `/login` page plus `POST /api/auth/session` that sets an `HttpOnly` `app_auth_token` cookie, accept that cookie in route guards, and rate-limit + `sharedAt`-validate the iOS Shortcut intake route. Implements audit tickets A1–A4.
+
+Reasoning:
+- The previous fail-open default left the production deployment publicly accessible because `APP_AUTH_TOKEN` was never set. Fail-closed is the only safe default for a private household app.
+- Middleware, route guards, and the intake route had drifted; a single shared helper keeps them in lockstep, and the XOR-accumulation comparison avoids `node:crypto` so it runs on the Edge runtime.
+- A cookie-based browser login is the minimal flow that keeps the UI usable once the token is enforced, without adopting a full auth library before the data model stabilizes.
+
+Boundaries:
+- This is still one shared token per deployment, not user accounts, sessions with server-side state, or RBAC.
+- `ALLOW_UNAUTHENTICATED=true` exists only for local development and must never be set in production.
 
 ## 2026-06-11 — Beta 5 Makes Meal Detail A Family Cookbook
 

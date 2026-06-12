@@ -305,11 +305,13 @@ NOTION_WEEKLY_PLANS_DATABASE_ID=
 NOTION_MEAL_TEMPLATES_DATABASE_ID=
 ```
 
-Optional beta guard variables:
+Auth variables (private by default since 2026-06-12; `APP_AUTH_TOKEN` is required in production — without it and without an explicit opt-out every request returns 503):
 
 ```bash
 APP_AUTH_TOKEN=
-PRIVATE_DEPLOYMENT_MODE=true
+# Local/dev only; never true in production.
+ALLOW_UNAUTHENTICATED=false
+# Deprecated legacy opt-out, warns at runtime: PRIVATE_DEPLOYMENT_MODE=false
 APP_HOUSEHOLD_ID=
 APP_CREATED_BY=
 APP_RECORD_VISIBILITY=private
@@ -351,9 +353,12 @@ Do not deploy automatically from Codex. When Suvir is ready:
    - `NOTION_FEEDBACK_DATABASE_ID`
    - `NOTION_WEEKLY_PLANS_DATABASE_ID`
    - `NOTION_MEAL_TEMPLATES_DATABASE_ID`
-   - optional `APP_AUTH_TOKEN`
-   - optional `PRIVATE_DEPLOYMENT_MODE=true`
+   - **required** `APP_AUTH_TOKEN` (long random secret — deploying without it fails closed with 503)
+   - **required** `IOS_SHORTCUT_TOKEN` (long random secret for the iPhone Shortcut)
+   - `ALLOW_UNAUTHENTICATED=false`
    - optional household metadata env vars
+
+   > Do not deploy the auth release to production until `APP_AUTH_TOKEN` and `IOS_SHORTCUT_TOKEN` are set in Vercel production.
 5. Trigger or wait for deployment from `main`.
 6. After deploy, smoke test:
    - `/`
@@ -361,10 +366,11 @@ Do not deploy automatically from Codex. When Suvir is ready:
    - `/dashboard`
    - `/api/dashboard`
    - `/api/analyze-meal`
-7. If private deployment/token guardrails are enabled, verify production requires the expected access header/token behavior:
-   - `Authorization: Bearer <APP_AUTH_TOKEN>`
-   - or `x-app-auth-token: <APP_AUTH_TOKEN>`
-   - or an `app_auth_token` cookie.
+7. Verify production requires authentication:
+   - An incognito page request redirects to `/login`; entering `APP_AUTH_TOKEN` opens the app.
+   - Unauthenticated `/api/today` returns JSON 401.
+   - API access works with `Authorization: Bearer <APP_AUTH_TOKEN>` or `x-app-auth-token: <APP_AUTH_TOKEN>`.
+   - The iPhone Shortcut still works with `Authorization: Bearer <IOS_SHORTCUT_TOKEN>`.
 
 ## Manual Notion Schema Checklist
 
@@ -474,7 +480,7 @@ Reasoning:
 
 ## Current Blockers
 
-- No authentication yet; do not broaden public sharing before auth exists.
+- Token auth with a browser login flow exists (private by default since 2026-06-12), but there are no per-user accounts; do not broaden public sharing before real multi-user auth exists.
 - Optional source tracking fields require matching Notion Meals properties before they persist in Notion. The app detects compatible fields but does not create schema.
 - Recipe URL parsing is intentionally basic and dependency-free. Some recipe sites may block server-side fetches or hide recipe content behind scripts.
 - Evidence-Aware Analysis v3 works in production; continue reviewing real-meal output for safe language drift.

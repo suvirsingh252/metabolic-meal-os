@@ -84,7 +84,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 
 ## Future Migrations
 
-- [ ] Add full authentication and household ownership before wider public sharing. Current token/private-mode guardrails are beta-safe only.
+- [ ] Add full authentication and household ownership before wider public sharing. Since 2026-06-12 the deployment is private by default (fail-closed 503 without `APP_AUTH_TOKEN`, `/login` cookie flow, constant-time shared auth helper), but this is still a single shared token, not per-user auth/RBAC.
+- [ ] `PRIVATE_DEPLOYMENT_MODE=false` legacy unauthenticated opt-out is deprecated (warns at runtime); remove it after one release in favor of `ALLOW_UNAUTHENTICATED=true`.
 - [ ] Replace single-instance memory rate limiting with Redis/Upstash or platform-native distributed throttling before public launch.
 - [ ] Consider replacing Notion with a dedicated database if relational querying, permissions, or performance require it.
 - [ ] Consider provider abstractions for AI and storage after workflows stabilize.

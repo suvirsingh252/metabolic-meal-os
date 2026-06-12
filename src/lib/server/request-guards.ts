@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import {
+  isAuthorizedRequest,
+  shouldAllowUnauthenticated
+} from "@/src/lib/server/auth";
+import {
   checkRateLimit,
   rateLimitErrorResponse
 } from "@/src/lib/server/rate-limit";
@@ -25,29 +29,31 @@ export function getClientIp(request: Request) {
   );
 }
 
-export function enforcePrivateDeployment(request: Request) {
-  const authToken = process.env.APP_AUTH_TOKEN?.trim();
-  const privateMode = process.env.PRIVATE_DEPLOYMENT_MODE?.trim() !== "false";
+export function enforcePrivateDeployment(
+  request: Request,
+  options?: { allowCookie?: boolean }
+) {
+  const decision = isAuthorizedRequest(request, {
+    allowCookie: options?.allowCookie ?? true
+  });
 
-  if (!authToken) {
-    if (privateMode) {
+  if (decision.ok) {
+    return null;
+  }
+
+  if (decision.reason === "missing_server_token") {
+    if (shouldAllowUnauthenticated()) {
       return null;
     }
 
+    // Fail closed when APP_AUTH_TOKEN is unset and no explicit opt-out exists.
     return NextResponse.json(
       {
         error:
-          "Server is not configured for public access. Set APP_AUTH_TOKEN or enable PRIVATE_DEPLOYMENT_MODE."
+          "Server is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out (local development only)."
       },
       { status: 503 }
     );
-  }
-
-  const bearer = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
-  const headerToken = request.headers.get("x-app-auth-token");
-
-  if (bearer === authToken || headerToken === authToken) {
-    return null;
   }
 
   return NextResponse.json({ error: "Authentication required." }, { status: 401 });

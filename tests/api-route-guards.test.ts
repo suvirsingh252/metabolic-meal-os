@@ -111,6 +111,57 @@ test("ingredient lookup invokes the ingredients lookup rate limit", async () => 
   }
 });
 
+test("ingredient lookup accepts the app auth cookie", async () => {
+  const previousAuthToken = process.env.APP_AUTH_TOKEN;
+  process.env.APP_AUTH_TOKEN = "test-token";
+
+  // Deny at the rate limiter so the request stops right after auth passes;
+  // a 429 (not 401) proves the cookie was accepted.
+  setRateLimiterForTests({
+    check(request): RateLimitResult {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt: Date.now() + 60_000,
+        retryAfterSeconds: 60,
+        action: request.action
+      };
+    }
+  });
+
+  try {
+    const response = await lookupIngredient(
+      jsonRequest(
+        { ingredient: "oats" },
+        { cookie: "app_auth_token=test-token" }
+      )
+    );
+
+    assert.equal(response.status, 429);
+  } finally {
+    resetRateLimiterForTests();
+    restoreEnv("APP_AUTH_TOKEN", previousAuthToken);
+  }
+});
+
+test("ingredient lookup rejects an invalid app auth cookie", async () => {
+  const previousAuthToken = process.env.APP_AUTH_TOKEN;
+  process.env.APP_AUTH_TOKEN = "test-token";
+
+  try {
+    const response = await lookupIngredient(
+      jsonRequest(
+        { ingredient: "oats" },
+        { cookie: "app_auth_token=wrong-token" }
+      )
+    );
+
+    assert.equal(response.status, 401);
+  } finally {
+    restoreEnv("APP_AUTH_TOKEN", previousAuthToken);
+  }
+});
+
 test("notion diagnostics requires app auth when configured", async () => {
   const previousAuthToken = process.env.APP_AUTH_TOKEN;
   process.env.APP_AUTH_TOKEN = "test-token";

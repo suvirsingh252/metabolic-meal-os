@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { classifyInput, normalizeUrl, parseUrl } from "@/src/lib/intake/classify";
 import { saveIntakeToNotion, getIntakeDbId } from "@/src/lib/intake/notion";
-import { readJsonWithLimit } from "@/src/lib/server/request-guards";
+import {
+  isAuthorizedRequest,
+  shouldAllowUnauthenticated
+} from "@/src/lib/server/auth";
+import {
+  enforceRateLimit,
+  getClientIp,
+  readJsonWithLimit
+} from "@/src/lib/server/request-guards";
 import type { IntakeSharePayload } from "@/src/lib/intake/types";
 
 export const runtime = "nodejs";
@@ -14,25 +22,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function validateToken(request: Request): NextResponse | null {
-  const token = process.env.IOS_SHORTCUT_TOKEN?.trim();
+  const decision = isAuthorizedRequest(request, {
+    expectedToken: process.env.IOS_SHORTCUT_TOKEN,
+    allowCookie: false
+  });
 
-  if (!token) {
+  if (decision.ok) {
+    return null;
+  }
+
+  if (decision.reason === "missing_server_token") {
+    if (shouldAllowUnauthenticated()) {
+      return null;
+    }
+
     return NextResponse.json(
       { error: "Intake endpoint is not configured." },
       { status: 503 }
     );
   }
 
-  const bearer = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
+  return NextResponse.json(
+    { error: "Authentication required." },
+    { status: 401 }
+  );
+}
 
-  if (!bearer || bearer !== token) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 }
-    );
+function isIsoDateTime(value: string): boolean {
+  const timestamp = Date.parse(value);
+
+  if (Number.isNaN(timestamp)) {
+    return false;
   }
 
-  return null;
+  // Notion expects ISO-8601; require at least a date shape so values like
+  // "tomorrow" or bare years that Date.parse accepts do not slip through.
+  return /^\d{4}-\d{2}-\d{2}(T|$)/.test(value);
 }
 
 function extractPayload(body: unknown): IntakeSharePayload | NextResponse {
@@ -47,7 +72,8 @@ function extractPayload(body: unknown): IntakeSharePayload | NextResponse {
   const url = typeof body.url === "string" ? body.url.trim() : undefined;
   const text = typeof body.text === "string" ? body.text.trim() : undefined;
   const source = typeof body.source === "string" ? body.source.trim() : undefined;
-  const sharedAt = typeof body.sharedAt === "string" ? body.sharedAt.trim() : undefined;
+  const sharedAt =
+    typeof body.sharedAt === "string" ? body.sharedAt.trim() || undefined : undefined;
 
   if (!input && !url && !text) {
     return NextResponse.json(
@@ -86,6 +112,14 @@ export async function POST(request: Request) {
   const tokenError = validateToken(request);
   if (tokenError) return tokenError;
 
+  const rateLimitResponse = enforceRateLimit({
+    key: `intake-share:${getClientIp(request)}`,
+    limit: 20,
+    windowMs: 60_000,
+    action: "intake-share"
+  });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const body = await readJsonWithLimit(request, MAX_TEXT_BYTES);
   if (body instanceof NextResponse) return body;
 
@@ -94,6 +128,13 @@ export async function POST(request: Request) {
 
   const { rawUrl, text } = normalizePayloadInput(payload);
   const { source, sharedAt } = payload;
+
+  if (sharedAt !== undefined && !isIsoDateTime(sharedAt)) {
+    return NextResponse.json(
+      { error: "sharedAt must be a valid ISO-8601 date/time string." },
+      { status: 400 }
+    );
+  }
 
   const normalizedUrl = rawUrl ? normalizeUrl(rawUrl) : undefined;
   const validUrl = normalizedUrl && parseUrl(normalizedUrl) ? normalizedUrl : undefined;
