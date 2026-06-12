@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-11 (Weekly Planner v1.1)
+Last updated: 2026-06-11 (Beta 5 Family Cookbook)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -27,6 +27,14 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] `NOTION_MEAL_PLAN_SOURCE_ID` must be set manually and the Meal Plan data source/database must be shared with the Notion integration. `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
 - [ ] Planner assignment uses existing saved Meals only. There is no AI week generation, grocery-list generation, drag-and-drop, or meal invention.
 - [ ] Clearing a planned meal removes the Meal relation and resets status/source, but it does not archive/delete the Notion Meal Plan row.
+
+## Beta 5 Cookbook Known Limitations
+
+- [ ] Family adjustments are persisted as marked Meal Feedback notes, not a dedicated Family Adjustments table. This is schema-neutral but append-only and should be migrated if richer editing/history is needed.
+- [ ] Older meals without recognizable Ingredients or Instructions sections show cookbook empty states and rely on Original Recipe access.
+- [ ] Cookbook ingredient parsing is read-time and conservative. It preserves `name`, `quantity`, `unit`, and `rawText` where available, but it is not ready for grocery aggregation.
+- [ ] `Add to Planner` links to `/planner?meal=<id>` for context, but Planner does not yet preselect that meal from the query string.
+- [ ] Original recipe access uses `Source URL` when present and the saved Notion record as fallback.
 
 ## Technical Debt
 
@@ -77,7 +85,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 
 - [ ] Notion is the only persistence layer.
 - [ ] Ingredient suggestions are still saved by normalized name only. They can now be related to Meals when a compatible relation property exists, but structured ingredient quantity/unit persistence is still deferred.
-- [ ] Structured ingredients are type/helper-ready. Recipe JSON-LD ingredients are represented as `RecipeIngredient.rawText`, but quantity/unit parsing is not implemented.
+- [ ] Structured ingredients are type/helper-ready. Beta 5 adds read-time cookbook quantity/unit parsing for meal detail display, but dedicated structured ingredient persistence is not implemented.
 - [ ] Pantry support is type-only; there is no pantry UI, storage, or grocery-list deduction.
 - [ ] AI-generated analysis/enrichment has a separate type foundation, but is not persisted as a separate record yet.
 - [ ] Evidence-aware guidance is now source/principle-ID linked in analysis output, but still uses static guidance context rather than live source retrieval.

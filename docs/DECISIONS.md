@@ -1,6 +1,27 @@
 # Architectural Decisions
 
-Last updated: 2026-06-11 (Weekly Planner v1.1)
+Last updated: 2026-06-11 (Beta 5 Family Cookbook)
+
+## 2026-06-11 — Beta 5 Makes Meal Detail A Family Cookbook
+
+Decision: Redesign `/meals/[id]` around cooking and family recipe memory, while keeping grocery lists and inventory out of scope.
+
+Reasoning:
+- Real family feedback after Beta 4 was about making recipes, including normal household changes.
+- The app needs to support `Meal -> Cook -> Adjust -> Remember` before it can safely support `Shop -> Stock`.
+- Family adjustments should layer on top of source recipes instead of rewriting imported or saved recipe data.
+- Ingredient rows must keep `name`, `quantity`, and `unit` separate wherever available because future ingredient aggregation and grocery planning depend on that structure.
+
+Implementation:
+- `src/lib/domain/meals/cookbook.ts` builds a `MealCookbook` with family adjustments, structured cookbook ingredients, mobile cooking steps, and original recipe access.
+- Meal Detail now orders the page as cooking actions, `How We Make It`, `Ingredients`, `Instructions`, `Original Recipe`, `Nutrition`, and `Advanced details`.
+- Family adjustments persist through the existing feedback endpoint with a `[Family cookbook adjustment]` marker. This avoids a Notion migration while preserving an identifiable overlay stream.
+- Existing applicable feedback notes and the saved optimized version can surface in `How We Make It`.
+
+Tradeoffs:
+- Older meals without ingredient or instruction sections can only show graceful empty states and original recipe access.
+- Adjustment persistence is append-only through Meal Feedback for now; a dedicated Family Adjustments table remains a future migration.
+- Grocery lists, pantry inventory, barcode scanning, shopping flows, and inventory consumption are intentionally deferred until the cookbook and structured ingredient contract are trusted.
 
 ## 2026-06-11 — Weekly Planner v1.1 Expands To All Meal Slots
 

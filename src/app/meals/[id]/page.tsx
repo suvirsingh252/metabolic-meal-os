@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { CalendarDays, ExternalLink } from "lucide-react";
+import type React from "react";
+import { CalendarDays, ExternalLink, Soup, Star } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FamilyAdjustmentsEditor } from "@/src/app/meals/[id]/family-adjustments-editor";
 import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
 
@@ -39,6 +41,21 @@ function formatValue(value: number | null, unit: string) {
 
 function EmptyText({ children }: { children: string }) {
   return <p className="text-sm leading-6 text-muted-foreground">{children}</p>;
+}
+
+function SectionTitle({
+  children,
+  icon
+}: {
+  children: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {icon}
+      <h2 className="text-lg font-semibold tracking-normal">{children}</h2>
+    </div>
+  );
 }
 
 function cleanPrimaryText(value: string | null) {
@@ -89,13 +106,14 @@ export default async function MealDetailPage({
 
   const { meal, feedbackSummary } = detail;
   const dateLabel = formatDate(detail.dateLabel);
+  const { cookbook } = detail;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 md:space-y-6">
       <PageHeader
-        eyebrow="Meal detail"
+        eyebrow="Family cookbook"
         title={meal.mealName}
-        description="Household feedback, why it works, and nutrition signals for this saved meal."
+        description="Cook the family version, keep the original recipe nearby, and remember what worked."
       />
 
       <section className="flex flex-wrap gap-2">
@@ -119,102 +137,110 @@ export default async function MealDetailPage({
         meal={meal}
       />
 
-      <details className="rounded-md border bg-card p-4">
-        <summary className="cursor-pointer font-medium">Household summary</summary>
-        <div className="mt-4 border-t pt-4">
       <Card>
         <CardHeader>
-          <CardTitle>Household summary</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            HOW WE MAKE IT <Star className="h-4 w-4 fill-current" />
+          </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm md:grid-cols-3">
-          <div className="rounded-md border bg-background p-4">
-            <p className="text-muted-foreground">Meal type</p>
-            <p className="mt-1 font-medium">
-              {[meal.mealType, meal.cuisine].filter(Boolean).join(" · ") ||
-                "Not labeled yet"}
-            </p>
-          </div>
-          <div className="rounded-md border bg-background p-4">
-            <p className="text-muted-foreground">Household feedback</p>
-            <p className="mt-1 font-medium">
-              {feedbackSummary.totalEvents > 0
-                ? `${feedbackSummary.eatenCount} eaten · ${feedbackSummary.wouldRepeatCount} repeat`
-                : "No feedback yet"}
-            </p>
-          </div>
-          <div className="rounded-md border bg-background p-4">
-            <p className="text-muted-foreground">Nutrition / quality</p>
-            <p className="mt-1 font-medium">
-              {detail.hasNutritionData
-                ? "Nutrition signals available"
-                : "Nutrition details limited"}
-            </p>
-          </div>
+        <CardContent className="space-y-4">
+          {cookbook.familyAdjustments.length > 0 ? (
+            <ul className="space-y-3">
+              {cookbook.familyAdjustments.map((adjustment) => (
+                <li
+                  className="rounded-md border bg-background p-4 text-base leading-7"
+                  key={adjustment.id}
+                >
+                  {adjustment.text}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyText>
+              No family adjustments have been saved yet. Add the version your
+              household actually makes so it is ready next time.
+            </EmptyText>
+          )}
+          <FamilyAdjustmentsEditor meal={meal} />
         </CardContent>
       </Card>
-        </div>
-      </details>
 
-      <details className="rounded-md border bg-card p-4">
-        <summary className="cursor-pointer font-medium">Why and what we know</summary>
-        <section className="mt-4 grid gap-4 border-t pt-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Why this meal</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {detail.whyReasons.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {detail.whyReasons.map((reason) => (
-                  <Badge key={reason}>{reason}</Badge>
-                ))}
+      <section className="space-y-3">
+        <SectionTitle icon={<Soup className="h-5 w-5" />}>INGREDIENTS</SectionTitle>
+        {cookbook.ingredients.length > 0 ? (
+          <div className="grid gap-2">
+            {cookbook.ingredients.map((ingredient) => (
+              <div
+                className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-md border bg-card p-4 text-base leading-6 sm:grid-cols-[7rem_minmax(0,1fr)]"
+                key={ingredient.id}
+              >
+                <p className="font-semibold">
+                  {[ingredient.quantity, ingredient.unit].filter(Boolean).join(" ") ||
+                    "As needed"}
+                </p>
+                <p>{ingredient.name}</p>
               </div>
-            ) : (
-              <EmptyText>
-                Meal OS has limited recommendation context for this meal so far.
-              </EmptyText>
-            )}
-
-            {detail.feedbackReasons.length > 0 ? (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium">Household signals</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  {detail.feedbackReasons.map((reason) => (
-                    <li key={reason}>{reason}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <EmptyText>No feedback-derived reasons are available yet.</EmptyText>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>What we know</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {meal.proteinLevel ? <Badge>{meal.proteinLevel} protein</Badge> : null}
-              {meal.satietyLevel ? <Badge>{meal.satietyLevel} satiety</Badge> : null}
-              {meal.bloodSugarImpact ? (
-                <Badge>{meal.bloodSugarImpact} blood sugar impact</Badge>
-              ) : null}
-              {meal.effortLevel ? <Badge>{meal.effortLevel} effort</Badge> : null}
-            </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border bg-card p-4">
             <EmptyText>
-              {detail.hasNutritionData
-                ? "Meal OS has enough saved context to summarize this meal."
-                : "Meal OS has limited saved context for this meal right now."}
+              Structured ingredients are not saved for this older meal yet.
+              Keep using the original recipe link below; future saves preserve
+              ingredient name, quantity, and unit for grocery planning.
             </EmptyText>
-          </CardContent>
-        </Card>
-        </section>
-      </details>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <SectionTitle>INSTRUCTIONS</SectionTitle>
+        {cookbook.instructions.length > 0 ? (
+          <ol className="space-y-3">
+            {cookbook.instructions.map((step, index) => (
+              <li
+                className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 rounded-md border bg-card p-4 text-lg leading-8"
+                key={step.id}
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                  {index + 1}
+                </span>
+                <span>{step.text}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div className="rounded-md border bg-card p-4">
+            <EmptyText>
+              Cooking steps are not saved for this older meal yet. The original
+              recipe remains available below.
+            </EmptyText>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-md border bg-card p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <SectionTitle>ORIGINAL RECIPE</SectionTitle>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Source details stay separate from family adjustments.
+            </p>
+          </div>
+          <Button asChild variant="secondary">
+            <a
+              href={cookbook.originalRecipeUrl ?? meal.url}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {cookbook.originalRecipeLabel} <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </section>
 
       <details className="rounded-md border bg-card p-4">
-        <summary className="cursor-pointer font-medium">Nutrition / quality</summary>
+        <summary className="cursor-pointer font-medium">Nutrition</summary>
         <div className="mt-4 space-y-4 border-t pt-4">
           {detail.hasNutritionData ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -235,7 +261,69 @@ export default async function MealDetailPage({
 
       <details className="rounded-md border bg-card p-4">
         <summary className="cursor-pointer font-medium">Advanced details</summary>
-        <div className="mt-4 space-y-4 text-sm text-muted-foreground">
+        <div className="mt-4 space-y-5 border-t pt-4">
+          <section className="grid gap-3 text-sm md:grid-cols-3">
+            <div className="rounded-md border bg-background p-4">
+              <p className="text-muted-foreground">Meal type</p>
+              <p className="mt-1 font-medium">
+                {[meal.mealType, meal.cuisine].filter(Boolean).join(" · ") ||
+                  "Not labeled yet"}
+              </p>
+            </div>
+            <div className="rounded-md border bg-background p-4">
+              <p className="text-muted-foreground">Household feedback</p>
+              <p className="mt-1 font-medium">
+                {feedbackSummary.totalEvents > 0
+                  ? `${feedbackSummary.eatenCount} eaten · ${feedbackSummary.wouldRepeatCount} repeat`
+                  : "No feedback yet"}
+              </p>
+            </div>
+            <div className="rounded-md border bg-background p-4">
+              <p className="text-muted-foreground">Nutrition / quality</p>
+              <p className="mt-1 font-medium">
+                {detail.hasNutritionData
+                  ? "Nutrition signals available"
+                  : "Nutrition details limited"}
+              </p>
+            </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Why this meal</h3>
+              {detail.whyReasons.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {detail.whyReasons.map((reason) => (
+                    <Badge key={reason}>{reason}</Badge>
+                  ))}
+                </div>
+              ) : (
+                <EmptyText>
+                  Meal OS has limited recommendation context for this meal so far.
+                </EmptyText>
+              )}
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">What we know</h3>
+              <div className="flex flex-wrap gap-2">
+                {meal.proteinLevel ? <Badge>{meal.proteinLevel} protein</Badge> : null}
+                {meal.satietyLevel ? <Badge>{meal.satietyLevel} satiety</Badge> : null}
+                {meal.bloodSugarImpact ? (
+                  <Badge>{meal.bloodSugarImpact} blood sugar impact</Badge>
+                ) : null}
+                {meal.effortLevel ? <Badge>{meal.effortLevel} effort</Badge> : null}
+              </div>
+              {detail.feedbackReasons.length > 0 ? (
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {detail.feedbackReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyText>No feedback-derived reasons are available yet.</EmptyText>
+              )}
+            </div>
+          </section>
           <div className="flex flex-wrap gap-2">
             <Badge>{detail.sourceBadge}</Badge>
             {detail.confidenceBadge ? <Badge>{detail.confidenceBadge}</Badge> : null}

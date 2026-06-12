@@ -6,6 +6,8 @@ export interface MealSummary {
   url: string;
   mealName: string;
   createdAt: string;
+  sourceUrl: string | null;
+  sourceName: string | null;
   cuisine: string | null;
   mealType: string | null;
   proteinLevel: string | null;
@@ -15,6 +17,7 @@ export interface MealSummary {
   familyApproved: boolean;
   weeknightFriendly: boolean;
   comfortMeal: boolean;
+  optimizedVersion: string | null;
   notes: string | null;
   calories: number | null;
   proteinG: number | null;
@@ -94,6 +97,14 @@ function readRichText(property: NotionProperty | undefined) {
   return value || null;
 }
 
+function readUrl(property: NotionProperty | undefined) {
+  if (!property || property.type !== "url") {
+    return null;
+  }
+
+  return property.url?.trim() || null;
+}
+
 function readDateProperty(property: NotionProperty | undefined) {
   if (!property || property.type !== "date") {
     return null;
@@ -162,6 +173,18 @@ function readTextLike(page: PageObjectResponse, propertyNames: string[]) {
   for (const propertyName of propertyNames) {
     const property = getProperty(page, propertyName);
     const value = readSelect(property) ?? readRichText(property);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function readUrlLike(page: PageObjectResponse, propertyNames: string[]) {
+  for (const propertyName of propertyNames) {
+    const value = readUrl(getProperty(page, propertyName)) ?? readRichText(getProperty(page, propertyName));
 
     if (value) {
       return value;
@@ -250,6 +273,12 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     url: page.url,
     mealName: readTitle(getProperty(page, "Meal Name")) || "Untitled meal",
     createdAt: readDate(page, ["Meal Date", "Date", "Logged At"]) ?? page.created_time,
+    sourceUrl: readUrlLike(page, [
+      "Source URL",
+      "Source Url",
+      "sourceUrl"
+    ]),
+    sourceName: readTextLike(page, ["Source Name", "sourceName"]),
     cuisine: readSelect(getProperty(page, "Cuisine")),
     mealType: readSelect(getProperty(page, "Meal Type")),
     proteinLevel: readSelect(getProperty(page, "Protein Level")),
@@ -259,6 +288,7 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     familyApproved: readCheckbox(getProperty(page, "Family Approved")),
     weeknightFriendly: readCheckbox(getProperty(page, "Weeknight Friendly")),
     comfortMeal: readCheckbox(getProperty(page, "Comfort Meal")),
+    optimizedVersion: readRichText(getProperty(page, "Optimized Version")),
     notes,
     calories: nutrition.calories,
     proteinG: nutrition.protein,

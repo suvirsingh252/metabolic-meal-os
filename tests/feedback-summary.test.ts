@@ -98,3 +98,24 @@ test("summarizeMealFeedback exposes recent feedback notes without schema changes
     "Oldest kept note"
   ]);
 });
+
+test("summarizeMealFeedback keeps family cookbook adjustments separate from recent note cap", () => {
+  const summaries = summarizeMealFeedback([
+    event({ notes: "[Family cookbook adjustment] Cook 5 minutes longer" }),
+    event({ notes: "Newest note" }),
+    event({ notes: "Older note" }),
+    event({ notes: "Oldest kept note" }),
+    event({ notes: "Extra old note" }),
+    event({ notes: "[Family cookbook adjustment] Use the air fryer" })
+  ]);
+
+  assert.deepEqual(summaries["meal-1"]?.recentNotes, [
+    "[Family cookbook adjustment] Cook 5 minutes longer",
+    "Newest note",
+    "Older note"
+  ]);
+  assert.deepEqual(summaries["meal-1"]?.familyAdjustments, [
+    "Cook 5 minutes longer",
+    "Use the air fryer"
+  ]);
+});

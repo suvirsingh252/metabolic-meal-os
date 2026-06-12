@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-11 (Weekly Planner v1.1)
+Last updated: 2026-06-11 (Beta 5 Family Cookbook)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -51,10 +51,11 @@ Implemented:
 - Beta 3.5 mobile hardening: Today `Suggest Another` rotates through alternatives after temporary exclusions exhaust, recommendation copy no longer treats repeated saved records as feedback success, and Meals title links have block-level mobile tap targets.
 - Beta 3.6 iPhone Share Intake: `POST /api/intake/share` accepts iOS Shortcut POSTs with `IOS_SHORTCUT_TOKEN` bearer auth, classifies URL/text as `recipe-url`, `social-url`, `plain-text`, or `unknown-url`, persists intake to optional Notion Meal Intake database, and returns `analyzeUrl` with intake page ID. `/analyze?intake=<id>` loads the intake record server-side and shows an amber bridge panel with classification, source, preview, and social fallback copy. The `AnalyzeClient` is pre-filled with the URL or text. The middleware was updated to accept `IOS_SHORTCUT_TOKEN` specifically for the intake path.
 - Weekly Planner v1.1: `/planner` loads the current Monday-Sunday plan from a dedicated Notion Meal Plan data source, shows Breakfast, Lunch, Dinner, and Snack slots, offers saved Meals as assignment options, can clear a planned meal, and can mark `Planned`, `Cooked`, `Skipped`, or `Swapped`. Writes are keyed by date plus slot so same-day meals do not overwrite each other. Missing planner config or schema gaps show safe diagnostics and block writes without crashing. Prefer `NOTION_MEAL_PLAN_SOURCE_ID`; `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
+- Beta 5 Family Cookbook: `/meals/[id]` is now cooking-first. It starts with Make This Again, Ate This, Loved It, Add to Planner, then `How We Make It`, structured Ingredients, large mobile Instructions, Original Recipe access, Nutrition, and Advanced details. Family adjustments are stored as marked feedback notes and layered over source recipe data without overwriting the original recipe.
 - Analyze now has staged loading copy for long analysis runs and tells users detailed meals can take about 20-30 seconds.
 - Feedback quick actions now have explicit semantics: `Ate This` logs eaten only, `Loved It` logs eaten/loved/worth repeating, and Meal Detail `Would Make Again` is repeat-only in household summaries.
 - Dashboard starts with household takeaways before detailed metrics and keeps data coverage/source diagnostics behind Advanced data coverage.
-- Meal Detail starts with household summary, quick feedback semantics, why this meal works, and nutrition/quality; raw notes, provenance, and external saved-record links live under Advanced details.
+- Meal Detail is the family cookbook surface: quick cooking actions first, then `How We Make It`, ingredients, instructions, original recipe access, nutrition, and advanced metadata.
 - Ingredient suggestion persistence to Notion Ingredients after meal save. The production `/analyze` flow saves from the editable ingredient textarea, duplicate detection works, and the local code now relates new or duplicate Ingredients back to the saved Meal when a compatible Notion relation property exists.
 - Notion schema diagnostics for Meals, Ingredients, and Meal Feedback from Settings.
 - PWA foundation with app metadata, manifest, placeholder SVG/PNG icons, and iPhone-friendly layout polish.
@@ -62,7 +63,7 @@ Implemented:
 - Analysis Framework v2: expanded OpenAI structured output with numeric scores, minimal-change framing, cultural notes, shopping additions, prep notes, meal pairings, and cautions. All v2 fields are editable in /analyze before save. Notion Notes field stores a concise v2 summary without schema changes.
 - Canada-centred foundation types: household defaults are CA/NS/Halifax, mixed units, CAD, Celsius, and preferred stores.
 - Recipe source metadata foundation: `sourceType`, `sourceUrl`, `sourceName`, `importedAt`, `lastParsedAt`, and `parserVersion`.
-- Structured ingredient foundation: `RecipeIngredient` supports raw text, parsed name, quantity, unit, preparation, optional flag, and category while preserving string ingredient compatibility.
+- Structured ingredient foundation: `RecipeIngredient` and Beta 5 `CookbookIngredient` support raw text, parsed name, quantity, and unit while preserving string compatibility.
 - Adapter directories exist for future Open Food Facts, nutrition, recipe parser, grocery prices, and weather integrations.
 - Recipe/shared URL analysis support: `/analyze` accepts normal recipe URLs, shortened/shared URLs, TikTok links, Instagram Reels, YouTube Shorts, and pasted text in the existing input. `/api/analyze-meal` classifies the source, fetches safely server-side through the recipe-parser adapter, prefers Recipe JSON-LD when present, falls back to bounded metadata/page text, and returns source metadata plus source notes with the analysis.
 - Recipe JSON-LD nutrition extraction: when a recipe page exposes structured nutrition facts, the parser carries meal-level totals into `nutritionEstimate` with confidence and provenance. Structured nutrition remains preferred over estimates.
@@ -89,7 +90,7 @@ Implemented:
 
 Not implemented yet:
 - Full user-account authentication and household RBAC. Beta token/private-mode guardrails are implemented.
-- Structured ingredient persistence beyond normalized suggestions.
+- Dedicated per-meal structured ingredient persistence beyond parsed cookbook display and normalized suggestions.
 - AI-generated weekly planning, grocery lists, drag-and-drop planning, and meal-slot-specific recommendation generation.
 - Meal template workflows.
 - Service worker/offline PWA support.
@@ -173,7 +174,7 @@ Pages:
 - `/dashboard`: dashboard intelligence surface, with household takeaways first, daily snapshot, configurable targets, quality summary, Advanced data coverage, insights, weekly trends, and recent meals.
 - `/analyze`: paste recipe text or URL, call analysis API with staged loading copy, review a household-first summary, edit progressively disclosed details, and save the meal.
 - `/meals`: fetch and display saved meals with Meal OS wording and internal detail links.
-- `/meals/[id]`: saved meal detail with household summary first, quick feedback semantics, why this meal works, nutrition/quality context, and raw notes/external saved-record link under Advanced details.
+- `/meals/[id]`: family cookbook detail with quick cooking actions, `How We Make It`, ingredients, mobile cooking instructions, original recipe access, nutrition, and advanced details.
 - `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback with Meal OS success copy.
 - `/settings`: Notion diagnostics and server environment status.
 - `/settings`: also includes a diagnostic Ingredient Lookup Test panel backed by the server-side USDA lookup route.

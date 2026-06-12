@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-11 (Weekly Planner v1.1)
+Last updated: 2026-06-11 (Beta 5 Family Cookbook)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -109,6 +109,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add Weekly Dinner Planner v1: Notion-backed current-week dinner slots, saved-meal assignment, clear, status updates, setup diagnostics, and schema-safe writes.
 - [x] Expand Planner v1.1 to Breakfast, Lunch, Dinner, and Snack slots without adding AI generation.
 - [x] Complete Beta 4 mobile-first UX hardening: reduce mobile scrolling/cognitive load across Today, Analyze, Meals, Planner, Dashboard, Feedback, Settings, and Meal Detail while preserving capabilities.
+- [x] Complete Beta 5 Family Cookbook: redesign Meal Detail around cooking, add `How We Make It`, preserve original recipe access, render structured cookbook ingredients and mobile cooking steps, and capture family adjustments without implementing grocery or inventory systems.
 
 ## Current Sprint
 
@@ -130,6 +131,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 ## Next Up
 
 - [ ] Add structured ingredient persistence behind the current ingredient suggestion flow.
+- [ ] Promote marked family cookbook adjustment feedback into a dedicated Family Adjustments data model if feedback-backed persistence becomes too limiting.
 - [ ] Add an operator-triggered Notion write-back migration only if read-time backfill proves insufficient.
 - [x] Add meal detail view.
 - [ ] Harden Recipe URL analysis further after more real-site testing: consider jsdom + @mozilla/readability if the dependency tradeoff is worth it, add socket-level IP pinning if needed, and record blocked/problematic domains.
@@ -157,6 +159,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Household preference profile.
 - [ ] Shopping list generation.
 - [ ] Pantry-aware substitutions.
+- [ ] Grocery list generation from structured cookbook ingredients after quantity/unit persistence is trustworthy.
+- [ ] Inventory and pantry consumption after grocery list behavior is validated.
 - [ ] Open Food Facts enrichment for Canadian grocery products.
 - [ ] Canadian grocery price/flyer intelligence through adapters.
 - [ ] Weather/context-aware planning for Halifax/NS seasons.
@@ -183,7 +187,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Need broader integration tests for API route validators and Notion adapter behavior.
 - [ ] Notion Notes field has a 2000-character hard limit; buildMealNotesSummary truncates with an explicit marker as a safety measure.
 - [ ] Integration adapter interfaces are intentionally stubbed and may evolve once real providers are selected.
-- [ ] Structured ingredient parsing is not implemented yet; only the compatible type/helper foundation exists.
+- [ ] Beta 5 cookbook ingredient parsing is intentionally narrow and read-time. Dedicated per-meal structured ingredient persistence is still needed before grocery aggregation.
 - [ ] Recipe parser remains dependency-free. It now handles shared/social intake more gracefully, but it is still not as robust as a full Readability parser and cannot access blocked captions/transcripts.
 - [ ] FoodData Central matching is improved but remains heuristic and needs ongoing quality review.
 - [ ] The `/analyze` review UI has a first hierarchy pass, but the rest of the app still needs household UX simplification.

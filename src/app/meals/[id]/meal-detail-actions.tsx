@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  CalendarPlus,
   Check,
   Heart,
   Loader2,
@@ -12,6 +14,7 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FamilyAdjustmentsEditor } from "@/src/app/meals/[id]/family-adjustments-editor";
 import { formatLocalCalendarDate } from "@/src/lib/date/local-calendar";
 import {
   applyOptimisticMealDetailFeedback,
@@ -76,7 +79,7 @@ const actionCopy: Record<
     successMessage: "Saved: logged as not liked."
   },
   repeat: {
-    label: "Would Make Again",
+    label: "Make This Again",
     icon: "repeat",
     feedbackEntry: "would make again from Meal Detail",
     energyAfter: "Neutral",
@@ -237,7 +240,7 @@ export function MealDetailActions({
   return (
     <div className="space-y-3">
       {message ? <Alert>{message}</Alert> : null}
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {primaryActionOrder.map((actionId) => {
           const action = actionCopy[actionId];
           const state = saveState[actionId];
@@ -261,12 +264,27 @@ export function MealDetailActions({
             </Button>
           );
         })}
+        <Button asChild variant="secondary">
+          <Link href={`/planner?meal=${encodeURIComponent(meal.id)}`}>
+            <CalendarPlus className="h-4 w-4" />
+            Add to Planner
+          </Link>
+        </Button>
       </div>
-      <div className="hidden gap-2 text-xs leading-5 text-muted-foreground sm:grid sm:grid-cols-2 lg:grid-cols-4">
+      <div className="hidden gap-2 text-xs leading-5 text-muted-foreground sm:grid sm:grid-cols-2 lg:grid-cols-5">
         {primaryActionOrder.map((actionId) => (
           <p key={actionId}>{actionCopy[actionId].helper}</p>
         ))}
+        <p>Opens planner with this meal in context.</p>
       </div>
+      <details className="rounded-md border bg-card p-4">
+        <summary className="cursor-pointer font-medium">
+          Did you change anything?
+        </summary>
+        <div className="mt-4 border-t pt-4">
+          <FamilyAdjustmentsEditor meal={meal} />
+        </div>
+      </details>
       <Card>
         <CardHeader>
           <CardTitle>Household feedback</CardTitle>

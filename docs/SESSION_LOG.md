@@ -1,5 +1,30 @@
 # Session Log
 
+## 2026-06-11 Beta 5 Family Cookbook Experience
+
+Goal:
+- Transform Meal Detail from a metadata-first page into a cooking-first family cookbook where family members can cook the household version, see original recipe access, and capture adjustments for next time.
+
+Implementation:
+- Added `src/lib/domain/meals/cookbook.ts` to build a `MealCookbook` with family adjustments, structured cookbook ingredients, cooking steps, and original recipe access.
+- Extended Notion meal summaries to read `Source URL`, `Source Name`, and `Optimized Version`.
+- Reordered `/meals/[id]` around Make This Again, Ate This, Loved It, Add to Planner, `How We Make It`, Ingredients, Instructions, Original Recipe, Nutrition, and Advanced details.
+- Added `FamilyAdjustmentsEditor` with quick chips (`Less salt`, `More spice`, `Extra vegetables`, `Different protein`, `Longer cook`, `Other`) and optional free-text capture.
+- Persisted family adjustments through the existing feedback endpoint using `[Family cookbook adjustment]` in notes. The source recipe and original notes are not overwritten.
+- Rendered ingredients as structured rows with quantity/unit separate from name where parseable, and large ordered instruction steps for phone cooking.
+
+Out of scope:
+- Grocery lists, pantry tracking, inventory consumption, barcode scanning, shopping workflows, auth changes, planner redesign, and dashboard redesign.
+
+Validation:
+- `npm run lint`: passed.
+- `npm run typecheck`: passed after `next build` regenerated stale `.next/types` route metadata.
+- `npm test`: passed, 186 tests.
+- `npm run build`: passed.
+
+Tests added/updated:
+- Meal Detail cookbook empty states, existing adjustment rendering, original recipe access, structured ingredient quantity/unit rendering, graceful missing values, step rendering, optional adjustment capture hooks, and mobile progressive disclosure/no-overflow source checks.
+
 ## 2026-06-11 Weekly Planner v1.1 Multi-Slot Expansion
 
 Goal:

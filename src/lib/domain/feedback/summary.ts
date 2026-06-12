@@ -25,6 +25,7 @@ export interface MealFeedbackSummary {
   netPreferenceScore: number;
   confidence: "none" | "low" | "medium" | "high";
   recentNotes: string[];
+  familyAdjustments?: string[];
 }
 
 export type MealFeedbackSummaryByMealId = Record<string, MealFeedbackSummary>;
@@ -64,6 +65,20 @@ function isRepeatOnlyEvent(event: MealFeedbackEvent) {
   const text = `${event.feedbackEntry} ${event.notes ?? ""}`.toLowerCase();
 
   return text.includes("would make again from meal detail");
+}
+
+function parseFamilyAdjustment(note: string) {
+  const marker = "[Family cookbook adjustment]";
+  const markerIndex = note.indexOf(marker);
+
+  if (markerIndex < 0) {
+    return null;
+  }
+
+  return note
+    .slice(markerIndex + marker.length)
+    .replace(/^[:\s-]+/, "")
+    .trim();
 }
 
 function latestDate(left: string | null, right: string) {
@@ -114,7 +129,8 @@ export function summarizeMealFeedback(
         lastEatenAt: null,
         lastPositiveAt: null,
         netPreferenceScore: 0,
-        recentNotes: []
+        recentNotes: [],
+        familyAdjustments: []
       };
     const loved = isLovedEvent(event);
     const positive = isPositiveEvent(event);
@@ -152,9 +168,21 @@ export function summarizeMealFeedback(
     }
 
     if (event.notes?.trim()) {
+      const note = event.notes.trim();
+      const adjustment = parseFamilyAdjustment(note);
+
+      if (adjustment) {
+        summary.familyAdjustments = [
+          ...(summary.familyAdjustments ?? []).filter(
+            (item) => item !== adjustment
+          ),
+          adjustment
+        ];
+      }
+
       summary.recentNotes = [
-        ...summary.recentNotes.filter((note) => note !== event.notes?.trim()),
-        event.notes.trim()
+        ...summary.recentNotes.filter((existingNote) => existingNote !== note),
+        note
       ].slice(0, 3);
     }
 
@@ -188,6 +216,7 @@ export function emptyMealFeedbackSummary(
     lastPositiveAt: null,
     netPreferenceScore: 0,
     confidence: "none",
-    recentNotes: []
+    recentNotes: [],
+    familyAdjustments: []
   };
 }

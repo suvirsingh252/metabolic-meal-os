@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-11 (Weekly Planner v1.1)
+Last updated: 2026-06-11 (Beta 5 Family Cookbook)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -129,6 +129,7 @@ Meals list:
 4. Server maps Notion pages to `MealSummary`.
 5. `pageSize`, `cursor`, and `search` are supported to avoid unbounded scans.
 6. `/meals/[id]` reads saved meal detail and household feedback summaries server-side for the detail page.
+7. Beta 5 cookbook data is built by `src/lib/domain/meals/cookbook.ts`. It layers family adjustments on top of saved source data, parses available ingredient and instruction sections from saved notes, and keeps `name`, `quantity`, `unit`, and `rawText` separate for ingredient rows.
 
 Feedback:
 1. `/feedback` calls `POST /api/notion/log-feedback`.
@@ -141,6 +142,40 @@ Feedback:
 8. Today's Recent Household Learning strip is derived from existing feedback summaries by `src/lib/domain/feedback/learning-strip.ts`; it does not require new data fields.
 9. Quick action semantics are explicit in the UI and domain helpers: `Ate This` records eaten only; `Loved It` records eaten, loved, and worth repeating; Meal Detail `Would Make Again` is treated as repeat-only in household summaries.
 10. Today undo is client-side only: it restores the pre-optimistic summary in the local Today view and preserves that local override against stale refreshes in the current session. It does not delete or reverse persisted feedback history.
+11. Family cookbook adjustments are saved through the same feedback endpoint with a `[Family cookbook adjustment]` note marker. This avoids a Notion migration during Beta 5 while keeping adjustment data append-only and distinguishable for a future dedicated Family Adjustments table.
+
+## Family Cookbook Architecture
+
+Beta 5 shifts the core meal detail mental model from `Meal -> Plan -> Eat` to:
+
+Plan
+↓
+Cook
+↓
+Adjust
+↓
+Remember
+↓
+Shop
+↓
+Stock
+
+Current scope:
+- `/meals` remains the saved-meal finder.
+- `/meals/[id]` is the cooking surface.
+- The first screen order is action-first, then family recipe overlay, ingredients, cooking instructions, original source access, nutrition, and advanced metadata.
+
+Data boundaries:
+- Source recipe data remains canonical and read-only in the cookbook view.
+- Family adjustments are overlays. They do not overwrite `Notes`, `Optimized Version`, source URL, original instructions, or nutrition fields.
+- Ingredients use a typed `CookbookIngredient` shape with `name`, `quantity`, `unit`, and `rawText`. This preserves the future path to ingredient aggregation, grocery lists, and inventory without requiring those systems now.
+- Instructions use ordered `CookbookStep` records for mobile cooking display.
+- Existing feedback notes can be surfaced when they look like cooking modifications, and explicit cookbook adjustments are recognized by marker.
+
+Deferred systems:
+- Grocery lists, pantry tracking, inventory consumption, barcode scanning, shopping workflows, multi-user permissions, and auth changes are intentionally out of scope.
+- The app should not aggregate ingredients into shopping quantities until structured ingredient persistence and serving assumptions are stronger.
+- The current feedback-backed adjustment persistence is schema-neutral; a later migration can promote marked notes into a dedicated Family Adjustments relation without changing the cookbook UI contract.
 
 Weekly Planner:
 1. `/planner` renders `src/app/planner/planner-client.tsx`.

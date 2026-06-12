@@ -227,6 +227,32 @@ Planner behavior:
 - The planner can assign a saved meal, clear a planned meal relation, and update status to `Planned`, `Cooked`, `Skipped`, or `Swapped`.
 - If `NOTION_MEAL_PLAN_SOURCE_ID` or `NOTION_MEAL_PLAN_DATABASE_ID` is missing, or the Meal Plan schema is incomplete, `/planner` shows setup diagnostics and blocks writes without crashing.
 
+## Family Cookbook Architecture (Beta 5)
+
+Beta 5 turns `/meals/[id]` into a cooking-first family cookbook view:
+
+Plan
+↓
+Cook
+↓
+Adjust
+↓
+Remember
+↓
+Shop
+↓
+Stock
+
+Current implementation:
+
+- Meal Detail now prioritizes `Make This Again`, `Ate This`, `Loved It`, `Add to Planner`, `How We Make It`, `Ingredients`, `Instructions`, `Original Recipe`, `Nutrition`, and `Advanced details`.
+- `How We Make It` is an overlay on the saved recipe, not a replacement. Family adjustments are saved through the existing Meal Feedback database with a cookbook marker and are read back into the family section.
+- Ingredients are represented in the app as structured cookbook ingredients with `name`, `quantity`, `unit`, and `rawText`. Older meals may only have name/raw text when quantities were not available.
+- Instructions are rendered as large mobile cooking steps when saved notes contain an instructions/method section.
+- Original recipe access stays secondary through `Open Original Recipe`, using `Source URL` when present and the saved Notion record as fallback.
+
+Grocery lists, pantry inventory, barcode scanning, shopping workflows, and inventory consumption are intentionally deferred. Beta 5 only establishes the data boundary needed later: source recipe data remains preserved, family modifications layer on top, and structured ingredient fields are not flattened into plain text.
+
 Meal Plan Notion database:
 
 | Property | Type |

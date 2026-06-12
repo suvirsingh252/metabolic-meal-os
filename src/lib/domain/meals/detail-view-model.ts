@@ -9,6 +9,10 @@ import {
   type RecommendationMeal,
   type TodayMealCategory
 } from "@/src/lib/domain/recommendations";
+import {
+  buildMealCookbook,
+  type MealCookbook
+} from "@/src/lib/domain/meals/cookbook";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 
 export interface MealDetailNutritionItem {
@@ -29,6 +33,7 @@ export interface MealDetailViewModel {
   nutritionItems: MealDetailNutritionItem[];
   nutritionProvenance: string | null;
   hasNutritionData: boolean;
+  cookbook: MealCookbook;
 }
 
 export function getMealDetailPath(mealId: string) {
@@ -173,6 +178,7 @@ export function buildMealDetailViewModel(
     feedbackReasons: buildFeedbackReasons(feedbackSummary),
     nutritionItems,
     nutritionProvenance: meal.nutritionProvenance ?? meal.nutritionSource,
-    hasNutritionData: nutritionItems.some((item) => typeof item.value === "number")
+    hasNutritionData: nutritionItems.some((item) => typeof item.value === "number"),
+    cookbook: buildMealCookbook(meal, feedbackSummary)
   };
 }

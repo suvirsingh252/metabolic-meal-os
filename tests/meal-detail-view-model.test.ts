@@ -25,6 +25,8 @@ function meal(overrides: Partial<MealSummary>): MealSummary {
     url: value(overrides, "url", "https://notion.so/meal-1"),
     mealName: value(overrides, "mealName", "Chana masala"),
     createdAt: value(overrides, "createdAt", "2026-05-01T12:00:00.000Z"),
+    sourceUrl: value(overrides, "sourceUrl", "https://example.com/chana"),
+    sourceName: value(overrides, "sourceName", "Family source"),
     cuisine: value(overrides, "cuisine", "Indian"),
     mealType: value(overrides, "mealType", "Dinner"),
     proteinLevel: value(overrides, "proteinLevel", "High"),
@@ -34,6 +36,11 @@ function meal(overrides: Partial<MealSummary>): MealSummary {
     familyApproved: value(overrides, "familyApproved", false),
     weeknightFriendly: value(overrides, "weeknightFriendly", false),
     comfortMeal: value(overrides, "comfortMeal", false),
+    optimizedVersion: value(
+      overrides,
+      "optimizedVersion",
+      "Use less oil and add extra spinach."
+    ),
     notes: value(overrides, "notes", "Saved household meal note."),
     calories: value(overrides, "calories", 520),
     proteinG: value(overrides, "proteinG", 28),
@@ -90,6 +97,8 @@ test("buildMealDetailViewModel returns a detail model for a saved meal", () => {
   assert.ok(detail?.whyReasons.includes("Marked family friendly."));
   assert.ok(detail?.feedbackReasons.includes("Household loved this before"));
   assert.equal(detail?.hasNutritionData, true);
+  assert.equal(detail?.cookbook.hasOriginalRecipe, true);
+  assert.equal(detail?.cookbook.originalRecipeUrl, "https://example.com/chana");
   assert.equal(
     detail?.nutritionItems.find((item) => item.id === "protein")?.value,
     28
@@ -139,9 +148,107 @@ test("buildMealDetailViewModel uses calm empty feedback and nutrition states", (
   assert.equal(detail?.feedbackSummary.totalEvents, 0);
   assert.equal(detail?.feedbackSummary.confidence, "none");
   assert.equal(detail?.hasNutritionData, false);
+  assert.deepEqual(detail?.cookbook.familyAdjustments.map((item) => item.text), [
+    "Use less oil and add extra spinach."
+  ]);
 });
 
 test("meal detail path is used by Today and Meals cards for internal links", () => {
   assert.equal(getMealDetailPath("meal-1"), "/meals/meal-1");
   assert.equal(getMealDetailPath("meal 1"), "/meals/meal%201");
+});
+
+test("meal detail cookbook preserves structured ingredients and steps", () => {
+  const detail = buildMealDetailViewModel(
+    [
+      meal({
+        notes: [
+          "Original Notes:",
+          "Ingredients:",
+          "- 1 tsp oil",
+          "- 2 cups spinach",
+          "- paneer",
+          "Instructions:",
+          "1. Warm the oil.",
+          "2. Add spinach and paneer."
+        ].join("\n")
+      })
+    ],
+    "meal-1",
+    { generatedAt }
+  );
+
+  assert.equal(detail?.cookbook.ingredients.length, 3);
+  assert.deepEqual(detail?.cookbook.ingredients[0], {
+    id: "ingredient-1",
+    name: "oil",
+    quantity: "1",
+    unit: "tsp",
+    rawText: "1 tsp oil"
+  });
+  assert.equal(detail?.cookbook.ingredients[1].quantity, "2");
+  assert.equal(detail?.cookbook.ingredients[1].unit, "cups");
+  assert.equal(detail?.cookbook.ingredients[2].quantity, null);
+  assert.equal(detail?.cookbook.ingredients[2].unit, null);
+  assert.deepEqual(
+    detail?.cookbook.instructions.map((step) => step.text),
+    ["Warm the oil.", "Add spinach and paneer."]
+  );
+});
+
+test("meal detail cookbook renders persisted and applicable adjustment overlays", () => {
+  const detail = buildMealDetailViewModel([meal({})], "meal-1", {
+    generatedAt,
+    feedbackByMealId: {
+      "meal-1": {
+        mealId: "meal-1",
+        totalEvents: 2,
+        eatenCount: 2,
+        lovedCount: 0,
+        likedCount: 1,
+        dislikedCount: 0,
+        wouldRepeatCount: 1,
+        wouldNotRepeatCount: 0,
+        lastEatenAt: "2026-06-01T12:00:00.000Z",
+        lastPositiveAt: "2026-06-01T12:00:00.000Z",
+        netPreferenceScore: 4,
+        confidence: "medium",
+        familyAdjustments: ["Use the air fryer"],
+        recentNotes: [
+          "[Family cookbook adjustment] Cook 5 minutes longer",
+          "Kids prefer extra rice"
+        ]
+      }
+    }
+  });
+
+  assert.deepEqual(
+    detail?.cookbook.familyAdjustments.map((adjustment) => adjustment.text),
+    [
+      "Use the air fryer",
+      "Cook 5 minutes longer",
+      "Kids prefer extra rice",
+      "Use less oil and add extra spinach."
+    ]
+  );
+});
+
+test("meal detail cookbook gracefully handles missing recipe fields", () => {
+  const detail = buildMealDetailViewModel(
+    [
+      meal({
+        notes: null,
+        optimizedVersion: null,
+        sourceUrl: null
+      })
+    ],
+    "meal-1",
+    { generatedAt }
+  );
+
+  assert.equal(detail?.cookbook.ingredients.length, 0);
+  assert.equal(detail?.cookbook.instructions.length, 0);
+  assert.equal(detail?.cookbook.familyAdjustments.length, 0);
+  assert.equal(detail?.cookbook.originalRecipeUrl, "https://notion.so/meal-1");
+  assert.equal(detail?.cookbook.hasOriginalRecipe, false);
 });
