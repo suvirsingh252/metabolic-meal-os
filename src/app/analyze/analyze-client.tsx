@@ -49,6 +49,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
           onBooleanFieldChange={controller.updateBooleanField}
           onGuidanceBasisChange={controller.updateGuidanceBasis}
           onIngredientSuggestionsChange={controller.updateIngredientSuggestions}
+          onOptimize={controller.handleOptimize}
           onSave={controller.handleSaveToNotion}
           onScoreChange={controller.updateScore}
           onTextFieldChange={controller.updateTextField}

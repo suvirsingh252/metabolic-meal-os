@@ -11,9 +11,11 @@ import type {
   EditableBooleanField,
   EditableScoreField,
   EditableTextField,
+  OptimizationType,
   SaveIngredientsResponse,
   SaveMealResponse
 } from "@/src/app/analyze/types";
+import type { MealOptimizationResult } from "@/src/lib/ai/meal-optimization/v1/types";
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
 
 export function getErrorMessage(value: unknown) {
@@ -245,6 +247,45 @@ export function useAnalyzeController(initialRecipeText?: string) {
     },
     updateAnalysis(analysis: MealAnalysisResult) {
       dispatch({ type: "analysisReplaced", analysis });
+    },
+    async handleOptimize(optimizationType: OptimizationType) {
+      if (!state.analysis) {
+        return;
+      }
+
+      const current = state.optimizations[optimizationType];
+
+      if (current?.status === "loading" || current?.status === "success") {
+        return;
+      }
+
+      dispatch({ type: "optimizationStarted", optimizationType });
+
+      try {
+        const response = await fetch("/api/optimize-meal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            analysis: state.analysis,
+            optimizationType
+          })
+        });
+
+        const data: unknown = await response.json();
+
+        if (!response.ok) {
+          dispatch({ type: "optimizationFailed", optimizationType });
+          return;
+        }
+
+        dispatch({
+          type: "optimizationSucceeded",
+          optimizationType,
+          result: data as MealOptimizationResult
+        });
+      } catch {
+        dispatch({ type: "optimizationFailed", optimizationType });
+      }
     }
   };
 }

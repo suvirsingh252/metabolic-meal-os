@@ -29,6 +29,7 @@ import type {
   EditableTextField
 } from "@/src/app/analyze/types";
 import { HouseholdSummary } from "@/src/app/analyze/components/analysis-summary";
+import { OptimizationSection } from "@/src/app/analyze/components/optimization-section";
 import {
   BooleanInput,
   CollapsibleSection,
@@ -39,6 +40,7 @@ import {
 } from "@/src/app/analyze/components/form-fields";
 import { SaveMealSection } from "@/src/app/analyze/components/save-meal-section";
 import { SourceSummary } from "@/src/app/analyze/components/source-evidence-section";
+import type { OptimizationType } from "@/src/app/analyze/types";
 
 const nutritionUnavailableMessage =
   "Nutrition totals unavailable for this source. Add estimates manually if you want dashboard tracking.";
@@ -276,6 +278,7 @@ export function AnalysisResultPanel({
   onIngredientSuggestionsChange,
   onGuidanceBasisChange,
   onAnalysisChange,
+  onOptimize,
   onSave
 }: {
   state: AnalyzeState;
@@ -287,6 +290,7 @@ export function AnalysisResultPanel({
   onIngredientSuggestionsChange: (value: string) => void;
   onGuidanceBasisChange: (value: string) => void;
   onAnalysisChange: (analysis: MealAnalysisResult) => void;
+  onOptimize: (type: OptimizationType) => void;
   onSave: () => void;
 }) {
   const { analysis } = state;
@@ -300,6 +304,11 @@ export function AnalysisResultPanel({
         {analysis ? (
           <div className="space-y-5" ref={reviewResultRef} tabIndex={-1}>
             <HouseholdSummary analysis={analysis} />
+
+            <OptimizationSection
+              optimizations={state.optimizations}
+              onOptimize={onOptimize}
+            />
 
             <PracticalGuidanceSection
               analysis={analysis}

@@ -1,4 +1,5 @@
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
+import type { MealOptimizationResult } from "@/src/lib/ai/meal-optimization/v1/types";
 import type {
   AnalyzeState,
   EditableArrayField,
@@ -6,6 +7,7 @@ import type {
   EditableScoreField,
   EditableTextField,
   IngredientPersistenceStatus,
+  OptimizationType,
   SaveMealResponse
 } from "@/src/app/analyze/types";
 
@@ -26,7 +28,8 @@ export const initialAnalyzeState: AnalyzeState = {
   savedMeal: null,
   ingredientPersistence: { state: "idle" },
   isLoading: false,
-  isSaving: false
+  isSaving: false,
+  optimizations: {}
 };
 
 type AnalyzeAction =
@@ -46,7 +49,10 @@ type AnalyzeAction =
   | { type: "saveSucceeded"; savedMeal: SaveMealResponse }
   | { type: "saveFinished" }
   | { type: "ingredientPersistenceChanged"; status: IngredientPersistenceStatus }
-  | { type: "saveStatusCleared" };
+  | { type: "saveStatusCleared" }
+  | { type: "optimizationStarted"; optimizationType: OptimizationType }
+  | { type: "optimizationSucceeded"; optimizationType: OptimizationType; result: MealOptimizationResult }
+  | { type: "optimizationFailed"; optimizationType: OptimizationType };
 
 function clearSaveState(state: AnalyzeState): AnalyzeState {
   return {
@@ -84,7 +90,8 @@ export function analyzeReducer(
         error: null,
         saveError: null,
         savedMeal: null,
-        ingredientPersistence: { state: "idle" }
+        ingredientPersistence: { state: "idle" },
+        optimizations: {}
       };
     case "analysisFailed":
       return { ...state, isLoading: false, error: action.message };
@@ -177,6 +184,30 @@ export function analyzeReducer(
       return { ...state, ingredientPersistence: action.status };
     case "saveStatusCleared":
       return clearSaveState(state);
+    case "optimizationStarted":
+      return {
+        ...state,
+        optimizations: {
+          ...state.optimizations,
+          [action.optimizationType]: { status: "loading" }
+        }
+      };
+    case "optimizationSucceeded":
+      return {
+        ...state,
+        optimizations: {
+          ...state.optimizations,
+          [action.optimizationType]: { status: "success", result: action.result }
+        }
+      };
+    case "optimizationFailed":
+      return {
+        ...state,
+        optimizations: {
+          ...state.optimizations,
+          [action.optimizationType]: { status: "error" }
+        }
+      };
     default:
       return state;
   }

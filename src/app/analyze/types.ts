@@ -1,4 +1,10 @@
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
+import type {
+  MealOptimizationResult,
+  OptimizationType
+} from "@/src/lib/ai/meal-optimization/v1/types";
+
+export type { MealOptimizationResult, OptimizationType };
 
 export type EditableTextField =
   | "mealName"
@@ -66,6 +72,11 @@ export type IngredientPersistenceStatus =
   | { state: "skipped" }
   | { state: "failed"; message: string };
 
+export type OptimizationState =
+  | { status: "loading" }
+  | { status: "success"; result: MealOptimizationResult }
+  | { status: "error" };
+
 export interface AnalyzeState {
   recipeText: string;
   analysis: MealAnalysisResult | null;
@@ -84,4 +95,5 @@ export interface AnalyzeState {
   ingredientPersistence: IngredientPersistenceStatus;
   isLoading: boolean;
   isSaving: boolean;
+  optimizations: Partial<Record<OptimizationType, OptimizationState>>;
 }
