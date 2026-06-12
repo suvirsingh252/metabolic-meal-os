@@ -145,6 +145,69 @@ test("recipe JSON-LD parsing preserves verbatim ingredients and ordered instruct
   assert.deepEqual(parsed.instructions, ["Rinse the rice.", "Simmer the chana."]);
 });
 
+test("recipe JSON-LD parsing decodes astral numeric HTML entities", () => {
+  const hexHtml = `<html><head><script type="application/ld+json">{
+    "@type": "Recipe",
+    "name": "Noodle soup &#x1F35C;",
+    "recipeIngredient": ["noodles"],
+    "recipeInstructions": ["Simmer."]
+  }</script></head><body></body></html>`;
+  const decimalHtml = `<html><head><script type="application/ld+json">{
+    "@type": "Recipe",
+    "name": "Noodle soup &#127836;",
+    "recipeIngredient": ["noodles"],
+    "recipeInstructions": ["Simmer."]
+  }</script></head><body></body></html>`;
+
+  const hexParsed = parseRecipeJsonLd(
+    hexHtml,
+    new URL("https://example.com/recipes/noodles"),
+    "recipe-page"
+  );
+  const decimalParsed = parseRecipeJsonLd(
+    decimalHtml,
+    new URL("https://example.com/recipes/noodles"),
+    "recipe-page"
+  );
+
+  assert.equal(hexParsed?.name, "Noodle soup 🍜");
+  assert.equal(decimalParsed?.name, "Noodle soup 🍜");
+});
+
+test("recipe JSON-LD parsing leaves invalid numeric entities unchanged", () => {
+  const html = `<html><head><script type="application/ld+json">{
+    "@type": "Recipe",
+    "name": "Soup &#x110000; &#xzz;",
+    "recipeIngredient": ["stock"],
+    "recipeInstructions": ["Warm."]
+  }</script></head><body></body></html>`;
+
+  const parsed = parseRecipeJsonLd(
+    html,
+    new URL("https://example.com/recipes/soup"),
+    "recipe-page"
+  );
+
+  assert.equal(parsed?.name, "Soup &#x110000; &#xzz;");
+});
+
+test("recipe JSON-LD parsing keeps named entity behavior", () => {
+  const html = `<html><head><script type="application/ld+json">{
+    "@type": "Recipe",
+    "name": "Rice &amp; dal",
+    "recipeIngredient": ["rice"],
+    "recipeInstructions": ["Serve."]
+  }</script></head><body></body></html>`;
+
+  const parsed = parseRecipeJsonLd(
+    html,
+    new URL("https://example.com/recipes/rice-dal"),
+    "recipe-page"
+  );
+
+  assert.equal(parsed?.name, "Rice & dal");
+});
+
 test("manual text analysis prep leaves extraction to the AI fallback", async () => {
   const prepared = await prepareRecipeForMealAnalysis({
     recipeText: "Chana masala with rice. 2 cups rice, 1 can chickpeas. Simmer."

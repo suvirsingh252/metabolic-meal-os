@@ -1009,15 +1009,29 @@ function decodeHtmlEntities(value: string) {
     const normalized = code.toLowerCase();
 
     if (normalized.startsWith("#x")) {
-      return String.fromCharCode(Number.parseInt(normalized.slice(2), 16));
+      return decodeNumericHtmlEntity(entity, normalized.slice(2), 16);
     }
 
     if (normalized.startsWith("#")) {
-      return String.fromCharCode(Number.parseInt(normalized.slice(1), 10));
+      return decodeNumericHtmlEntity(entity, normalized.slice(1), 10);
     }
 
     return htmlEntityMap[normalized] ?? entity;
   });
+}
+
+function decodeNumericHtmlEntity(entity: string, value: string, radix: number) {
+  const codePoint = Number.parseInt(value, radix);
+
+  if (!Number.isFinite(codePoint)) {
+    return entity;
+  }
+
+  try {
+    return String.fromCodePoint(codePoint);
+  } catch {
+    return entity;
+  }
 }
 
 function normalizeWhitespace(value: string) {
