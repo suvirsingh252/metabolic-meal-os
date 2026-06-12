@@ -114,6 +114,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Complete Beta 6.1 Analyze Optimization: add `POST /api/optimize-meal` with its own rate limit, More Protein / Healthier / Kid-Friendly / Budget optimization buttons after analysis, lazy per-click calls cached per analysis and cleared on new analysis, all with no Notion schema changes.
 - [x] Complete Beta 6.2 Cook Again Loop v1: Meal Detail Add to Planner deep-links to `/planner?meal=<id>`, the planner preselects the meal into the matching slot, the existing assign flow saves it, Meal Detail shows a planned-state badge for the current week, and status updates remain Planned / Cooked / Skipped — no Notion schema changes.
 - [x] Add social intake normalization (landed outside the approved Beta 6 PR sequence; parallel share-intake hardening): source classifier for social/recipe/plain-text input, versioned social-recipe-normalization AI module, and Analyze social fallback UX that preserves source metadata.
+- [x] Harden Notion schema handling: household filtering reads the active Meals data source, new saves write `Meal Date` when a compatible property exists, schema diagnostics cover Feedback/Ingredients Meal relations, nutrient basis fields, and optional Meal Intake storage, and `docs/NOTION_SCHEMA_CHECKLIST.md` documents the full optional schema. No automatic Notion schema mutation; all manual Notion additions remain optional.
 
 ## Current Sprint
 

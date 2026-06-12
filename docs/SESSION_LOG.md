@@ -1,5 +1,28 @@
 # Session Log
 
+## 2026-06-12 Notion Schema Hardening (parallel session, audited before deploy)
+
+Goal:
+- Harden Notion schema diagnostics and save-path schema detection ahead of deployment. Work was authored in a parallel session as commit `168b2c4` and audited/closed in the main session before push.
+
+Implementation (`168b2c4` Harden Notion schema diagnostics):
+- Meals household filtering now retrieves the active data source and checks it (not the database wrapper) for the `Household ID` property before applying the household filter; the filter construction is extracted into testable `findHouseholdIdProperty` / `buildHouseholdFilter` helpers.
+- New meal saves write a `Meal Date` (aliases: `Meal Date`, `Date`, `Logged At`) date property when one exists, using the meal import/save timestamp. No property is created.
+- `/api/diagnostics/notion-schemas` now also evaluates: Feedback schema health including a `Meal` relation targeting the active Meals database/data source, Ingredients schema health including a `Meals`/`Meal` relation and `Nutrient Amount Basis`/`Nutrient Basis Unit` fields, and an optional Meal Intake database (`NOTION_MEAL_INTAKE_DATABASE_ID`) with its storage fields. Missing relations produce non-blocking warnings, not failures.
+- Settings schema health panel copy generalized from Meals-only wording to per-database wording.
+- `Energy Density Score` and `Processing Score` are no longer expected write fields in diagnostics; they remain read/backfill-only.
+- Added `docs/NOTION_SCHEMA_CHECKLIST.md` as the canonical manual Notion schema reference (required vs strongly recommended vs optional vs read-only fields per database).
+
+Manual Notion setup impact:
+- No manual Notion changes are required. All checked fields remain optional; the app still never creates or mutates Notion schema. Operators who want `Meal Date` persistence, feedback/ingredient Meal relations, or intake storage should follow `docs/NOTION_SCHEMA_CHECKLIST.md`, and Settings diagnostics will confirm each addition.
+
+Audit performed in main session:
+- Diff reviewed: matches the intended schema diagnostics/save-path scope; no unrelated files, no `.env` files, no secret-like strings in the commit.
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm test`: passed, 254/254 tests (5 new schema tests).
+- `npm run build`: passed.
+
 ## 2026-06-12 Beta 6.1 + Beta 6.2 Shipped, Social Intake Normalization Recorded
 
 Goal:
