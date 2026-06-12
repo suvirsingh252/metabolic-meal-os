@@ -1,7 +1,9 @@
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
 
-// Notion rich_text blocks are capped at 2000 characters per chunk.
-const NOTION_RICH_TEXT_LIMIT = 2000;
+// Notion rich_text blocks are capped at 2000 characters per chunk. The Notes
+// property is written as multiple chunks (see richTextChunks in mappers), so
+// the summary cap below only bounds total payload size, not a single block.
+const NOTES_TOTAL_CHARACTER_LIMIT = 20_000;
 
 function bulletList(items: string[]): string {
   return items.map((item) => `- ${item}`).join("\n");
@@ -18,16 +20,44 @@ function guidanceBasisList(
     .join("\n");
 }
 
+function formatIngredientLine(
+  ingredient: NonNullable<MealAnalysisResult["ingredients"]>[number]
+): string {
+  return ingredient.rawText.trim();
+}
+
 /**
  * Builds the plain-text content written to the Notion "Notes" property.
- * Combines the original notes with a concise Analysis Framework v2 summary
- * so the existing Notion schema needs no changes.
+ * Combines the original notes, verbatim cookbook sections (Ingredients /
+ * Instructions), and a concise Analysis Framework v2 summary so the existing
+ * Notion schema needs no changes. The section headers are intentionally the
+ * ones buildMealCookbook parses back out at read time.
  */
 export function buildMealNotesSummary(meal: MealAnalysisResult): string {
   const parts: string[] = [];
 
   if (meal.notes.trim()) {
     parts.push(`Original Notes:\n${meal.notes.trim()}`);
+  }
+
+  const ingredientLines = (meal.ingredients ?? [])
+    .map(formatIngredientLine)
+    .filter(Boolean);
+
+  if (ingredientLines.length > 0) {
+    parts.push(`Ingredients:\n${bulletList(ingredientLines)}`);
+  }
+
+  const instructionLines = (meal.instructions ?? [])
+    .map((step) => step.trim())
+    .filter(Boolean);
+
+  if (instructionLines.length > 0) {
+    parts.push(
+      `Instructions:\n${instructionLines
+        .map((step, index) => `${index + 1}. ${step}`)
+        .join("\n")}`
+    );
   }
 
   const scorecardLines = [
@@ -90,12 +120,12 @@ export function buildMealNotesSummary(meal: MealAnalysisResult): string {
 
   const summary = parts.join("\n\n");
 
-  if (summary.length <= NOTION_RICH_TEXT_LIMIT) {
+  if (summary.length <= NOTES_TOTAL_CHARACTER_LIMIT) {
     return summary;
   }
 
   return `${summary.slice(
     0,
-    NOTION_RICH_TEXT_LIMIT - 48
+    NOTES_TOTAL_CHARACTER_LIMIT - 48
   )}\n[Truncated for Notion rich_text limit]`;
 }

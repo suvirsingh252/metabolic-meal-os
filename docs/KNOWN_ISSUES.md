@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-11 (Beta 5 Family Cookbook)
+Last updated: 2026-06-11 (Beta 5.1 Cookbook Data Capture Hardening)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -36,13 +36,21 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] `Add to Planner` links to `/planner?meal=<id>` for context, but Planner does not yet preselect that meal from the query string.
 - [ ] Original recipe access uses `Source URL` when present and the saved Notion record as fallback.
 
+## Beta 5.1 Capture Known Limitations
+
+- [ ] The household Meals database has no dedicated `Ingredients`/`Instructions` properties yet, so persisted recipe content currently lives in the canonical `Ingredients:`/`Instructions:` Notes sections. Adding those rich_text properties in Notion upgrades persistence automatically on the next save; no code change needed.
+- [ ] AI `extractedIngredients`/`extractedInstructions` (used only for manual/pasted text the URL parser cannot see) are verbatim-copy instructed but still model-generated; spot-check pasted-caption saves.
+- [ ] Meals saved before Beta 5.1 still lack recipe content; there is intentionally no Notion write-back migration. Re-analyzing and re-saving the recipe URL recreates a complete cookbook entry.
+- [ ] `Source URL` matching is alias-based (`Source URL`, `Source Url`, `Original Source`, `sourceUrl`). Renaming the Notion property outside this list silently disables source-link persistence.
+- [ ] Cookbook capture caps: 100 ingredients and 60 instruction steps per meal; Notes content caps at 20,000 characters across chunked rich_text blocks.
+
 ## Technical Debt
 
 - [ ] API validators duplicate helpers such as `isRecord`, `isEnumValue`, and `validationError`.
 - [ ] Client pages duplicate local `EnumSelect` and `BooleanInput` helpers.
 - [ ] Notion `getNotionPageUrl` helper is duplicated across API routes.
 - [ ] Test coverage is still focused unit coverage, not full route/integration coverage.
-- [ ] `buildMealNotesSummary` truncates Notion Notes at 2000 characters with an explicit marker. Structured evidence fields should be added to Notion where practical.
+- [ ] `buildMealNotesSummary` now chunks Notes across 2000-character rich_text blocks up to a 20,000-character total with an explicit marker beyond that. Structured evidence fields should still be added to Notion where practical.
 - [ ] `save-meal` performs a Meals database schema read before page creation so optional source fields can be detected. If Notion permissions are ever narrowed, this route needs a smoke test.
 - [ ] Integration adapter interfaces are placeholders and may need revision when real API constraints are known. Recipe parser is the first active adapter.
 - [ ] Recipe URL parser uses dependency-free JSON-LD, metadata, and bounded cleaned-text extraction. It is not as robust as a full Readability parser.

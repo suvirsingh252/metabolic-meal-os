@@ -63,8 +63,19 @@ export async function analyzeMeal(request: MealAnalysisRequest) {
   const result = parseMealAnalysisResponse(response.output_text);
   const household = getConfiguredHouseholdMetadata();
 
+  // Parser-extracted recipe content is canonical (verbatim from the source
+  // page); AI extraction fills in for manual/pasted text the parser can't see.
+  const ingredients = preparedRecipe.ingredients.length
+    ? preparedRecipe.ingredients
+    : result.ingredients ?? null;
+  const instructions = preparedRecipe.instructions.length
+    ? preparedRecipe.instructions
+    : result.instructions ?? null;
+
   return {
     ...result,
+    ingredients,
+    instructions,
     sourceType: preparedRecipe.sourceType,
     sourceUrl: preparedRecipe.sourceUrl,
     sourceName: preparedRecipe.sourceName,

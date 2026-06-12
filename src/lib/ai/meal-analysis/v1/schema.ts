@@ -45,7 +45,9 @@ export const mealAnalysisRequiredFields = [
   "evidenceNotes",
   "confidenceNotes",
   "safetyDisclaimer",
-  "guidanceBasis"
+  "guidanceBasis",
+  "extractedIngredients",
+  "extractedInstructions"
 ] as const;
 
 const stringProperty = { type: "string" } as const;
@@ -96,6 +98,21 @@ export const mealAnalysisJsonSchema = {
     evidenceNotes: stringArrayProperty,
     confidenceNotes: stringArrayProperty,
     safetyDisclaimer: stringProperty,
+    extractedIngredients: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          rawText: stringProperty,
+          name: { type: ["string", "null"] },
+          quantity: { type: ["string", "null"] },
+          unit: { type: ["string", "null"] }
+        },
+        required: ["rawText", "name", "quantity", "unit"]
+      }
+    },
+    extractedInstructions: stringArrayProperty,
     guidanceBasis: {
       type: "array",
       items: {

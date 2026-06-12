@@ -44,6 +44,30 @@ function richText(content: string) {
   };
 }
 
+// Notion caps each rich_text block at 2000 characters but allows up to 100
+// blocks per property. Reads join block plain_text with no separator, so
+// slicing on raw character boundaries is lossless on reload.
+const RICH_TEXT_BLOCK_LIMIT = 2000;
+const RICH_TEXT_MAX_BLOCKS = 100;
+
+function richTextChunks(content: string) {
+  const chunks: Array<{ text: { content: string } }> = [];
+
+  for (
+    let offset = 0;
+    offset < content.length && chunks.length < RICH_TEXT_MAX_BLOCKS;
+    offset += RICH_TEXT_BLOCK_LIMIT
+  ) {
+    chunks.push({
+      text: { content: content.slice(offset, offset + RICH_TEXT_BLOCK_LIMIT) }
+    });
+  }
+
+  return {
+    rich_text: chunks.length > 0 ? chunks : [{ text: { content: "" } }]
+  };
+}
+
 function relation(pageId: string) {
   return {
     relation: [
@@ -80,6 +104,8 @@ export interface MealSourcePropertySchema {
   sourceName?: { name: string; type: "select" | "rich_text" };
   sourceClassification?: { name: string; type: "select" | "rich_text" };
   sourceNotes?: { name: string; type: "rich_text" };
+  ingredients?: { name: string; type: "rich_text" };
+  instructions?: { name: string; type: "rich_text" };
   importedAt?: { name: string; type: "date" };
   lastParsedAt?: { name: string; type: "date" };
   parserVersion?: { name: string; type: "select" | "rich_text" };
@@ -123,7 +149,7 @@ export function mapMealAnalysisToNotionProperties(
     "Weeknight Friendly": checkbox(meal.weeknightFriendly),
     "Comfort Meal": checkbox(meal.comfortMeal),
     "Optimized Version": richText(meal.optimizedVersion),
-    Notes: richText(buildMealNotesSummary(meal))
+    Notes: richTextChunks(buildMealNotesSummary(meal))
   };
 
   applyMealSourceProperties(properties, meal, sourceSchema);
@@ -161,6 +187,23 @@ function applyMealSourceProperties(
 
   if (schema.sourceNotes && meal.sourceNotes?.length) {
     properties[schema.sourceNotes.name] = richText(meal.sourceNotes.join("\n"));
+  }
+
+  if (schema.ingredients && meal.ingredients?.length) {
+    properties[schema.ingredients.name] = richTextChunks(
+      meal.ingredients
+        .map((ingredient) => ingredient.rawText.trim())
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
+
+  if (schema.instructions && meal.instructions?.length) {
+    properties[schema.instructions.name] = richTextChunks(
+      meal.instructions
+        .map((step, index) => `${index + 1}. ${step.trim()}`)
+        .join("\n")
+    );
   }
 
   if (schema.sourceUrl && meal.sourceUrl) {

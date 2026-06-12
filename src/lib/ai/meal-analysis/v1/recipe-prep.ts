@@ -20,6 +20,8 @@ export async function prepareRecipeForMealAnalysis(
 
     return {
       analysisText: formatParsedRecipeForAnalysis(parsedRecipe),
+      ingredients: parsedRecipe.ingredients,
+      instructions: parsedRecipe.instructions ?? [],
       sourceType: parsedRecipe.source.sourceType,
       sourceUrl: parsedRecipe.source.sourceUrl ?? null,
       sourceName: parsedRecipe.source.sourceName ?? null,
@@ -49,6 +51,8 @@ export async function prepareRecipeForMealAnalysis(
 
   return {
     analysisText: request.recipeText,
+    ingredients: [],
+    instructions: [],
     sourceType: request.sourceType ?? defaultManualRecipeSource.sourceType,
     sourceUrl: request.sourceUrl ?? null,
     sourceName: request.sourceName ?? null,

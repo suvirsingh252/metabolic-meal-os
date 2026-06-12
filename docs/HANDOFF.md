@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-11 (Beta 5 Family Cookbook)
+Last updated: 2026-06-11 (Beta 5.1 Cookbook Data Capture Hardening)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -52,6 +52,7 @@ Implemented:
 - Beta 3.6 iPhone Share Intake: `POST /api/intake/share` accepts iOS Shortcut POSTs with `IOS_SHORTCUT_TOKEN` bearer auth, classifies URL/text as `recipe-url`, `social-url`, `plain-text`, or `unknown-url`, persists intake to optional Notion Meal Intake database, and returns `analyzeUrl` with intake page ID. `/analyze?intake=<id>` loads the intake record server-side and shows an amber bridge panel with classification, source, preview, and social fallback copy. The `AnalyzeClient` is pre-filled with the URL or text. The middleware was updated to accept `IOS_SHORTCUT_TOKEN` specifically for the intake path.
 - Weekly Planner v1.1: `/planner` loads the current Monday-Sunday plan from a dedicated Notion Meal Plan data source, shows Breakfast, Lunch, Dinner, and Snack slots, offers saved Meals as assignment options, can clear a planned meal, and can mark `Planned`, `Cooked`, `Skipped`, or `Swapped`. Writes are keyed by date plus slot so same-day meals do not overwrite each other. Missing planner config or schema gaps show safe diagnostics and block writes without crashing. Prefer `NOTION_MEAL_PLAN_SOURCE_ID`; `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
 - Beta 5 Family Cookbook: `/meals/[id]` is now cooking-first. It starts with Make This Again, Ate This, Loved It, Add to Planner, then `How We Make It`, structured Ingredients, large mobile Instructions, Original Recipe access, Nutrition, and Advanced details. Family adjustments are stored as marked feedback notes and layered over source recipe data without overwriting the original recipe.
+- Beta 5.1 Cookbook Data Capture Hardening: newly analyzed and saved meals reliably persist Source URL, verbatim ingredients, and instructions. Parser-extracted recipe content is canonical; AI `extractedIngredients`/`extractedInstructions` are a verbatim-copy fallback for pasted text. Persistence uses canonical `Ingredients:`/`Instructions:` Notes sections (zero schema change) plus optional dedicated rich_text properties, with Notes chunked past the single 2000-character block. The household `Original Source` url property is now a recognized Source URL alias on save and reload. See `docs/ARCHITECTURE.md` "Cookbook Data Pipeline".
 - Analyze now has staged loading copy for long analysis runs and tells users detailed meals can take about 20-30 seconds.
 - Feedback quick actions now have explicit semantics: `Ate This` logs eaten only, `Loved It` logs eaten/loved/worth repeating, and Meal Detail `Would Make Again` is repeat-only in household summaries.
 - Dashboard starts with household takeaways before detailed metrics and keeps data coverage/source diagnostics behind Advanced data coverage.
@@ -251,9 +252,11 @@ Pages:
   - Input: `MealAnalysisResult`
   - Strictly validates required v2/v3 generated fields and returns safe validation details instead of defaulting missing values.
   - Saves core meal fields to Notion Meals.
-  - Writes a concise Analysis Framework v2 and Evidence-Aware v3 summary into the existing `Notes` field via `buildMealNotesSummary`.
+  - Writes a concise Analysis Framework v2 and Evidence-Aware v3 summary into the existing `Notes` field via `buildMealNotesSummary`, including canonical `Ingredients:` and `Instructions:` cookbook sections when the analysis captured recipe content (Beta 5.1).
+  - Notes are written as multiple 2000-character rich_text chunks (20,000-character total cap) instead of truncating at one block.
   - Defaults current saves to `sourceType: manual`, `importedAt: now`, and `parserVersion: manual-v1`.
-  - Writes optional source tracking fields only if compatible Notion Meals properties already exist.
+  - Writes optional source tracking fields only if compatible Notion Meals properties already exist. Source URL aliases include the household `Original Source` url property.
+  - Writes optional dedicated `Ingredients` / `Recipe Ingredients` and `Instructions` / `Recipe Instructions` / `Method` rich_text properties when they exist; never creates them.
   - Writes optional nutrition totals, nutrition confidence/provenance/source, explicit analysis scores, and meal quality score only if compatible Notion Meals properties already exist.
   - User edits to nutrition totals and reviewed estimate controls convert the source to `user-entered` and append review-edit/reviewed-estimate provenance. Repeated serving multiplier or butter changes replace stale review notes. Blank nutrition fields remain null and are not written as zero.
   - Does not create Notion properties or relations.

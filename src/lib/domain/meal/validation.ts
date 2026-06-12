@@ -164,6 +164,83 @@ function readNutritionEstimate(
   };
 }
 
+const maxCookbookIngredients = 100;
+const maxCookbookInstructions = 60;
+const maxIngredientTextLength = 400;
+const maxInstructionTextLength = 1200;
+
+function readOptionalIngredientText(value: unknown, maxLength: number) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function readCookbookIngredients(
+  body: Record<string, unknown>
+): MealAnalysisResult["ingredients"] {
+  const value = body.ingredients ?? body.extractedIngredients;
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const ingredients = value
+    .map((item) => {
+      if (typeof item === "string") {
+        const rawText = item.trim();
+        return rawText ? { rawText: rawText.slice(0, maxIngredientTextLength) } : null;
+      }
+
+      if (!isRecord(item) || typeof item.rawText !== "string") {
+        return null;
+      }
+
+      const rawText = item.rawText.trim();
+
+      if (!rawText) {
+        return null;
+      }
+
+      return {
+        rawText: rawText.slice(0, maxIngredientTextLength),
+        name: readOptionalIngredientText(item.name, maxIngredientTextLength),
+        quantity: readOptionalIngredientText(item.quantity, 40),
+        unit: readOptionalIngredientText(item.unit, 40)
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .slice(0, maxCookbookIngredients);
+
+  return ingredients.length > 0 ? ingredients : null;
+}
+
+function readCookbookInstructions(
+  body: Record<string, unknown>
+): MealAnalysisResult["instructions"] {
+  const value = body.instructions ?? body.extractedInstructions;
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const instructions = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => item.slice(0, maxInstructionTextLength))
+    .slice(0, maxCookbookInstructions);
+
+  return instructions.length > 0 ? instructions : null;
+}
+
 export function validateMealAnalysisResult(
   value: unknown
 ): ValidationResult<MealAnalysisResult> {
@@ -265,6 +342,8 @@ export function validateMealAnalysisResult(
     guidanceBasis: Array.isArray(guidanceBasis)
       ? (guidanceBasis as MealAnalysisResult["guidanceBasis"])
       : [],
+    ingredients: readCookbookIngredients(body),
+    instructions: readCookbookInstructions(body),
     sourceType,
     sourceUrl:
       typeof body.sourceUrl === "string" && body.sourceUrl.trim()

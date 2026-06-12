@@ -748,3 +748,26 @@ Reasoning:
 
 Tradeoffs:
 - There are now two URLs for the Today surface: `/` and `/today`.
+
+## 2026-06-11
+
+Decision: Persist cookbook recipe content (Beta 5.1) through canonical Notes sections plus optional dedicated Notion properties, with the URL parser as the canonical extractor and AI extraction only as fallback.
+
+Reasoning:
+- Live family cooking exposed the bottleneck as data quality: parser-extracted ingredients/instructions were flattened into the AI prompt and discarded, so saved meals had no reliable cookbook content.
+- Writing `Ingredients:` / `Instructions:` sections into Notes uses exactly the headers the Beta 5 read-time cookbook parser already understands, so capture works with zero Notion schema changes and no migration.
+- Dedicated `Ingredients` / `Instructions` rich_text properties are written only when they already exist (schema-detected), preserving the "app never creates or mutates Notion schema" policy while giving a cleaner upgrade path.
+- Deterministic parser output is preferred over AI output for fidelity; AI `extractedIngredients` / `extractedInstructions` are verbatim-copy instructed and only used when the parser saw nothing (manual/pasted text, social captions).
+- Persisting verbatim `rawText` lines (with structure derived at read time) preserves original fidelity and keeps the future path to planner aggregation, grocery lists, and inventory open without committing to heuristic quantities now.
+
+Tradeoffs:
+- Notes grows larger (chunked rich_text up to 20,000 characters) and now carries recipe content alongside analysis summaries.
+- AI-derived name/quantity/unit structure for pasted text is not persisted separately; structure is re-derived from rawText on read. This is intentional: rawText is the durable contract, structure can improve without migration.
+- The household `Original Source` url property was added to Source URL aliases; alias lists remain a convention rather than a schema guarantee.
+
+Decision: Defer grocery list and inventory systems again, intentionally.
+
+Reasoning:
+- Ingredient aggregation needs trustworthy quantities and serving assumptions across meals; today's quantities are verbatim strings with best-effort parsing.
+- Shipping aggregation on heuristic quantities would produce confidently wrong shopping lists, which is worse for the family than no list.
+- Beta 5.1's verbatim capture is the prerequisite: once newly saved meals consistently carry ingredient lines, aggregation can layer on without redesigning capture.

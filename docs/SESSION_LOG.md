@@ -1,5 +1,40 @@
 # Session Log
 
+## 2026-06-11 Beta 5.1 Cookbook Data Capture Hardening
+
+Goal:
+- Eliminate data loss in the cookbook capture pipeline so newly analyzed and saved meals reliably persist Source URL, structured Ingredients, and Instructions through Analyze -> Save -> Notion -> Reload -> Cookbook.
+
+Root causes found (Phase 1 investigation):
+- Parser-extracted ingredients and instructions were discarded in `prepareRecipeForMealAnalysis` after being flattened into AI prompt text; the AI response schema had no recipe-content fields, so nothing structured reached the save payload.
+- `buildMealNotesSummary` never wrote the `Ingredients:` / `Instructions:` sections that `buildMealCookbook` parses at read time, so cookbook fields only rendered when the AI happened to echo recipe content in prose.
+- Notes were truncated to a single 2000-character rich_text block.
+- The household Meals database stores the recipe link in an `Original Source` url property, which was missing from both the save-side and reload-side `Source URL` alias lists, so source URLs were silently dropped on every save (live-data root cause for "older meals lack Source URL").
+
+Implementation:
+- `MealAnalysisResult` gains optional `ingredients` (`RecipeIngredient[]`) and `instructions` (`string[]`).
+- `prepareRecipeForMealAnalysis` now returns parser ingredients/instructions; `analyzeMeal` treats parser output as canonical with AI `extractedIngredients`/`extractedInstructions` (new required strict-schema fields with verbatim-copy prompt rules) as fallback for pasted text.
+- `validateMealAnalysisResult` accepts/sanitizes the cookbook fields (caps: 100 ingredients, 60 steps) from both `ingredients`/`instructions` and the AI `extracted*` keys.
+- `buildMealNotesSummary` embeds canonical `Ingredients:` and `Instructions:` sections matching the cookbook read-time aliases; Notes are chunked across 2000-character rich_text blocks (20,000 total cap) instead of truncating.
+- `save-meal` schema-detects optional `Ingredients`/`Recipe Ingredients` and `Instructions`/`Recipe Instructions`/`Method` rich_text properties and writes them when present; `Original Source` added to Source URL aliases.
+- `mapNotionPageToMealSummary` reads `ingredientsText`/`instructionsText` and the `Original Source` alias; `buildMealCookbook` prefers dedicated properties with Notes-section fallback.
+- Family adjustments unchanged: still marker-based feedback overlays that never modify source recipe content.
+
+Out of scope (unchanged): grocery lists, inventory, Beta 5 UX redesign.
+
+Validation:
+- `npm run lint`: passed.
+- `npm run typecheck`: passed.
+- `npm test`: passed, 204 tests (17 new in `tests/cookbook-data-capture.test.ts`).
+- `npm run build`: passed.
+- `git diff --check`: clean.
+
+Manual smoke (real recipe URL, local dev against live Notion):
+- Analyzed `allrecipes.com` chana masala URL: 15 verbatim ingredients, 3 instructions, source URL captured.
+- Saved meal; Meal Detail rendered Source URL (`Open Original Recipe`), all ingredients, and instructions from the reloaded Notion record.
+- Added a family adjustment via the feedback endpoint; it rendered as an overlay while original ingredients/instructions and source URL remained unchanged.
+- First smoke save (made before the `Original Source` alias fix, so it lacked a source URL) was archived in Notion; the verified entry remains as a real cookbook entry.
+
 ## 2026-06-11 Beta 5 Family Cookbook Experience
 
 Goal:

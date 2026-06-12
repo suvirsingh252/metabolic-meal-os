@@ -89,7 +89,7 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   ]);
   const sourceUrl = findProperty(
     properties,
-    ["Source URL", "Source Url", "sourceUrl"],
+    ["Source URL", "Source Url", "Original Source", "sourceUrl"],
     ["url", "rich_text"]
   );
   const sourceName = findProperty(properties, ["Source Name", "sourceName"], [
@@ -104,6 +104,16 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   const sourceNotes = findProperty(
     properties,
     ["Source Notes", "sourceNotes"],
+    ["rich_text"]
+  );
+  const ingredientsProperty = findProperty(
+    properties,
+    ["Ingredients", "Recipe Ingredients", "ingredients"],
+    ["rich_text"]
+  );
+  const instructionsProperty = findProperty(
+    properties,
+    ["Instructions", "Recipe Instructions", "Method", "instructions"],
     ["rich_text"]
   );
   const importedAt = findProperty(
@@ -237,6 +247,20 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
   if (sourceNotes) {
     schema.sourceNotes = {
       name: sourceNotes[0],
+      type: "rich_text"
+    };
+  }
+
+  if (ingredientsProperty) {
+    schema.ingredients = {
+      name: ingredientsProperty[0],
+      type: "rich_text"
+    };
+  }
+
+  if (instructionsProperty) {
+    schema.instructions = {
+      name: instructionsProperty[0],
       type: "rich_text"
     };
   }

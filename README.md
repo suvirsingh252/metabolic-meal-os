@@ -253,6 +253,20 @@ Current implementation:
 
 Grocery lists, pantry inventory, barcode scanning, shopping workflows, and inventory consumption are intentionally deferred. Beta 5 only establishes the data boundary needed later: source recipe data remains preserved, family modifications layer on top, and structured ingredient fields are not flattened into plain text.
 
+Cookbook Data Pipeline (Beta 5.1):
+
+```text
+Analyze -> Save -> Notion -> Reload -> Cookbook
+```
+
+- Analyze captures recipe content, not just analysis: URL imports carry the parser's verbatim JSON-LD ingredients and instructions into the result; pasted text uses AI `extractedIngredients`/`extractedInstructions` (verbatim-copy instructed) as a fallback. Parser output always wins over model output.
+- Save embeds canonical `Ingredients:` and `Instructions:` sections into the Notion `Notes` property — exactly the headers the cookbook view parses back out — so capture requires no Notion schema changes. If the Meals database has optional `Ingredients`/`Instructions` rich_text properties, they are written too. Notes are chunked across 2000-character rich_text blocks instead of truncating.
+- Source URL persists through aliases including the household `Original Source` url property.
+- Reload prefers dedicated properties, then Notes sections, then graceful empty states for older meals. No migration is required; re-analyzing and re-saving a recipe URL upgrades an old entry.
+- Family adjustments remain feedback-backed overlays and never modify the saved recipe.
+
+Grocery and inventory remain deferred on purpose: aggregation needs trustworthy quantities, and Beta 5.1 stops at verbatim ingredient fidelity so future aggregation can build on real data instead of heuristics.
+
 Meal Plan Notion database:
 
 | Property | Type |

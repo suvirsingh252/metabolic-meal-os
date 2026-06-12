@@ -1,0 +1,448 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { parseRecipeJsonLd } from "@/src/lib/integrations/recipe-parser";
+import { prepareRecipeForMealAnalysis } from "@/src/lib/ai/meal-analysis/v1/recipe-prep";
+import {
+  mealAnalysisJsonSchema,
+  mealAnalysisRequiredFields
+} from "@/src/lib/ai/meal-analysis/v1/schema";
+import { validateMealAnalysisResult } from "@/src/lib/domain/meal/validation";
+import { buildMealCookbook } from "@/src/lib/domain/meals/cookbook";
+import { emptyMealFeedbackSummary } from "@/src/lib/domain/feedback";
+import { buildMealNotesSummary } from "@/src/lib/notion/meal-notes";
+import {
+  mapMealAnalysisToNotionProperties
+} from "@/src/lib/notion/mappers";
+import {
+  mapNotionPageToMealSummary,
+  type MealSummary
+} from "@/src/lib/notion/meal-summary";
+import type { MealAnalysisResult } from "@/src/lib/types/meal";
+
+const baseAnalysis: MealAnalysisResult = {
+  mealName: "Chana masala",
+  cuisine: "Indian",
+  mealType: "Dinner",
+  proteinLevel: "High",
+  satietyLevel: "High",
+  bloodSugarImpact: "Moderate",
+  effortLevel: "Easy",
+  familyApproved: true,
+  weeknightFriendly: true,
+  comfortMeal: false,
+  optimizedVersion: "Add extra spinach.",
+  notes: "Hearty chickpea curry the family already loves.",
+  ingredientSuggestions: ["chickpeas", "spinach"],
+  feedbackPrompt: "Repeat?",
+  metabolicScore: 8,
+  proteinScore: 7,
+  fiberScore: 8,
+  satietyScoreNumeric: 8,
+  bloodSugarRiskScore: 3,
+  quickVerdict: "Solid weeknight pick.",
+  mainConcerns: [],
+  minimalChangeVersion: "Keep as is.",
+  supportiveVersion: "Serve with salad first.",
+  plateStrategy: "Half veg, quarter chana, quarter rice.",
+  whyThisHelps: "More filling.",
+  culturalNotes: "",
+  shoppingAdditions: [],
+  prepNotes: [],
+  mealPairings: [],
+  cautions: [],
+  evidenceNotes: ["balanced plate"],
+  confidenceNotes: ["portions vary"],
+  safetyDisclaimer: "general support",
+  guidanceBasis: []
+};
+
+const sampleIngredients = [
+  { rawText: "2 cups basmati rice", name: "basmati rice", quantity: "2", unit: "cups" },
+  { rawText: "1 tbsp ghee", name: "ghee", quantity: "1", unit: "tbsp" },
+  { rawText: "1 can chickpeas, drained", name: "chickpeas", quantity: "1", unit: "can" }
+];
+
+const sampleInstructions = [
+  "Rinse the rice until the water runs clear.",
+  "Saute onions in ghee until golden.",
+  "Add chickpeas and simmer for 15 minutes."
+];
+
+function analysisBody(overrides: Record<string, unknown> = {}) {
+  return { ...baseAnalysis, ...overrides } as Record<string, unknown>;
+}
+
+function makeMealSummary(overrides: Partial<MealSummary>): MealSummary {
+  return {
+    id: "meal-1",
+    url: "https://notion.so/meal-1",
+    mealName: "Chana masala",
+    createdAt: "2026-06-01T12:00:00.000Z",
+    sourceUrl: null,
+    sourceName: null,
+    cuisine: "Indian",
+    mealType: "Dinner",
+    proteinLevel: "High",
+    satietyLevel: "High",
+    bloodSugarImpact: "Moderate",
+    effortLevel: "Easy",
+    familyApproved: true,
+    weeknightFriendly: true,
+    comfortMeal: false,
+    optimizedVersion: null,
+    notes: null,
+    ingredientsText: null,
+    instructionsText: null,
+    calories: null,
+    proteinG: null,
+    carbohydratesG: null,
+    fatG: null,
+    fiberG: null,
+    sodiumMg: null,
+    sugarG: null,
+    nutritionConfidence: null,
+    nutritionSource: null,
+    nutritionProvenance: null,
+    qualityScore: null,
+    metabolicScore: null,
+    proteinScore: null,
+    fiberScore: null,
+    energyDensityScore: null,
+    processingScore: null,
+    satietyScoreNumeric: null,
+    bloodSugarRiskScore: null,
+    ...overrides
+  };
+}
+
+// --- Analyze: extraction ---
+
+test("recipe JSON-LD parsing preserves verbatim ingredients and ordered instructions", () => {
+  const html = `<html><head><script type="application/ld+json">{
+    "@type": "Recipe",
+    "name": "Family chana masala",
+    "recipeIngredient": ["2 cups basmati rice", "1 tbsp ghee"],
+    "recipeInstructions": [
+      { "@type": "HowToStep", "text": "Rinse the rice." },
+      { "@type": "HowToStep", "text": "Simmer the chana." }
+    ]
+  }</script></head><body></body></html>`;
+
+  const parsed = parseRecipeJsonLd(
+    html,
+    new URL("https://example.com/recipes/chana"),
+    "recipe-page"
+  );
+
+  assert.ok(parsed);
+  assert.deepEqual(
+    parsed.ingredients.map((ingredient) => ingredient.rawText),
+    ["2 cups basmati rice", "1 tbsp ghee"]
+  );
+  assert.deepEqual(parsed.instructions, ["Rinse the rice.", "Simmer the chana."]);
+});
+
+test("manual text analysis prep leaves extraction to the AI fallback", async () => {
+  const prepared = await prepareRecipeForMealAnalysis({
+    recipeText: "Chana masala with rice. 2 cups rice, 1 can chickpeas. Simmer."
+  });
+
+  assert.deepEqual(prepared.ingredients, []);
+  assert.deepEqual(prepared.instructions, []);
+});
+
+test("AI response schema requires verbatim cookbook extraction fields", () => {
+  assert.ok(mealAnalysisRequiredFields.includes("extractedIngredients"));
+  assert.ok(mealAnalysisRequiredFields.includes("extractedInstructions"));
+  assert.ok("extractedIngredients" in mealAnalysisJsonSchema.properties);
+  assert.ok("extractedInstructions" in mealAnalysisJsonSchema.properties);
+});
+
+// --- Validation: carrying cookbook fields into the result ---
+
+test("validation maps AI extracted fields into cookbook ingredients and instructions", () => {
+  const result = validateMealAnalysisResult(
+    analysisBody({
+      extractedIngredients: sampleIngredients,
+      extractedInstructions: sampleInstructions
+    })
+  );
+
+  assert.ok(result.success && result.data);
+  assert.deepEqual(result.data.ingredients, sampleIngredients);
+  assert.deepEqual(result.data.instructions, sampleInstructions);
+});
+
+test("validation prefers explicit ingredients over AI extracted fallback", () => {
+  const result = validateMealAnalysisResult(
+    analysisBody({
+      ingredients: [{ rawText: "1 cup parser ingredient" }],
+      extractedIngredients: [
+        { rawText: "AI ingredient", name: null, quantity: null, unit: null }
+      ]
+    })
+  );
+
+  assert.ok(result.success && result.data);
+  assert.equal(result.data.ingredients?.length, 1);
+  assert.equal(result.data.ingredients?.[0]?.rawText, "1 cup parser ingredient");
+});
+
+test("validation accepts plain-string ingredients and caps oversized lists", () => {
+  const result = validateMealAnalysisResult(
+    analysisBody({
+      ingredients: [
+        "2 cups rice",
+        "",
+        ...Array.from({ length: 150 }, (_, index) => `ingredient ${index}`)
+      ],
+      instructions: Array.from({ length: 80 }, (_, index) => `Step ${index}`)
+    })
+  );
+
+  assert.ok(result.success && result.data);
+  assert.equal(result.data.ingredients?.[0]?.rawText, "2 cups rice");
+  assert.equal(result.data.ingredients?.length, 100);
+  assert.equal(result.data.instructions?.length, 60);
+});
+
+test("validation tolerates missing cookbook fields for backward compatibility", () => {
+  const result = validateMealAnalysisResult(analysisBody());
+
+  assert.ok(result.success && result.data);
+  assert.equal(result.data.ingredients, null);
+  assert.equal(result.data.instructions, null);
+});
+
+// --- Persistence: save to Notion ---
+
+test("Notes summary embeds cookbook sections the reader parses back out", () => {
+  const summary = buildMealNotesSummary({
+    ...baseAnalysis,
+    ingredients: sampleIngredients,
+    instructions: sampleInstructions
+  });
+
+  assert.match(summary, /Ingredients:\n- 2 cups basmati rice\n- 1 tbsp ghee/);
+  assert.match(summary, /Instructions:\n1\. Rinse the rice until the water runs clear\./);
+  assert.match(summary, /2\. Saute onions in ghee until golden\./);
+});
+
+test("save mapping persists cookbook fields to dedicated properties when available", () => {
+  const properties = mapMealAnalysisToNotionProperties(
+    {
+      ...baseAnalysis,
+      ingredients: sampleIngredients,
+      instructions: sampleInstructions
+    },
+    {
+      ingredients: { name: "Ingredients", type: "rich_text" },
+      instructions: { name: "Instructions", type: "rich_text" }
+    }
+  );
+
+  const ingredients = properties.Ingredients;
+  assert.ok(ingredients && "rich_text" in ingredients);
+  const ingredientsText = ingredients.rich_text
+    .map((part) => ("text" in part ? part.text.content : ""))
+    .join("");
+  assert.equal(
+    ingredientsText,
+    "2 cups basmati rice\n1 tbsp ghee\n1 can chickpeas, drained"
+  );
+
+  const instructions = properties.Instructions;
+  assert.ok(instructions && "rich_text" in instructions);
+  const instructionsText = instructions.rich_text
+    .map((part) => ("text" in part ? part.text.content : ""))
+    .join("");
+  assert.match(instructionsText, /^1\. Rinse the rice until the water runs clear\./);
+  assert.match(instructionsText, /\n3\. Add chickpeas and simmer for 15 minutes\.$/);
+});
+
+test("save mapping still embeds cookbook sections in Notes without dedicated properties", () => {
+  const properties = mapMealAnalysisToNotionProperties({
+    ...baseAnalysis,
+    ingredients: sampleIngredients,
+    instructions: sampleInstructions
+  });
+
+  const notes = properties.Notes;
+  assert.ok(notes && "rich_text" in notes);
+  const notesText = notes.rich_text
+    .map((part) => ("text" in part ? part.text.content : ""))
+    .join("");
+  assert.match(notesText, /Ingredients:\n- 2 cups basmati rice/);
+  assert.match(notesText, /Instructions:\n1\. Rinse the rice/);
+});
+
+test("long Notes content is chunked across rich_text blocks instead of truncated", () => {
+  const longInstructions = Array.from(
+    { length: 60 },
+    (_, index) =>
+      `Step ${index + 1}: stir gently and watch the pot so nothing sticks to the bottom while it simmers.`
+  );
+  const meal: MealAnalysisResult = {
+    ...baseAnalysis,
+    ingredients: sampleIngredients,
+    instructions: longInstructions
+  };
+  const summary = buildMealNotesSummary(meal);
+  assert.ok(summary.length > 2000, "fixture should exceed a single block");
+  assert.doesNotMatch(summary, /\[Truncated/);
+
+  const properties = mapMealAnalysisToNotionProperties(meal);
+  const notes = properties.Notes;
+  assert.ok(notes && "rich_text" in notes);
+  assert.ok(notes.rich_text.length > 1, "expected multiple chunks");
+
+  for (const part of notes.rich_text) {
+    assert.ok("text" in part && part.text.content.length <= 2000);
+  }
+
+  const rejoined = notes.rich_text
+    .map((part) => ("text" in part ? part.text.content : ""))
+    .join("");
+  assert.equal(rejoined, summary);
+});
+
+// --- Reload: Notion page back into the app ---
+
+test("meal summary reload reads dedicated cookbook properties across chunks", () => {
+  const meal = mapNotionPageToMealSummary({
+    id: "meal-9",
+    url: "https://notion.so/meal-9",
+    created_time: "2026-06-01T10:00:00.000Z",
+    properties: {
+      "Meal Name": {
+        type: "title",
+        title: [{ plain_text: "Chana masala" }]
+      },
+      Ingredients: {
+        type: "rich_text",
+        rich_text: [
+          { plain_text: "2 cups basmati rice\n1 tbsp" },
+          { plain_text: " ghee" }
+        ]
+      },
+      Instructions: {
+        type: "rich_text",
+        rich_text: [{ plain_text: "1. Rinse the rice.\n2. Simmer the chana." }]
+      },
+      "Source URL": {
+        type: "url",
+        url: "https://example.com/recipes/chana"
+      }
+    }
+  });
+
+  assert.equal(meal?.ingredientsText, "2 cups basmati rice\n1 tbsp ghee");
+  assert.equal(meal?.instructionsText, "1. Rinse the rice.\n2. Simmer the chana.");
+  assert.equal(meal?.sourceUrl, "https://example.com/recipes/chana");
+});
+
+test("meal summary reload accepts the household 'Original Source' URL property name", () => {
+  const meal = mapNotionPageToMealSummary({
+    id: "meal-10",
+    url: "https://notion.so/meal-10",
+    created_time: "2026-06-01T10:00:00.000Z",
+    properties: {
+      "Meal Name": {
+        type: "title",
+        title: [{ plain_text: "Chana masala" }]
+      },
+      "Original Source": {
+        type: "url",
+        url: "https://example.com/recipes/chana"
+      }
+    }
+  });
+
+  assert.equal(meal?.sourceUrl, "https://example.com/recipes/chana");
+});
+
+// --- Cookbook: end-to-end round trip ---
+
+test("saved Notes round-trip into structured cookbook ingredients and steps", () => {
+  const notes = buildMealNotesSummary({
+    ...baseAnalysis,
+    ingredients: sampleIngredients,
+    instructions: sampleInstructions
+  });
+  const cookbook = buildMealCookbook(
+    makeMealSummary({ notes, sourceUrl: "https://example.com/recipes/chana" }),
+    emptyMealFeedbackSummary("meal-1")
+  );
+
+  assert.equal(cookbook.ingredients.length, 3);
+  assert.deepEqual(
+    cookbook.ingredients.map((ingredient) => ingredient.rawText),
+    ["2 cups basmati rice", "1 tbsp ghee", "1 can chickpeas, drained"]
+  );
+  assert.equal(cookbook.ingredients[0]?.quantity, "2");
+  assert.equal(cookbook.ingredients[0]?.unit, "cups");
+  assert.equal(cookbook.ingredients[0]?.name, "basmati rice");
+  assert.deepEqual(
+    cookbook.instructions.map((step) => step.text),
+    sampleInstructions
+  );
+  assert.equal(cookbook.hasOriginalRecipe, true);
+  assert.equal(cookbook.originalRecipeUrl, "https://example.com/recipes/chana");
+});
+
+test("cookbook prefers dedicated properties over Notes sections", () => {
+  const cookbook = buildMealCookbook(
+    makeMealSummary({
+      notes: "Ingredients:\n- stale notes ingredient",
+      ingredientsText: "2 cups basmati rice\n1 tbsp ghee",
+      instructionsText: "1. Rinse the rice.\n2. Simmer the chana."
+    }),
+    emptyMealFeedbackSummary("meal-1")
+  );
+
+  assert.deepEqual(
+    cookbook.ingredients.map((ingredient) => ingredient.rawText),
+    ["2 cups basmati rice", "1 tbsp ghee"]
+  );
+  assert.deepEqual(
+    cookbook.instructions.map((step) => step.text),
+    ["Rinse the rice.", "Simmer the chana."]
+  );
+});
+
+test("older meals without cookbook data still build graceful empty states", () => {
+  const cookbook = buildMealCookbook(
+    makeMealSummary({ notes: "Saved household meal note from Beta 2." }),
+    emptyMealFeedbackSummary("meal-1")
+  );
+
+  assert.deepEqual(cookbook.ingredients, []);
+  assert.deepEqual(cookbook.instructions, []);
+  assert.equal(cookbook.hasOriginalRecipe, false);
+  assert.equal(cookbook.originalRecipeLabel, "Open saved record");
+});
+
+// --- Family adjustments stay overlays ---
+
+test("family adjustments never alter source ingredients or instructions", () => {
+  const summary = makeMealSummary({
+    notes: buildMealNotesSummary({
+      ...baseAnalysis,
+      ingredients: sampleIngredients,
+      instructions: sampleInstructions
+    })
+  });
+  const withoutAdjustments = buildMealCookbook(
+    summary,
+    emptyMealFeedbackSummary("meal-1")
+  );
+  const withAdjustments = buildMealCookbook(summary, {
+    ...emptyMealFeedbackSummary("meal-1"),
+    familyAdjustments: ["Less salt", "Double the spinach"],
+    recentNotes: ["[Family cookbook adjustment] Use the air fryer instead"]
+  });
+
+  assert.equal(withAdjustments.familyAdjustments.length, 3);
+  assert.deepEqual(withAdjustments.ingredients, withoutAdjustments.ingredients);
+  assert.deepEqual(withAdjustments.instructions, withoutAdjustments.instructions);
+});

@@ -185,19 +185,39 @@ function uniqueAdjustments(adjustments: FamilyAdjustment[]) {
   return result;
 }
 
+function splitDedicatedFieldLines(value: string | null) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(/\r?\n/)
+    .map(normalizeLine)
+    .filter(Boolean);
+}
+
 export function buildMealCookbook(
   meal: MealSummary,
   feedbackSummary: MealFeedbackSummary
 ): MealCookbook {
-  const ingredients = extractSectionLines(meal.notes, "ingredients").map(
-    parseIngredient
-  );
-  const instructions = extractSectionLines(meal.notes, "instructions").map(
-    (text, index) => ({
-      id: `step-${index + 1}`,
-      text
-    })
-  );
+  // Dedicated Notion properties (written by save-meal when the database has
+  // them) are preferred; the Notes-section fallback keeps older meals and
+  // schema-minimal databases working.
+  const ingredientLines = splitDedicatedFieldLines(meal.ingredientsText);
+  const instructionLines = splitDedicatedFieldLines(meal.instructionsText);
+  const ingredients = (
+    ingredientLines.length > 0
+      ? ingredientLines
+      : extractSectionLines(meal.notes, "ingredients")
+  ).map(parseIngredient);
+  const instructions = (
+    instructionLines.length > 0
+      ? instructionLines
+      : extractSectionLines(meal.notes, "instructions")
+  ).map((text, index) => ({
+    id: `step-${index + 1}`,
+    text
+  }));
   const explicitAdjustments = [
     ...(feedbackSummary.familyAdjustments ?? []),
     ...feedbackSummary.recentNotes

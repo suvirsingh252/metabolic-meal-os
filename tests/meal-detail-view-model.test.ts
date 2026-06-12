@@ -42,6 +42,8 @@ function meal(overrides: Partial<MealSummary>): MealSummary {
       "Use less oil and add extra spinach."
     ),
     notes: value(overrides, "notes", "Saved household meal note."),
+    ingredientsText: value(overrides, "ingredientsText", null),
+    instructionsText: value(overrides, "instructionsText", null),
     calories: value(overrides, "calories", 520),
     proteinG: value(overrides, "proteinG", 28),
     carbohydratesG: value(overrides, "carbohydratesG", 64),

@@ -1,3 +1,5 @@
+import type { RecipeIngredient } from "@/src/lib/types/recipe";
+
 export const cuisines = [
   "Indian",
   "Atlantic Canadian",
@@ -143,6 +145,11 @@ export interface MealAnalysisResult {
   confidenceNotes: string[];
   safetyDisclaimer: string;
   guidanceBasis: MealGuidanceBasis[];
+
+  // Cookbook capture. Source recipe content preserved verbatim so saved meals
+  // remain cookable. Optional for backward compatibility with older payloads.
+  ingredients?: RecipeIngredient[] | null;
+  instructions?: string[] | null;
 
   // Recipe source tracking foundation. Optional for backward compatibility.
   sourceType?: "manual" | "url" | "ai" | "family";

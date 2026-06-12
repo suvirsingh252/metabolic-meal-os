@@ -37,6 +37,10 @@ Scoring (all scores 1-10):
 - satietyScoreNumeric: how filling and satisfying the meal is likely to be.
 - bloodSugarRiskScore: estimated blood sugar spike risk (10 = very high risk, 1 = very low risk).
 
+Cookbook capture fields:
+- extractedIngredients: every ingredient line that appears in the input, copied faithfully. Set rawText to the ingredient line exactly as written (do not paraphrase, translate, reorder, or merge lines). Set name to the core ingredient, and quantity/unit when clearly stated, otherwise null. If the input contains no ingredient lines, return an empty array. Never invent ingredients.
+- extractedInstructions: the cooking steps from the input in original order, one step per array item, preserving the original wording as closely as possible. If the input contains no method steps, return an empty array. Never invent steps.
+
 Evidence-aware v3 fields:
 - evidenceNotes: 2-3 short, plain notes connecting the advice to general food-pattern principles.
 - confidenceNotes: 1-2 short uncertainty notes.

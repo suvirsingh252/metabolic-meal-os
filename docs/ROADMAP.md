@@ -110,6 +110,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Expand Planner v1.1 to Breakfast, Lunch, Dinner, and Snack slots without adding AI generation.
 - [x] Complete Beta 4 mobile-first UX hardening: reduce mobile scrolling/cognitive load across Today, Analyze, Meals, Planner, Dashboard, Feedback, Settings, and Meal Detail while preserving capabilities.
 - [x] Complete Beta 5 Family Cookbook: redesign Meal Detail around cooking, add `How We Make It`, preserve original recipe access, render structured cookbook ingredients and mobile cooking steps, and capture family adjustments without implementing grocery or inventory systems.
+- [x] Complete Beta 5.1 Cookbook Data Capture Hardening: carry parser-extracted ingredients/instructions through analysis, add AI verbatim extraction fallback for pasted text, persist canonical `Ingredients:`/`Instructions:` Notes sections plus optional dedicated properties, chunk Notes past the 2000-character block limit, and fix the household `Original Source` URL alias so source links persist.
 
 ## Current Sprint
 
@@ -130,7 +131,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 
 ## Next Up
 
-- [ ] Add structured ingredient persistence behind the current ingredient suggestion flow.
+- [ ] Add structured ingredient persistence behind the current ingredient suggestion flow. (Beta 5.1 persists verbatim recipe ingredient lines per meal; this item now covers quantity/unit-normalized persistence for aggregation.)
+- [ ] Optionally add dedicated `Ingredients` and `Instructions` rich_text properties to the Notion Meals database so saves upgrade from Notes sections to dedicated fields automatically.
 - [ ] Promote marked family cookbook adjustment feedback into a dedicated Family Adjustments data model if feedback-backed persistence becomes too limiting.
 - [ ] Add an operator-triggered Notion write-back migration only if read-time backfill proves insufficient.
 - [x] Add meal detail view.

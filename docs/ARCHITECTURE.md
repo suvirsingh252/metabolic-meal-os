@@ -172,6 +172,30 @@ Data boundaries:
 - Instructions use ordered `CookbookStep` records for mobile cooking display.
 - Existing feedback notes can be surfaced when they look like cooking modifications, and explicit cookbook adjustments are recognized by marker.
 
+Cookbook Data Pipeline (Beta 5.1):
+
+The capture pipeline guarantees newly analyzed and saved meals become useful cookbook entries:
+
+```text
+Analyze -> Save -> Notion -> Reload -> Cookbook
+```
+
+1. Analyze (capture):
+   - URL inputs: the recipe parser extracts JSON-LD `recipeIngredient` and `recipeInstructions` verbatim. These parser results are canonical and flow into the analysis result as `ingredients` (`RecipeIngredient[]`, `rawText` always set) and `instructions` (`string[]`), in addition to being flattened into the AI prompt.
+   - Manual/pasted text: the AI response schema includes required `extractedIngredients` (rawText/name/quantity/unit, verbatim-copy instructions in the prompt) and `extractedInstructions` fields. They are used only when the parser produced nothing, so deterministic extraction always wins over model output.
+2. Save (persist):
+   - `buildMealNotesSummary` embeds canonical `Ingredients:` and `Instructions:` sections into the Notes property. The section headers are exactly the aliases `buildMealCookbook` parses at read time, so persistence works with zero Notion schema changes.
+   - If the Meals database has optional `Ingredients` / `Recipe Ingredients` and `Instructions` / `Recipe Instructions` / `Method` rich_text properties, save-meal also writes them (schema-detected, never created).
+   - Notes and the dedicated properties are written as multiple 2000-character rich_text chunks (Notion block limit) instead of truncating; the total cap is 20,000 characters.
+   - `Source URL` aliases include the household's `Original Source` url property on both the write and read side.
+3. Reload:
+   - `mapNotionPageToMealSummary` reads `ingredientsText` / `instructionsText` from the dedicated properties (chunks join losslessly) and `sourceUrl` from the URL aliases.
+4. Cookbook:
+   - `buildMealCookbook` prefers dedicated properties, then falls back to Notes sections, then to empty states. Read-time parsing structures `name` / `quantity` / `unit` from `rawText` lines, so the persisted form preserves original fidelity and structure derivation can improve later without migration.
+   - Family adjustments remain overlays sourced from marked Meal Feedback records; they never modify the persisted recipe content.
+
+Why grocery/inventory stays deferred: aggregation needs trustworthy per-ingredient quantities and serving assumptions across meals. Beta 5.1 deliberately stops at verbatim `rawText` fidelity plus best-effort structure, because aggregating heuristic quantities would bake wrong numbers into shopping lists. Once enough newly saved meals carry verbatim ingredient lines, aggregation can be layered on without redesigning capture.
+
 Deferred systems:
 - Grocery lists, pantry tracking, inventory consumption, barcode scanning, shopping workflows, multi-user permissions, and auth changes are intentionally out of scope.
 - The app should not aggregate ingredients into shopping quantities until structured ingredient persistence and serving assumptions are stronger.

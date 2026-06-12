@@ -19,6 +19,8 @@ export interface MealSummary {
   comfortMeal: boolean;
   optimizedVersion: string | null;
   notes: string | null;
+  ingredientsText: string | null;
+  instructionsText: string | null;
   calories: number | null;
   proteinG: number | null;
   carbohydratesG: number | null;
@@ -276,6 +278,7 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     sourceUrl: readUrlLike(page, [
       "Source URL",
       "Source Url",
+      "Original Source",
       "sourceUrl"
     ]),
     sourceName: readTextLike(page, ["Source Name", "sourceName"]),
@@ -290,6 +293,17 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     comfortMeal: readCheckbox(getProperty(page, "Comfort Meal")),
     optimizedVersion: readRichText(getProperty(page, "Optimized Version")),
     notes,
+    ingredientsText: readTextLike(page, [
+      "Ingredients",
+      "Recipe Ingredients",
+      "ingredients"
+    ]),
+    instructionsText: readTextLike(page, [
+      "Instructions",
+      "Recipe Instructions",
+      "Method",
+      "instructions"
+    ]),
     calories: nutrition.calories,
     proteinG: nutrition.protein,
     carbohydratesG: nutrition.carbs,
