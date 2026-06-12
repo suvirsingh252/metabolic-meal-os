@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-11 (Beta 5.1 Cookbook Data Capture Hardening)
+Last updated: 2026-06-12 (Beta 6.1 Analyze Optimization, Beta 6.2 Cook Again Loop v1, social intake normalization)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -53,6 +53,9 @@ Implemented:
 - Weekly Planner v1.1: `/planner` loads the current Monday-Sunday plan from a dedicated Notion Meal Plan data source, shows Breakfast, Lunch, Dinner, and Snack slots, offers saved Meals as assignment options, can clear a planned meal, and can mark `Planned`, `Cooked`, `Skipped`, or `Swapped`. Writes are keyed by date plus slot so same-day meals do not overwrite each other. Missing planner config or schema gaps show safe diagnostics and block writes without crashing. Prefer `NOTION_MEAL_PLAN_SOURCE_ID`; `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
 - Beta 5 Family Cookbook: `/meals/[id]` is now cooking-first. It starts with Make This Again, Ate This, Loved It, Add to Planner, then `How We Make It`, structured Ingredients, large mobile Instructions, Original Recipe access, Nutrition, and Advanced details. Family adjustments are stored as marked feedback notes and layered over source recipe data without overwriting the original recipe.
 - Beta 5.1 Cookbook Data Capture Hardening: newly analyzed and saved meals reliably persist Source URL, verbatim ingredients, and instructions. Parser-extracted recipe content is canonical; AI `extractedIngredients`/`extractedInstructions` are a verbatim-copy fallback for pasted text. Persistence uses canonical `Ingredients:`/`Instructions:` Notes sections (zero schema change) plus optional dedicated rich_text properties, with Notes chunked past the single 2000-character block. The household `Original Source` url property is now a recognized Source URL alias on save and reload. See `docs/ARCHITECTURE.md` "Cookbook Data Pipeline".
+- Beta 6.1 Analyze Optimization: after a completed analysis, `/analyze` shows four optimization buttons — More Protein, Healthier, Kid-Friendly, and Budget. Each calls `POST /api/optimize-meal` lazily on first click, is cached per analysis in reducer state, and is cleared when a new analysis starts. Backed by a versioned `src/lib/ai/meal-optimization/v1` module (config, prompt, strict JSON schema, parser, service) with its own rate limit. No Notion schema changes.
+- Beta 6.2 Cook Again Loop v1: Meal Detail's existing Add to Planner button deep-links to `/planner?meal=<id>`; the planner reads the query param and preselects that meal into the matching slot (by Meal Type, defaulting to Dinner) on the default day, with a guidance banner. After assigning, Meal Detail shows a lightweight planning-context badge — "Planned for Tuesday dinner", "Cooked — ...", "Skipped — ...", or "Not planned this week" — fetched in parallel with the meal detail and degrading gracefully when the planner is not configured. The status path remains the existing Planned / Cooked / Skipped buttons. No Notion schema changes.
+- Social intake normalization (parallel share-intake hardening; landed outside the approved Beta 6 PR sequence): a dedicated `src/lib/intake/source-classifier.ts` classifies pasted/shared input (TikTok, Instagram, YouTube/Shorts/youtu.be, Pinterest, Facebook, recipe pages, plain text), and a new versioned `src/lib/ai/social-recipe-normalization/v1` module can normalize caption/transcript-style social text into recipe candidates with confidence labels. Analyze input/status/evidence UI reflects the detected source, and a social fallback path re-attaches source URL metadata when users paste caption text after a social link fails. No Notion schema changes.
 - Analyze now has staged loading copy for long analysis runs and tells users detailed meals can take about 20-30 seconds.
 - Feedback quick actions now have explicit semantics: `Ate This` logs eaten only, `Loved It` logs eaten/loved/worth repeating, and Meal Detail `Would Make Again` is repeat-only in household summaries.
 - Dashboard starts with household takeaways before detailed metrics and keeps data coverage/source diagnostics behind Advanced data coverage.
@@ -173,9 +176,10 @@ Architecture rule:
 Pages:
 - `/`: Today, with deterministic saved-meal suggestions, direct household reasons, `Why this meal?` explanations, quick feedback actions with explicit semantics, optimistic feedback summaries, Recent Household Learning, and client-only undo.
 - `/dashboard`: dashboard intelligence surface, with household takeaways first, daily snapshot, configurable targets, quality summary, Advanced data coverage, insights, weekly trends, and recent meals.
-- `/analyze`: paste recipe text or URL, call analysis API with staged loading copy, review a household-first summary, edit progressively disclosed details, and save the meal.
+- `/analyze`: paste recipe text or URL, call analysis API with staged loading copy, review a household-first summary, request optional optimization prompts (More Protein, Healthier, Kid-Friendly, Budget), edit progressively disclosed details, and save the meal.
 - `/meals`: fetch and display saved meals with Meal OS wording and internal detail links.
-- `/meals/[id]`: family cookbook detail with quick cooking actions, `How We Make It`, ingredients, mobile cooking instructions, original recipe access, nutrition, and advanced details.
+- `/meals/[id]`: family cookbook detail with quick cooking actions, `How We Make It`, ingredients, mobile cooking instructions, original recipe access, nutrition, advanced details, and a weekly planning-context badge (Planned/Cooked/Skipped for this week, or "Not planned this week") when the planner is configured. Add to Planner deep-links to `/planner?meal=<id>`.
+- `/planner`: weekly planner; accepts a `?meal=<id>` query param to preselect that meal into the matching slot for assignment.
 - `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback with Meal OS success copy.
 - `/settings`: Notion diagnostics and server environment status.
 - `/settings`: also includes a diagnostic Ingredient Lookup Test panel backed by the server-side USDA lookup route.
@@ -200,6 +204,13 @@ Pages:
   - For manual/free-text meals without structured nutrition, runs the deterministic free-text estimator only when the description has enough recognizable food detail. Current coverage includes paratha/parantha, gobi/cauliflower, butter, eggs, chicken, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, salad/vegetables, toast, wraps/rolls, and leftover curry/sabzi.
   - Free-text estimates fill calories/protein/fiber only, leave sodium/sugar/fat/carbs null, and include provenance naming matched components, serving assumptions, quantity multipliers, confidence, and review guidance. It still does not ask OpenAI to calculate exact calories or macros.
   - Serving-size parsing currently supports simple numeric/word quantities for eggs, rotis/chapatis, parathas/paranthas, `half bowl`, `one bowl`, `large`, `small`, `extra butter`, `with butter`, and `without butter`. It is conservative and does not infer full macros or micronutrients.
+
+- `POST /api/optimize-meal`
+  - Input: `{ analysis: MealAnalysisResult-like summary, optimizationType: "higher-protein" | "healthier" | "kid-friendly" | "budget-friendly" }`
+  - Uses OpenAI structured JSON output through the versioned `src/lib/ai/meal-optimization/v1` module.
+  - Returns a `MealOptimizationResult`: headline, 1-3 minimal changes, why it helps, and an optional cultural-preservation note.
+  - Has its own request-size limit and rate limit (6 per window), separate from `/api/analyze-meal`.
+  - Does not write to Notion and requires no Notion schema changes.
 
 - `GET /api/dashboard`
   - Queries recent saved Meals through the shared Notion Meals read utility.
@@ -629,6 +640,22 @@ Current Ingredients behavior:
 - Empty ingredient lists return `200`; local relation testing confirmed a new ingredient can be created and related, a same-meal duplicate is skipped without duplicate relation writes, and a different-meal duplicate preserves the existing relation while adding the new Meal relation.
 
 # Mandatory Start-of-Session Procedure
+
+## Current State - 2026-06-12 Beta 6 Shipped Slices
+
+Three feature commits are on `main` ahead of `origin/main`, ready to deploy after this docs commit:
+
+- `b278938` Beta 6.1: Add optimization prompts to Analyze
+- `1cb267f` Beta 6.2: Cook Again Loop v1
+- `46afa65` Add social intake normalization — landed outside the approved Beta 6 PR sequence (PRs 2-5 are Suggestions, Insights, and Cleanup); recorded honestly here as parallel share-intake hardening, not a planned Beta 6 slice.
+
+Verification completed on this HEAD:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm test` passed, 249/249 tests.
+- `npm run build` passed.
+
+None of the three commits change Notion schema. The branch is safe to deploy after the docs commit. Next step after deploying: observe Beta 6.1 Analyze optimization and Beta 6.2 Cook Again usage before starting the next planned slice (Suggestions core domain).
 
 ## Current State - 2026-06-11 Beta 4 Mobile-First Redesign
 

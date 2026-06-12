@@ -1,5 +1,46 @@
 # Session Log
 
+## 2026-06-12 Beta 6.1 + Beta 6.2 Shipped, Social Intake Normalization Recorded
+
+Goal:
+- Ship the first two approved Beta 6 slices (Analyze Optimization, Cook Again Loop v1), record the parallel social intake normalization commit, and bring docs current before deployment.
+
+Beta 6.1 Analyze Optimization (`b278938`):
+- New `POST /api/optimize-meal` endpoint with its own request-size limit and rate limit (6 per window).
+- New versioned `src/lib/ai/meal-optimization/v1` module: types, config (`gpt-4.1-mini`, `meal-optimization-v1`), strict JSON schema, minimal-change prompt with cultural preservation rules, response parser, and service.
+- Four optimization buttons after a completed analysis: More Protein, Healthier, Kid-Friendly, Budget.
+- Calls are lazy (on first click), cached per analysis in `/analyze` reducer state, and cleared when a new analysis starts.
+- No Notion schema changes; optimizations are session-only and not persisted.
+- 18 new tests in `tests/meal-optimization.test.ts`.
+
+Beta 6.2 Cook Again Loop v1 (`1cb267f`):
+- Meal Detail's existing Add to Planner button deep-links to `/planner?meal=<id>`; the planner page now reads the `meal` query param.
+- The planner preselects the deep-linked meal into the matching slot (by Meal Type, defaulting to Dinner) on the default day via the pure `getDeepLinkPreselection` helper, and shows a guidance banner.
+- Saving uses the existing assign flow; no new write paths were added.
+- Meal Detail fetches weekly planner context in parallel (`Promise.allSettled`) and shows a planned-state badge: "Planned for Tuesday dinner", "Cooked — ...", "Skipped — ...", or "Not planned this week". It degrades gracefully when the planner is not configured.
+- Status path remains the existing Planned / Cooked / Skipped buttons.
+- No Notion schema changes.
+- 11 new tests in `tests/planner-meal-context.test.ts` covering preselection slot logic and context label formatting.
+
+Social intake normalization (`46afa65`) — outside the approved Beta 6 PR sequence:
+- This commit was not part of the approved Beta 6 plan (the remaining planned PRs are Suggestions core domain, Suggestions UI/navigation, Insights, and Cleanup). It is recorded honestly here as parallel share-intake hardening on the Beta 3.6 intake track.
+- Adds `src/lib/intake/source-classifier.ts` (TikTok, Instagram, YouTube/Shorts/youtu.be, Pinterest, Facebook, recipe pages, plain text), a versioned `src/lib/ai/social-recipe-normalization/v1` module, Analyze input/status/evidence UI updates, and a social fallback path that re-attaches source URL metadata when users paste caption text after a social link fails.
+- No Notion schema changes.
+
+Repo state at docs time:
+- `main` is ahead of `origin/main` by the 3 feature commits above (before this docs commit).
+- Working tree was clean before doc edits; the three commits are scoped and contain no unrelated changes.
+
+Validation (run on this HEAD):
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm test`: passed, 249/249 tests.
+- `npm run build`: passed.
+- Safe to deploy after the docs commit.
+
+Next step:
+- Deploy, then observe Beta 6.1 Analyze optimization and Beta 6.2 Cook Again usage before starting the next planned Beta 6 slice.
+
 ## 2026-06-11 Beta 5.1 Cookbook Data Capture Hardening
 
 Goal:

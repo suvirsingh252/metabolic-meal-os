@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-11 (Beta 5 Family Cookbook)
+Last updated: 2026-06-12 (Beta 6.1 Analyze Optimization, Beta 6.2 Cook Again Loop v1)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -111,9 +111,13 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Complete Beta 4 mobile-first UX hardening: reduce mobile scrolling/cognitive load across Today, Analyze, Meals, Planner, Dashboard, Feedback, Settings, and Meal Detail while preserving capabilities.
 - [x] Complete Beta 5 Family Cookbook: redesign Meal Detail around cooking, add `How We Make It`, preserve original recipe access, render structured cookbook ingredients and mobile cooking steps, and capture family adjustments without implementing grocery or inventory systems.
 - [x] Complete Beta 5.1 Cookbook Data Capture Hardening: carry parser-extracted ingredients/instructions through analysis, add AI verbatim extraction fallback for pasted text, persist canonical `Ingredients:`/`Instructions:` Notes sections plus optional dedicated properties, chunk Notes past the 2000-character block limit, and fix the household `Original Source` URL alias so source links persist.
+- [x] Complete Beta 6.1 Analyze Optimization: add `POST /api/optimize-meal` with its own rate limit, More Protein / Healthier / Kid-Friendly / Budget optimization buttons after analysis, lazy per-click calls cached per analysis and cleared on new analysis, all with no Notion schema changes.
+- [x] Complete Beta 6.2 Cook Again Loop v1: Meal Detail Add to Planner deep-links to `/planner?meal=<id>`, the planner preselects the meal into the matching slot, the existing assign flow saves it, Meal Detail shows a planned-state badge for the current week, and status updates remain Planned / Cooked / Skipped — no Notion schema changes.
+- [x] Add social intake normalization (landed outside the approved Beta 6 PR sequence; parallel share-intake hardening): source classifier for social/recipe/plain-text input, versioned social-recipe-normalization AI module, and Analyze social fallback UX that preserves source metadata.
 
 ## Current Sprint
 
+- [ ] Deploy the three Beta 6 commits (`b278938`, `1cb267f`, `46afa65`) plus this docs commit, then observe Beta 6.1 Analyze optimization and Beta 6.2 Cook Again usage before starting the next planned Beta 6 slice (Suggestions core domain).
 - [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
 - [x] Review evidence-aware guidance quality on representative real household meals and tune the first household answer.
