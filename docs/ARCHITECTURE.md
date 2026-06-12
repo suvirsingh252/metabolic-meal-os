@@ -337,10 +337,12 @@ Reason to defer:
 
 ## Auth And Tenancy Architecture
 
-Current beta-safe stance:
-- The app is private by default through `PRIVATE_DEPLOYMENT_MODE`.
+Current beta-safe stance (private by default, fail-closed since 2026-06-12):
+- All auth decisions flow through `src/lib/server/auth.ts` (`isAuthorizedRequest`, `shouldAllowUnauthenticated`), shared by `middleware.ts`, `enforcePrivateDeployment`, and the intake route. Token comparison is constant-time (XOR accumulation; no `node:crypto`, so it runs on the Edge runtime).
+- If `APP_AUTH_TOKEN` is missing, middleware and guarded routes return 503 unless `ALLOW_UNAUTHENTICATED=true` is set (local/dev-only opt-out). The legacy `PRIVATE_DEPLOYMENT_MODE=false` opt-out still works for one release and logs a deprecation warning.
 - If `APP_AUTH_TOKEN` is set, middleware and guarded API routes require `Authorization: Bearer`, `x-app-auth-token`, or an `app_auth_token` cookie matching it.
-- If `PRIVATE_DEPLOYMENT_MODE=false` and no `APP_AUTH_TOKEN` exists, routes return 503 instead of running as a public app.
+- Browser login: `/login` posts the token to `POST /api/auth/session`, which verifies it and sets the `app_auth_token` cookie (`HttpOnly`, Secure in production, `SameSite=Lax`, `Path=/`, 30-day max age). Middleware redirects unauthenticated HTML page requests to `/login` and returns JSON 401 for unauthenticated API requests. `/login` and `/api/auth/session` are excluded from the middleware matcher.
+- `POST /api/intake/share` authenticates against `IOS_SHORTCUT_TOKEN` (bearer or `x-app-auth-token` header; cookies not accepted), is rate limited (20/min/IP), and validates `sharedAt` as ISO-8601.
 
 Tenancy:
 - Current deployment assumes one private household/workspace and one set of Notion databases.

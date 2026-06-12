@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { POST as postIntakeShare } from "@/src/app/api/intake/share/route";
 import { classifyInput, normalizeUrl, parseUrl } from "@/src/lib/intake/classify";
 import { getIntakeDbId } from "@/src/lib/intake/notion";
+import {
+  resetRateLimiterForTests,
+  setRateLimiterForTests,
+  type RateLimitRequest,
+  type RateLimitResult
+} from "@/src/lib/server/rate-limit";
 
 // --- openUrl construction ---
 
@@ -310,6 +317,175 @@ test("getIntakeDbId: returns undefined when env var missing", () => {
   assert.equal(result, undefined);
   if (saved !== undefined) process.env.NOTION_MEAL_INTAKE_DATABASE_ID = saved;
 });
+
+// --- POST /api/intake/share route behavior ---
+
+const INTAKE_ENV_KEYS = [
+  "IOS_SHORTCUT_TOKEN",
+  "ALLOW_UNAUTHENTICATED",
+  "PRIVATE_DEPLOYMENT_MODE",
+  "NOTION_MEAL_INTAKE_DATABASE_ID"
+] as const;
+
+async function withIntakeEnv(
+  overrides: Partial<Record<(typeof INTAKE_ENV_KEYS)[number], string>>,
+  run: () => Promise<void>
+) {
+  const saved = INTAKE_ENV_KEYS.map((key) => [key, process.env[key]] as const);
+
+  for (const key of INTAKE_ENV_KEYS) {
+    delete process.env[key];
+  }
+  for (const [key, value] of Object.entries(overrides)) {
+    process.env[key] = value;
+  }
+
+  try {
+    await run();
+  } finally {
+    for (const [key, value] of saved) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+function intakeRequest(body: unknown, headers?: HeadersInit) {
+  return new Request("https://example.test/api/intake/share", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify(body)
+  });
+}
+
+test("intake share: authorized shortcut request succeeds", () =>
+  withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
+    const response = await postIntakeShare(
+      intakeRequest(
+        { input: "https://www.allrecipes.com/recipe/123/" },
+        { authorization: "Bearer ios-token" }
+      )
+    );
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { ok: boolean };
+    assert.equal(body.ok, true);
+  }));
+
+test("intake share: missing shortcut token rejected with 401", () =>
+  withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
+    const response = await postIntakeShare(
+      intakeRequest({ input: "some recipe text" })
+    );
+
+    assert.equal(response.status, 401);
+  }));
+
+test("intake share: invalid shortcut token rejected with 401", () =>
+  withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
+    const response = await postIntakeShare(
+      intakeRequest(
+        { input: "some recipe text" },
+        { authorization: "Bearer wrong-token" }
+      )
+    );
+
+    assert.equal(response.status, 401);
+  }));
+
+test("intake share: auth cookie is not accepted for shortcut intake", () =>
+  withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
+    const response = await postIntakeShare(
+      intakeRequest(
+        { input: "some recipe text" },
+        { cookie: "app_auth_token=ios-token" }
+      )
+    );
+
+    assert.equal(response.status, 401);
+  }));
+
+test("intake share: unconfigured shortcut token returns 503 without opt-out", () =>
+  withIntakeEnv({}, async () => {
+    const response = await postIntakeShare(
+      intakeRequest(
+        { input: "some recipe text" },
+        { authorization: "Bearer anything" }
+      )
+    );
+
+    assert.equal(response.status, 503);
+  }));
+
+test("intake share: invalid sharedAt returns 400", () =>
+  withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
+    for (const sharedAt of ["not-a-date", "tomorrow", "2026-13-99T00:00:00Z"]) {
+      const response = await postIntakeShare(
+        intakeRequest(
+          { input: "some recipe text", sharedAt },
+          { authorization: "Bearer ios-token" }
+        )
+      );
+
+      assert.equal(response.status, 400, `sharedAt=${sharedAt}`);
+    }
+  }));
+
+test("intake share: valid ISO sharedAt accepted", () =>
+  withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
+    const response = await postIntakeShare(
+      intakeRequest(
+        { input: "some recipe text", sharedAt: "2026-06-12T08:30:00.000Z" },
+        { authorization: "Bearer ios-token" }
+      )
+    );
+
+    assert.equal(response.status, 200);
+  }));
+
+test("intake share: invokes the intake-share rate limit after auth", () =>
+  withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
+    const requests: RateLimitRequest[] = [];
+
+    setRateLimiterForTests({
+      check(request): RateLimitResult {
+        requests.push(request);
+
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: Date.now() + 60_000,
+          retryAfterSeconds: 60,
+          action: request.action
+        };
+      }
+    });
+
+    try {
+      const response = await postIntakeShare(
+        intakeRequest(
+          { input: "some recipe text" },
+          {
+            authorization: "Bearer ios-token",
+            "x-forwarded-for": "203.0.113.20"
+          }
+        )
+      );
+
+      assert.equal(response.status, 429);
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0]?.key, "intake-share:203.0.113.20");
+      assert.equal(requests[0]?.maxRequests, 20);
+    } finally {
+      resetRateLimiterForTests();
+    }
+  }));
 
 test("getIntakeDbId: returns value when env var is set", () => {
   const saved = process.env.NOTION_MEAL_INTAKE_DATABASE_ID;

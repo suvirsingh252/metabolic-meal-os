@@ -1,5 +1,23 @@
 # Session Log
 
+## 2026-06-12 P0 Private Deployment Auth Release (A1–A4, branch `auth-private-deployment-release`)
+
+Goal:
+- Make the production deployment private by default. The deployed app was effectively public because `APP_AUTH_TOKEN` was unset and the old code failed open.
+
+Implementation:
+- A1 fail-closed: missing `APP_AUTH_TOKEN` now returns 503 from middleware and `enforcePrivateDeployment` unless `ALLOW_UNAUTHENTICATED=true` (or deprecated `PRIVATE_DEPLOYMENT_MODE=false`, which warns) is set.
+- A2 browser login: new `/login` page posts the token to new `POST /api/auth/session`, which sets the `HttpOnly` `app_auth_token` cookie (Secure in prod, SameSite=Lax, 30 days). Route guards now accept the cookie. Middleware redirects unauthenticated HTML page requests to `/login` and returns JSON 401 for API requests; `/login` and `/api/auth/session` are matcher-excluded.
+- A3 dedupe: new `src/lib/server/auth.ts` (`isAuthorizedRequest`, `getAuthTokenFromRequest`, `shouldAllowUnauthenticated`, `constantTimeEqual`) is the single auth implementation used by middleware, route guards, and intake. Constant-time comparison, Edge-safe (no `node:crypto`).
+- A4 intake: `/api/intake/share` uses the shared helper with `IOS_SHORTCUT_TOKEN` (no cookies), is rate limited 20/min/IP, and rejects non-ISO-8601 `sharedAt` with 400.
+- Docs/env: `.env.example`, README auth section + deploy checklist, ARCHITECTURE auth section, DECISIONS entry, HANDOFF env + deploy checklist, KNOWN_ISSUES, audit ticket statuses.
+
+Validation:
+- typecheck, lint, build clean; tests 321/321 (270 at Dev B handoff + 51 new across `request-guards`, `auth-session`, `middleware-auth`, `intake-share`, `api-route-guards`).
+
+Owner action before deploying this branch:
+- Set `APP_AUTH_TOKEN`, `IOS_SHORTCUT_TOKEN`, and `ALLOW_UNAUTHENTICATED=false` in Vercel production first; deploying without them locks the app closed (503).
+
 ## 2026-06-12 Notion Schema Hardening (parallel session, audited before deploy)
 
 Goal:
