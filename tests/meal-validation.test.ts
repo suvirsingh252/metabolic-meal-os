@@ -64,6 +64,32 @@ test("validateMealAnalysisResult accepts complete meal payload", () => {
   assert.equal(result.data?.mealName, "Dal and rice");
 });
 
+test("validateMealAnalysisResult normalizes unsafe source URLs to null", () => {
+  const result = validateMealAnalysisResult({
+    ...validMeal,
+    sourceUrl: "javascript:alert(1)"
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.sourceUrl, null);
+});
+
+test("validateMealAnalysisResult preserves http and https source URLs", () => {
+  const httpsResult = validateMealAnalysisResult({
+    ...validMeal,
+    sourceUrl: "https://example.com/recipe"
+  });
+  const httpResult = validateMealAnalysisResult({
+    ...validMeal,
+    sourceUrl: "http://example.com/recipe"
+  });
+
+  assert.equal(httpsResult.success, true);
+  assert.equal(httpsResult.data?.sourceUrl, "https://example.com/recipe");
+  assert.equal(httpResult.success, true);
+  assert.equal(httpResult.data?.sourceUrl, "http://example.com/recipe");
+});
+
 test("validateMealAnalysisResult accepts estimated nutrition without zero-filling blanks", () => {
   const result = validateMealAnalysisResult({
     ...validMeal,

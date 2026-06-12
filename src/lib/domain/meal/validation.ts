@@ -12,6 +12,7 @@ import {
   recipeSourceClassifications,
   recipeSourceTypes
 } from "@/src/lib/types/recipe";
+import { getSafeHttpUrl } from "@/src/lib/security/source-url";
 
 export interface ValidationResult<T> {
   success: boolean;
@@ -345,10 +346,7 @@ export function validateMealAnalysisResult(
     ingredients: readCookbookIngredients(body),
     instructions: readCookbookInstructions(body),
     sourceType,
-    sourceUrl:
-      typeof body.sourceUrl === "string" && body.sourceUrl.trim()
-        ? body.sourceUrl.trim()
-        : null,
+    sourceUrl: getSafeHttpUrl(body.sourceUrl),
     sourceName:
       typeof body.sourceName === "string" && body.sourceName.trim()
         ? body.sourceName.trim()

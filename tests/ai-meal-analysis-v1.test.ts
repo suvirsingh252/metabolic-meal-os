@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mealAnalysisModelConfig } from "@/src/lib/ai/meal-analysis/v1/config";
 import { mealAnalysisErrorResponse } from "@/src/lib/ai/meal-analysis/v1/fallback";
+import { validateMealAnalysisRequest } from "@/src/lib/ai/meal-analysis/v1/request";
 import { parseMealAnalysisResponse } from "@/src/lib/ai/meal-analysis/v1/response-parser";
 import { mealAnalysisJsonSchema } from "@/src/lib/ai/meal-analysis/v1/schema";
 import { RecipeParserError } from "@/src/lib/integrations/recipe-parser";
@@ -70,4 +71,36 @@ test("mealAnalysisErrorResponse keeps parser failures as safe 400s", () => {
   const response = mealAnalysisErrorResponse(new RecipeParserError("Blocked"));
 
   assert.equal(response.status, 400);
+});
+
+test("validateMealAnalysisRequest normalizes unsafe source URLs to null", () => {
+  const result = validateMealAnalysisRequest({
+    recipeText: "A complete recipe text with enough detail.",
+    sourceUrl: "javascript:alert(1)"
+  });
+
+  assert.equal(result instanceof Response, false);
+  assert.equal(result instanceof Response ? null : result.sourceUrl, null);
+});
+
+test("validateMealAnalysisRequest preserves http and https source URLs", () => {
+  const httpsResult = validateMealAnalysisRequest({
+    recipeText: "A complete recipe text with enough detail.",
+    sourceUrl: "https://example.com/recipe"
+  });
+  const httpResult = validateMealAnalysisRequest({
+    recipeText: "A complete recipe text with enough detail.",
+    sourceUrl: "http://example.com/recipe"
+  });
+
+  assert.equal(httpsResult instanceof Response, false);
+  assert.equal(
+    httpsResult instanceof Response ? null : httpsResult.sourceUrl,
+    "https://example.com/recipe"
+  );
+  assert.equal(httpResult instanceof Response, false);
+  assert.equal(
+    httpResult instanceof Response ? null : httpResult.sourceUrl,
+    "http://example.com/recipe"
+  );
 });

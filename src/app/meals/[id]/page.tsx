@@ -10,6 +10,7 @@ import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
 import { formatPlannerContextLabel } from "@/src/lib/domain/planner";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
 import { getWeeklyDinnerPlanner } from "@/src/lib/notion/meal-plan";
+import { getSafeHttpUrl } from "@/src/lib/security/source-url";
 
 export const runtime = "nodejs";
 
@@ -117,6 +118,7 @@ export default async function MealDetailPage({
   const { meal, feedbackSummary } = detail;
   const dateLabel = formatDate(detail.dateLabel);
   const { cookbook } = detail;
+  const safeOriginalRecipeUrl = getSafeHttpUrl(cookbook.originalRecipeUrl);
 
   return (
     <div className="space-y-5 md:space-y-6">
@@ -247,11 +249,14 @@ export default async function MealDetailPage({
           </div>
           <Button asChild variant="secondary">
             <a
-              href={cookbook.originalRecipeUrl ?? meal.url}
+              href={safeOriginalRecipeUrl ?? meal.url}
               rel="noreferrer"
               target="_blank"
             >
-              {cookbook.originalRecipeLabel} <ExternalLink className="h-4 w-4" />
+              {safeOriginalRecipeUrl
+                ? cookbook.originalRecipeLabel
+                : "Open saved record"}{" "}
+              <ExternalLink className="h-4 w-4" />
             </a>
           </Button>
         </div>

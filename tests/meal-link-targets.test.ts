@@ -15,3 +15,13 @@ test("Meals list items link to internal meal detail pages", () => {
   assert.match(source, /href=\{getMealDetailPath\(meal\.id\)\}/);
   assert.doesNotMatch(source, /href=\{meal\.url\}/);
 });
+
+test("Meal detail only uses a safe original recipe href", () => {
+  const source = readFileSync("src/app/meals/[id]/page.tsx", "utf8");
+
+  assert.match(
+    source,
+    /const safeOriginalRecipeUrl = getSafeHttpUrl\(cookbook\.originalRecipeUrl\);/
+  );
+  assert.match(source, /href=\{safeOriginalRecipeUrl \?\? meal\.url\}/);
+});

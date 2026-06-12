@@ -6,6 +6,7 @@ import {
   type RecipeSourceClassification,
   type RecipeSourceType
 } from "@/src/lib/types/recipe";
+import { getSafeHttpUrl } from "@/src/lib/security/source-url";
 import type { MealAnalysisRequest } from "@/src/lib/types/meal";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -56,10 +57,7 @@ export function validateMealAnalysisRequest(
   return {
     recipeText: trimmedRecipeText,
     sourceType,
-    sourceUrl:
-      typeof body.sourceUrl === "string" && body.sourceUrl.trim()
-        ? body.sourceUrl.trim()
-        : null,
+    sourceUrl: getSafeHttpUrl(body.sourceUrl),
     sourceName:
       typeof body.sourceName === "string" && body.sourceName.trim()
         ? body.sourceName.trim()
