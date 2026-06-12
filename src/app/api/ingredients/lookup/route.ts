@@ -5,6 +5,10 @@ import {
   mapFoodDataCentralSearchResult,
   searchFoodDataCentral
 } from "@/src/lib/integrations/food-data-central";
+import {
+  guardApiRequest,
+  readJsonWithLimit
+} from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
@@ -39,12 +43,19 @@ function validateRequest(body: unknown): string | NextResponse {
 }
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "ingredients-lookup",
+    rateLimit: 30
+  });
 
-  try {
-    body = await request.json();
-  } catch {
-    return validationError("Request body must be valid JSON.");
+  if (guardResponse) {
+    return guardResponse;
+  }
+
+  const body = await readJsonWithLimit(request, 10_000);
+
+  if (body instanceof NextResponse) {
+    return body;
   }
 
   const ingredient = validateRequest(body);
