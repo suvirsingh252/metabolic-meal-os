@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
+import { guardApiRequest } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,16 @@ function getDatabaseTitle(database: unknown) {
   return title || "Untitled database";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "diagnostics",
+    rateLimit: 10
+  });
+
+  if (guardResponse) {
+    return guardResponse;
+  }
+
   try {
     const { NOTION_API_KEY, NOTION_MEALS_DATABASE_ID } = getNotionMealsEnv();
 

@@ -13,6 +13,7 @@ import {
   evaluateMealsSchemaHealth,
   type MealSchemaHealth
 } from "@/src/lib/notion/schema-health";
+import { guardApiRequest } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
@@ -210,7 +211,16 @@ async function readIntakeSchema(): Promise<SchemaSummary | SchemaFailure> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const guardResponse = guardApiRequest(request, {
+    rateLimitKey: "diagnostics",
+    rateLimit: 10
+  });
+
+  if (guardResponse) {
+    return guardResponse;
+  }
+
   const results = await Promise.all([
     readSchema("meals", getNotionMealsEnv, "NOTION_MEALS_DATABASE_ID"),
     readSchema(
