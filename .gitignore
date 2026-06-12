@@ -17,3 +17,7 @@ pnpm-debug.log*
 # Local AI tool state
 .codex/
 .claude/
+
+# Local AI tool state
+.codex/
+.claude/
