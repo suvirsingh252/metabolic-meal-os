@@ -1,4 +1,5 @@
 import type { RecipeIngredient } from "@/src/lib/types/recipe";
+import type { SocialRecipeCandidate } from "@/src/lib/ai/social-recipe-normalization/v1/types";
 
 export const cuisines = [
   "Indian",
@@ -96,13 +97,21 @@ export type MealSourceClassification =
   | "video-page"
   | "short-link"
   | "unknown-url"
-  | "manual-text";
+  | "manual-text"
+  | "tiktok"
+  | "instagram"
+  | "youtube"
+  | "pinterest"
+  | "facebook"
+  | "unknown-social"
+  | "plain-text";
 
 export interface MealAnalysisRequest {
   recipeText: string;
   sourceType?: "manual" | "url" | "ai" | "family";
   sourceUrl?: string | null;
   sourceName?: string | null;
+  sourceClassification?: MealSourceClassification | null;
 }
 
 export interface MealAnalysisResult {
@@ -160,6 +169,7 @@ export interface MealAnalysisResult {
   importedAt?: string | null;
   lastParsedAt?: string | null;
   parserVersion?: string | null;
+  socialRecipeCandidate?: SocialRecipeCandidate | null;
 
   // Runtime analysis metadata. Optional and not required for Notion persistence.
   knownIngredientContextUsed?: boolean;

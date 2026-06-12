@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseRecipeJsonLd } from "@/src/lib/integrations/recipe-parser";
+import {
+  basicRecipeParserAdapter,
+  parseRecipeJsonLd
+} from "@/src/lib/integrations/recipe-parser";
 import { prepareRecipeForMealAnalysis } from "@/src/lib/ai/meal-analysis/v1/recipe-prep";
 import {
   mealAnalysisJsonSchema,
@@ -149,6 +152,39 @@ test("manual text analysis prep leaves extraction to the AI fallback", async () 
 
   assert.deepEqual(prepared.ingredients, []);
   assert.deepEqual(prepared.instructions, []);
+});
+
+test("regular recipe URL analysis prep still uses the recipe parser path", async () => {
+  const originalParseFromUrl = basicRecipeParserAdapter.parseFromUrl;
+  const calls: string[] = [];
+
+  basicRecipeParserAdapter.parseFromUrl = async (url) => {
+    calls.push(url);
+    return {
+      name: "Parser chana",
+      source: {
+        sourceType: "url",
+        sourceUrl: url,
+        sourceName: "Example",
+        sourceClassification: "recipe-page",
+        parserVersion: "test-parser"
+      },
+      ingredients: [{ rawText: "1 cup chickpeas" }],
+      instructions: ["Simmer chickpeas."]
+    };
+  };
+
+  try {
+    const prepared = await prepareRecipeForMealAnalysis({
+      recipeText: "https://example.com/recipes/chana"
+    });
+
+    assert.deepEqual(calls, ["https://example.com/recipes/chana"]);
+    assert.equal(prepared.sourceClassification, "recipe-page");
+    assert.equal(prepared.ingredients[0]?.rawText, "1 cup chickpeas");
+  } finally {
+    basicRecipeParserAdapter.parseFromUrl = originalParseFromUrl;
+  }
 });
 
 test("AI response schema requires verbatim cookbook extraction fields", () => {

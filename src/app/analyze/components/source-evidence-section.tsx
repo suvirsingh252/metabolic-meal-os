@@ -32,6 +32,37 @@ export function SourceSummary({ analysis }: { analysis: MealAnalysisResult }) {
             ))}
           </ul>
         ) : null}
+        {analysis.socialRecipeCandidate ? (
+          <div className="mt-3 space-y-2 rounded-md border bg-card p-3 text-foreground">
+            <p className="font-medium">
+              Social normalization: {analysis.socialRecipeCandidate.confidence}
+            </p>
+            <p>{analysis.socialRecipeCandidate.title}</p>
+            {analysis.socialRecipeCandidate.servings ? (
+              <p>Servings: {analysis.socialRecipeCandidate.servings}</p>
+            ) : null}
+            {analysis.socialRecipeCandidate.assumptions.length ? (
+              <div>
+                <p className="text-muted-foreground">Assumptions</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  {analysis.socialRecipeCandidate.assumptions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {analysis.socialRecipeCandidate.missingDetails.length ? (
+              <div>
+                <p className="text-muted-foreground">Missing details</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  {analysis.socialRecipeCandidate.missingDetails.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {analysis.knownIngredientContextUsed ? (
           <p>
             Known ingredient context used

@@ -70,7 +70,10 @@ const socialVideoHosts = [
   "instagram.com",
   "tiktok.com",
   "youtube.com",
-  "youtu.be"
+  "youtu.be",
+  "pinterest.com",
+  "facebook.com",
+  "fb.watch"
 ];
 const videoHosts = ["vimeo.com"];
 const recipeSignals = [
@@ -482,15 +485,35 @@ export function classifyRecipeUrl(
     return "short-link";
   }
 
+  if (host === "tiktok.com" || host.endsWith(".tiktok.com")) {
+    return "tiktok";
+  }
+
+  if (host === "instagram.com" || host.endsWith(".instagram.com")) {
+    return "instagram";
+  }
+
   if (
-    host === "tiktok.com" ||
-    host.endsWith(".tiktok.com") ||
-    host === "instagram.com" ||
-    host.endsWith(".instagram.com") ||
     host === "youtu.be" ||
     host === "youtube.com" ||
     host.endsWith(".youtube.com")
   ) {
+    return "youtube";
+  }
+
+  if (host === "pinterest.com" || host.endsWith(".pinterest.com")) {
+    return "pinterest";
+  }
+
+  if (
+    host === "facebook.com" ||
+    host.endsWith(".facebook.com") ||
+    host === "fb.watch"
+  ) {
+    return "facebook";
+  }
+
+  if (socialVideoHosts.some((socialHost) => host === socialHost || host.endsWith(`.${socialHost}`))) {
     return "social-video";
   }
 
@@ -589,6 +612,12 @@ function parseFallbackHtml(
 
   if (
     sourceClassification === "social-video" ||
+    sourceClassification === "tiktok" ||
+    sourceClassification === "instagram" ||
+    sourceClassification === "youtube" ||
+    sourceClassification === "pinterest" ||
+    sourceClassification === "facebook" ||
+    sourceClassification === "unknown-social" ||
     sourceClassification === "video-page"
   ) {
     const socialMetadataOnly = [ogTitle ?? title, ogDescription ?? description]

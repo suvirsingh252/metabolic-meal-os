@@ -75,3 +75,35 @@ test("analyzeReducer updates array fields and clears save state", () => {
   assert.deepEqual(state.analysis?.shoppingAdditions, ["beans", "yogurt"]);
   assert.equal(state.savedMeal, null);
 });
+
+test("analyzeReducer stores social fallback state after social detection", () => {
+  const state = analyzeReducer(initialAnalyzeState, {
+    type: "socialFallbackDetected",
+    message: "Social recipe detected.",
+    sourceUrl: "https://www.instagram.com/reel/C123/",
+    sourceType: "instagram"
+  });
+
+  assert.equal(state.isLoading, false);
+  assert.equal(state.error, "Social recipe detected.");
+  assert.deepEqual(state.socialFallback, {
+    sourceUrl: "https://www.instagram.com/reel/C123/",
+    sourceType: "instagram"
+  });
+});
+
+test("analyzeReducer clears social fallback after analysis success", () => {
+  const fallbackState = analyzeReducer(initialAnalyzeState, {
+    type: "socialFallbackDetected",
+    message: "Social recipe detected.",
+    sourceUrl: "https://youtu.be/abc123",
+    sourceType: "youtube"
+  });
+  const state = analyzeReducer(fallbackState, {
+    type: "analysisSucceeded",
+    analysis: meal
+  });
+
+  assert.equal(state.socialFallback, null);
+  assert.equal(state.analysis?.mealName, "Dal and rice");
+});

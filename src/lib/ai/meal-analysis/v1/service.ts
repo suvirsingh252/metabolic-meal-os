@@ -84,6 +84,7 @@ export async function analyzeMeal(request: MealAnalysisRequest) {
     importedAt: preparedRecipe.importedAt,
     lastParsedAt: preparedRecipe.lastParsedAt,
     parserVersion: preparedRecipe.parserVersion,
+    socialRecipeCandidate: preparedRecipe.socialRecipeCandidate,
     knownIngredientContextUsed: ingredientContext.ingredients.length > 0,
     knownIngredientContextNames: ingredientContext.ingredients.map(
       (ingredient) => ingredient.ingredientName

@@ -1,16 +1,12 @@
 import type { IntakeClassification } from "@/src/lib/intake/types";
+import {
+  classifySourceInput,
+  isSocialSource,
+  normalizeUrl,
+  parseUrl
+} from "@/src/lib/intake/source-classifier";
 
-const SOCIAL_DOMAINS = new Set([
-  "instagram.com",
-  "tiktok.com",
-  "pinterest.com",
-  "facebook.com",
-  "youtube.com",
-  "youtu.be",
-  "threads.net",
-  "x.com",
-  "twitter.com"
-]);
+export { normalizeUrl, parseUrl };
 
 const RECIPE_PATH_PATTERNS = [
   "/recipe",
@@ -22,27 +18,6 @@ const RECIPE_PATH_PATTERNS = [
   "/eating"
 ];
 
-function isSocialDomain(hostname: string): boolean {
-  const bare = hostname.replace(/^www\./, "").toLowerCase();
-  return SOCIAL_DOMAINS.has(bare);
-}
-
-export function normalizeUrl(raw: string): string {
-  const trimmed = raw.trim();
-  if (!/^https?:\/\//i.test(trimmed)) {
-    return `https://${trimmed}`;
-  }
-  return trimmed;
-}
-
-export function parseUrl(raw: string): URL | null {
-  try {
-    return new URL(normalizeUrl(raw));
-  } catch {
-    return null;
-  }
-}
-
 export function classifyInput(
   url?: string,
   text?: string
@@ -53,11 +28,17 @@ export function classifyInput(
   if (trimmedUrl) {
     const parsed = parseUrl(trimmedUrl);
     if (parsed) {
-      if (isSocialDomain(parsed.hostname)) {
+      const source = classifySourceInput(trimmedUrl);
+
+      if (isSocialSource(source)) {
         return "social-url";
       }
-      const path = parsed.pathname.toLowerCase();
-      if (RECIPE_PATH_PATTERNS.some((p) => path.includes(p))) {
+      if (
+        source === "recipe_page" &&
+        RECIPE_PATH_PATTERNS.some((pattern) =>
+          parsed.pathname.toLowerCase().includes(pattern)
+        )
+      ) {
         return "recipe-url";
       }
       return "unknown-url";

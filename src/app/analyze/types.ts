@@ -3,6 +3,7 @@ import type {
   MealOptimizationResult,
   OptimizationType
 } from "@/src/lib/ai/meal-optimization/v1/types";
+import type { SourceClassification } from "@/src/lib/intake/source-classifier";
 
 export type { MealOptimizationResult, OptimizationType };
 
@@ -79,6 +80,12 @@ export type OptimizationState =
 
 export interface AnalyzeState {
   recipeText: string;
+  socialFallback:
+    | {
+        sourceUrl: string;
+        sourceType: SourceClassification;
+      }
+    | null;
   analysis: MealAnalysisResult | null;
   ingredientText: string;
   mainConcernsText: string;

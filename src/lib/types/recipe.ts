@@ -5,7 +5,14 @@ export const recipeSourceClassifications = [
   "video-page",
   "short-link",
   "unknown-url",
-  "manual-text"
+  "manual-text",
+  "tiktok",
+  "instagram",
+  "youtube",
+  "pinterest",
+  "facebook",
+  "unknown-social",
+  "plain-text"
 ] as const;
 export const manualParserVersion = "manual-v1";
 export const urlParserVersion = "recipe-parser-shared-url-v2";

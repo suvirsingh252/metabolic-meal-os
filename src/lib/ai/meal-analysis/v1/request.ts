@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import {
   defaultManualRecipeSource,
   recipeSourceTypes,
+  recipeSourceClassifications,
+  type RecipeSourceClassification,
   type RecipeSourceType
 } from "@/src/lib/types/recipe";
 import type { MealAnalysisRequest } from "@/src/lib/types/meal";
@@ -43,6 +45,13 @@ export function validateMealAnalysisRequest(
     recipeSourceTypes.includes(body.sourceType as RecipeSourceType)
       ? (body.sourceType as RecipeSourceType)
       : defaultManualRecipeSource.sourceType;
+  const sourceClassification: RecipeSourceClassification | null =
+    typeof body.sourceClassification === "string" &&
+    recipeSourceClassifications.includes(
+      body.sourceClassification as RecipeSourceClassification
+    )
+      ? (body.sourceClassification as RecipeSourceClassification)
+      : null;
 
   return {
     recipeText: trimmedRecipeText,
@@ -54,6 +63,7 @@ export function validateMealAnalysisRequest(
     sourceName:
       typeof body.sourceName === "string" && body.sourceName.trim()
         ? body.sourceName.trim()
-        : null
+        : null,
+    sourceClassification
   };
 }

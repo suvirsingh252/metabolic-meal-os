@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { FileText, Loader2, Wand2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import type { AnalyzeState } from "@/src/app/analyze/types";
 
 const loadingMessages = [
   "Reading meal details...",
@@ -17,6 +18,7 @@ export function MealInputPanel({
   trimmedRecipeTextLength,
   isAnalyzeDisabled,
   isLoading,
+  socialFallback,
   onSubmit,
   onRecipeTextChange
 }: {
@@ -24,6 +26,7 @@ export function MealInputPanel({
   trimmedRecipeTextLength: number;
   isAnalyzeDisabled: boolean;
   isLoading: boolean;
+  socialFallback: AnalyzeState["socialFallback"];
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRecipeTextChange: (value: string) => void;
 }) {
@@ -61,7 +64,9 @@ export function MealInputPanel({
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="recipeText">Recipe or meal idea</Label>
+            <Label htmlFor="recipeText">
+              {socialFallback ? "Caption, ingredients, or notes" : "Recipe or meal idea"}
+            </Label>
             <textarea
               className="min-h-32 w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-72"
               id="recipeText"
@@ -71,7 +76,11 @@ export function MealInputPanel({
               onChange={(event) => {
                 onRecipeTextChange(event.currentTarget.value);
               }}
-              placeholder="Paste a recipe URL, TikTok/Reel/Shorts link, caption, transcript, ingredients, instructions, servings, constraints, or a rough meal idea here."
+              placeholder={
+                socialFallback
+                  ? "Paste the caption, ingredient list, rough notes, method, servings, or what you remember from the video."
+                  : "Paste a recipe URL, TikTok/Reel/Shorts link, caption, transcript, ingredients, instructions, servings, constraints, or a rough meal idea here."
+              }
               rows={8}
               value={recipeText}
             />
@@ -93,7 +102,11 @@ export function MealInputPanel({
               ) : (
                 <Wand2 className="h-4 w-4" />
               )}
-              {isLoading ? loadingMessage : "Analyze recipe"}
+              {isLoading
+                ? loadingMessage
+                : socialFallback
+                  ? "Analyze pasted social recipe"
+                  : "Analyze recipe"}
             </button>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">

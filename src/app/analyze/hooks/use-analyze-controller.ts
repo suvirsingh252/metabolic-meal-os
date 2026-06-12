@@ -17,6 +17,33 @@ import type {
 } from "@/src/app/analyze/types";
 import type { MealOptimizationResult } from "@/src/lib/ai/meal-optimization/v1/types";
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
+import {
+  classifySourceInput,
+  isSocialSource,
+  type SourceClassification
+} from "@/src/lib/intake/source-classifier";
+
+const socialSourceLabels: Record<SourceClassification, string> = {
+  recipe_page: "Recipe page",
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  youtube: "YouTube",
+  pinterest: "Pinterest",
+  facebook: "Facebook",
+  unknown_social: "Social link",
+  plain_text: "Plain text"
+};
+
+const requestSourceClassifications: Record<SourceClassification, string> = {
+  recipe_page: "recipe-page",
+  tiktok: "tiktok",
+  instagram: "instagram",
+  youtube: "youtube",
+  pinterest: "pinterest",
+  facebook: "facebook",
+  unknown_social: "unknown-social",
+  plain_text: "plain-text"
+};
 
 export function getErrorMessage(value: unknown) {
   if (
@@ -60,6 +87,23 @@ export function useAnalyzeController(initialRecipeText?: string) {
     }
 
     const trimmedRecipeText = state.recipeText.trim();
+    const currentSource = classifySourceInput(trimmedRecipeText);
+    const currentInputIsSocialUrl = isSocialSource(currentSource);
+    const socialFallback = state.socialFallback;
+    const useSocialFallback =
+      socialFallback && !inputLooksLikeUrl && trimmedRecipeText.length >= 10;
+    const requestBody = useSocialFallback && socialFallback
+      ? {
+          recipeText: trimmedRecipeText,
+          sourceType: "url",
+          sourceUrl: socialFallback.sourceUrl,
+          sourceName: socialSourceLabels[socialFallback.sourceType],
+          sourceClassification:
+            requestSourceClassifications[socialFallback.sourceType]
+        }
+      : {
+          recipeText: trimmedRecipeText
+        };
 
     if (trimmedRecipeText.length < 10) {
       dispatch({
@@ -77,13 +121,25 @@ export function useAnalyzeController(initialRecipeText?: string) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ recipeText: trimmedRecipeText })
+        body: JSON.stringify(requestBody)
       });
 
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        dispatch({ type: "analysisFailed", message: getErrorMessage(data) });
+        const message = getErrorMessage(data);
+
+        if (currentInputIsSocialUrl) {
+          dispatch({
+            type: "socialFallbackDetected",
+            message,
+            sourceUrl: trimmedRecipeText,
+            sourceType: currentSource
+          });
+          return;
+        }
+
+        dispatch({ type: "analysisFailed", message });
         return;
       }
 

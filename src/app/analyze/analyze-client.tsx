@@ -31,6 +31,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
         error={state.error}
         inputLooksLikeUrl={controller.inputLooksLikeUrl}
         recipeText={state.recipeText}
+        socialFallback={state.socialFallback}
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-6">
@@ -40,6 +41,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
           onRecipeTextChange={controller.setRecipeText}
           onSubmit={controller.handleSubmit}
           recipeText={state.recipeText}
+          socialFallback={state.socialFallback}
           trimmedRecipeTextLength={controller.trimmedRecipeTextLength}
         />
 

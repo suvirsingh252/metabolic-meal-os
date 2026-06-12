@@ -1,18 +1,40 @@
 "use client";
 
 import { Alert } from "@/components/ui/alert";
+import type { AnalyzeState } from "@/src/app/analyze/types";
 
 export function StatusBanner({
   error,
   inputLooksLikeUrl,
-  recipeText
+  recipeText,
+  socialFallback
 }: {
   error: string | null;
   inputLooksLikeUrl: boolean;
   recipeText: string;
+  socialFallback: AnalyzeState["socialFallback"];
 }) {
   if (!error) {
     return null;
+  }
+
+  if (socialFallback) {
+    return (
+      <Alert>
+        <div className="space-y-2">
+          <p className="font-medium">Social recipe detected</p>
+          <p>{error}</p>
+          <p>
+            Paste the caption, ingredient list, rough notes, or spoken recipe
+            summary into the box. The original social link will stay attached as
+            the source.
+          </p>
+          <p className="break-all text-xs opacity-80">
+            Source: {socialFallback.sourceUrl}
+          </p>
+        </div>
+      </Alert>
+    );
   }
 
   return (

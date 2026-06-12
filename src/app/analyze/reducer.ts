@@ -10,9 +10,11 @@ import type {
   OptimizationType,
   SaveMealResponse
 } from "@/src/app/analyze/types";
+import type { SourceClassification } from "@/src/lib/intake/source-classifier";
 
 export const initialAnalyzeState: AnalyzeState = {
   recipeText: "",
+  socialFallback: null,
   analysis: null,
   ingredientText: "",
   mainConcernsText: "",
@@ -36,6 +38,12 @@ type AnalyzeAction =
   | { type: "recipeTextChanged"; value: string }
   | { type: "analysisStarted" }
   | { type: "analysisFailed"; message: string }
+  | {
+      type: "socialFallbackDetected";
+      message: string;
+      sourceUrl: string;
+      sourceType: SourceClassification;
+    }
   | { type: "analysisSucceeded"; analysis: MealAnalysisResult }
   | { type: "textFieldChanged"; field: EditableTextField; value: string }
   | { type: "booleanFieldChanged"; field: EditableBooleanField; checked: boolean }
@@ -95,10 +103,21 @@ export function analyzeReducer(
       };
     case "analysisFailed":
       return { ...state, isLoading: false, error: action.message };
+    case "socialFallbackDetected":
+      return {
+        ...state,
+        isLoading: false,
+        error: action.message,
+        socialFallback: {
+          sourceUrl: action.sourceUrl,
+          sourceType: action.sourceType
+        }
+      };
     case "analysisSucceeded":
       return {
         ...state,
         isLoading: false,
+        socialFallback: null,
         analysis: action.analysis,
         ingredientText: action.analysis.ingredientSuggestions.join("\n"),
         mainConcernsText: action.analysis.mainConcerns.join("\n"),
