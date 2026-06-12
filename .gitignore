@@ -13,3 +13,7 @@ pnpm-debug.log*
 
 .DS_Store
 .vercel
+
+# Local AI tool state
+.codex/
+.claude/
