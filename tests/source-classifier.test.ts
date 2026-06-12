@@ -54,10 +54,14 @@ test("classifySourceInput classifies regular recipe URLs", () => {
   );
 });
 
+test("classifySourceInput treats host-like non-social input as a recipe candidate", () => {
+  assert.equal(classifySourceInput("hello"), "recipe_page");
+  assert.equal(classifySourceInput("https://example.com/about"), "recipe_page");
+});
+
 test("classifySourceInput classifies non-URL pasted text", () => {
   assert.equal(
     classifySourceInput("Dal tadka recipe: fry cumin, add dal, simmer."),
     "plain_text"
   );
 });
-

@@ -28,16 +28,6 @@ const SOCIAL_HOSTS: Record<string, SourceClassification> = {
   "twitter.com": "unknown_social"
 };
 
-const RECIPE_PATH_PATTERNS = [
-  "/recipe",
-  "/recipes",
-  "/dish",
-  "/food",
-  "/meal",
-  "/cook",
-  "/eating"
-];
-
 export function normalizeUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!/^https?:\/\//i.test(trimmed)) {
@@ -92,16 +82,11 @@ export function classifySourceInput(value: string): SourceClassification {
     return social;
   }
 
-  const path = parsed.pathname.toLowerCase();
-
-  if (RECIPE_PATH_PATTERNS.some((pattern) => path.includes(pattern))) {
-    return "recipe_page";
-  }
-
+  // Current callers use this behind URL-ish input checks; any non-social URL
+  // is treated as a recipe candidate for downstream parsing/fallback.
   return "recipe_page";
 }
 
 export function isSocialSource(source: SourceClassification) {
   return source !== "recipe_page" && source !== "plain_text";
 }
-
