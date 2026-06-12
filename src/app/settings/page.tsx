@@ -35,7 +35,7 @@ type NotionDiagnosticsResult =
   | NotionDiagnosticsFailure;
 
 interface NotionSchemaDatabase {
-  key: "meals" | "ingredients" | "feedback" | "planner";
+  key: "meals" | "ingredients" | "feedback" | "planner" | "intake";
   id: string;
   title: string;
   properties: Array<{
@@ -1105,14 +1105,14 @@ function SchemaHealthPanel({
   if (health.ok) {
     return (
       <div className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
-        Meals schema supports current dashboard reliability fields.
+        Schema supports the currently checked fields.
       </div>
     );
   }
 
   return (
     <div className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
-      <p className="font-medium text-accent">Meals schema has optional gaps</p>
+      <p className="font-medium text-accent">Schema has optional gaps</p>
       <p className="mt-1 text-muted-foreground">
         The app will continue running; listed features may use read-time backfill
         or show partial data.

@@ -41,13 +41,24 @@ function getPropertyType(property: unknown) {
   return null;
 }
 
-function findHouseholdIdProperty(database: unknown) {
-  const properties = getProperties(database);
+export function findHouseholdIdProperty(schemaSource: unknown) {
+  const properties = getProperties(schemaSource);
 
   return ["Household ID", "householdId"].find((name) => {
     const type = getPropertyType(properties[name]);
     return type === "rich_text";
   });
+}
+
+export function buildHouseholdFilter(propertyName: string | undefined, householdId: string) {
+  return propertyName
+    ? {
+        property: propertyName,
+        rich_text: {
+          equals: householdId
+        }
+      }
+    : undefined;
 }
 
 export interface QueryMealSummariesOptions {
@@ -73,21 +84,17 @@ export async function queryMealSummaries(
     database_id: NOTION_MEALS_DATABASE_ID
   });
   const dataSourceId = getPrimaryDataSourceId(database);
-  const householdIdProperty = findHouseholdIdProperty(database);
+  const dataSource = await notion.dataSources.retrieve({
+    data_source_id: dataSourceId
+  });
+  const householdIdProperty = findHouseholdIdProperty(dataSource);
   const household = getConfiguredHouseholdMetadata();
 
   const response = await notion.dataSources.query({
     data_source_id: dataSourceId,
     page_size: pageSize,
     start_cursor: options.cursor,
-    filter: householdIdProperty
-      ? {
-          property: householdIdProperty,
-          rich_text: {
-            equals: household.householdId
-          }
-        }
-      : undefined,
+    filter: buildHouseholdFilter(householdIdProperty, household.householdId),
     sorts: [
       {
         timestamp: "created_time",

@@ -120,3 +120,21 @@ test("Notion mapping supports numeric nutrition confidence schemas", () => {
 
   assert.deepEqual(properties["Nutrition Confidence"], { number: 2 });
 });
+
+test("Notion mapping writes Meal Date when schema supports it", () => {
+  const properties = mapMealAnalysisToNotionProperties(
+    {
+      ...baseMeal,
+      importedAt: "2026-06-12T10:30:00.000Z"
+    },
+    {
+      mealDate: { name: "Meal Date", type: "date" }
+    }
+  );
+
+  assert.deepEqual(properties["Meal Date"], {
+    date: {
+      start: "2026-06-12T10:30:00.000Z"
+    }
+  });
+});

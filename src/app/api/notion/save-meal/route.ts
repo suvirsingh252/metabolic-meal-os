@@ -215,6 +215,9 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
     ["Blood Sugar Risk Score"],
     ["number"]
   );
+  const mealDate = findProperty(properties, ["Meal Date", "Date", "Logged At"], [
+    "date"
+  ]);
 
   if (sourceType) {
     schema.sourceType = {
@@ -380,6 +383,12 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
     schema.bloodSugarRiskScore = {
       name: bloodSugarRiskScore[0],
       type: "number"
+    };
+  }
+  if (mealDate) {
+    schema.mealDate = {
+      name: mealDate[0],
+      type: "date"
     };
   }
 

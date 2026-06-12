@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateMealsSchemaHealth } from "@/src/lib/notion/schema-health";
+import {
+  evaluateFeedbackSchemaHealth,
+  evaluateIngredientsSchemaHealth,
+  evaluateIntakeSchemaHealth,
+  evaluateMealsSchemaHealth
+} from "@/src/lib/notion/schema-health";
 import { getPlannerSchemaDiagnostics } from "@/src/lib/notion/meal-plan";
+import {
+  buildHouseholdFilter,
+  findHouseholdIdProperty
+} from "@/src/lib/notion/meals-query";
 
 test("schema health reports missing optional meal fields", () => {
   const health = evaluateMealsSchemaHealth([
@@ -54,6 +63,145 @@ test("schema health accepts numeric nutrition confidence", () => {
     health.incompatible.some((field) => field.label === "Nutrition Confidence"),
     false
   );
+});
+
+test("meal query household filter uses active data source properties", () => {
+  const parentDatabase = {
+    properties: {}
+  };
+  const activeDataSource = {
+    properties: {
+      "Household ID": {
+        type: "rich_text"
+      }
+    }
+  };
+
+  assert.equal(findHouseholdIdProperty(parentDatabase), undefined);
+  assert.equal(findHouseholdIdProperty(activeDataSource), "Household ID");
+  assert.deepEqual(buildHouseholdFilter("Household ID", "household-main"), {
+    property: "Household ID",
+    rich_text: {
+      equals: "household-main"
+    }
+  });
+});
+
+test("feedback schema health detects missing or wrong Meal relation", () => {
+  const target = {
+    databaseId: "meals-db",
+    dataSourceId: "meals-source"
+  };
+  const missing = evaluateFeedbackSchemaHealth(
+    [
+      { name: "Feedback Entry", type: "title" },
+      { name: "Energy After", type: "select" },
+      { name: "Hunger Later", type: "select" },
+      { name: "Cravings Later", type: "checkbox" },
+      { name: "Would Repeat", type: "checkbox" },
+      { name: "Notes", type: "rich_text" }
+    ],
+    target
+  );
+  const wrong = evaluateFeedbackSchemaHealth(
+    [
+      { name: "Feedback Entry", type: "title" },
+      { name: "Energy After", type: "select" },
+      { name: "Hunger Later", type: "select" },
+      { name: "Cravings Later", type: "checkbox" },
+      { name: "Would Repeat", type: "checkbox" },
+      { name: "Notes", type: "rich_text" },
+      {
+        name: "Meal",
+        type: "relation",
+        relationTarget: { databaseId: "other-db", dataSourceId: "other-source" }
+      }
+    ],
+    target
+  );
+  const ok = evaluateFeedbackSchemaHealth(
+    [
+      { name: "Feedback Entry", type: "title" },
+      { name: "Energy After", type: "select" },
+      { name: "Hunger Later", type: "select" },
+      { name: "Cravings Later", type: "checkbox" },
+      { name: "Would Repeat", type: "checkbox" },
+      { name: "Notes", type: "rich_text" },
+      {
+        name: "Meal",
+        type: "relation",
+        relationTarget: { databaseId: null, dataSourceId: "meals-source" }
+      }
+    ],
+    target
+  );
+
+  assert.equal(missing.ok, false);
+  assert.equal(wrong.ok, false);
+  assert.ok(missing.warnings.some((warning) => warning.includes("Meal relation")));
+  assert.equal(ok.missing.some((field) => field.label === "Meal relation"), false);
+});
+
+test("ingredients schema health detects meal relation and nutrient basis gaps", () => {
+  const target = {
+    databaseId: "meals-db",
+    dataSourceId: "meals-source"
+  };
+  const health = evaluateIngredientsSchemaHealth(
+    [
+      { name: "Protein (g)", type: "number" },
+      {
+        name: "Meals",
+        type: "relation",
+        relationTarget: { databaseId: "other-db", dataSourceId: "other-source" }
+      }
+    ],
+    target
+  );
+  const ok = evaluateIngredientsSchemaHealth(
+    [
+      { name: "Nutrient Amount Basis", type: "select" },
+      { name: "Nutrient Basis Unit", type: "rich_text" },
+      { name: "Protein (g)", type: "number" },
+      { name: "Fiber (g)", type: "number" },
+      { name: "Carbohydrates (g)", type: "number" },
+      { name: "Energy (kcal)", type: "number" },
+      {
+        name: "Meals",
+        type: "relation",
+        relationTarget: { databaseId: "meals-db", dataSourceId: null }
+      }
+    ],
+    target
+  );
+
+  assert.equal(health.ok, false);
+  assert.ok(
+    health.missing.some((field) => field.label === "Nutrient Amount Basis")
+  );
+  assert.ok(health.missing.some((field) => field.label === "Meal relation"));
+  assert.equal(ok.ok, true);
+});
+
+test("intake schema health checks required storage fields", () => {
+  const missing = evaluateIntakeSchemaHealth([
+    { name: "Name", type: "title" },
+    { name: "Status", type: "select" }
+  ]);
+  const ok = evaluateIntakeSchemaHealth([
+    { name: "Name", type: "title" },
+    { name: "Status", type: "select" },
+    { name: "Created At", type: "date" },
+    { name: "URL", type: "url" },
+    { name: "Raw Text", type: "rich_text" },
+    { name: "Source", type: "select" },
+    { name: "Classification", type: "rich_text" },
+    { name: "Error", type: "rich_text" }
+  ]);
+
+  assert.equal(missing.ok, false);
+  assert.ok(missing.missing.some((field) => field.label === "Created At"));
+  assert.equal(ok.ok, true);
 });
 
 test("planner schema diagnostics report missing planner config safely", async () => {

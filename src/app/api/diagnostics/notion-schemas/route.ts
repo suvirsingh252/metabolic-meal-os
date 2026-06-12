@@ -7,17 +7,21 @@ import {
 import { getNotionClient } from "@/src/lib/notion/client";
 import { getPlannerSchemaDiagnostics } from "@/src/lib/notion/meal-plan";
 import {
+  evaluateFeedbackSchemaHealth,
+  evaluateIngredientsSchemaHealth,
+  evaluateIntakeSchemaHealth,
   evaluateMealsSchemaHealth,
   type MealSchemaHealth
 } from "@/src/lib/notion/schema-health";
 
 export const runtime = "nodejs";
 
-type DatabaseKey = "meals" | "ingredients" | "feedback" | "planner";
+type DatabaseKey = "meals" | "ingredients" | "feedback" | "planner" | "intake";
 
 interface SchemaSummary {
   key: DatabaseKey;
   id: string;
+  dataSourceId?: string;
   title: string;
   properties: Array<{
     name: string;
@@ -134,6 +138,7 @@ async function readSchema(
     return {
       key,
       id: database.id,
+      dataSourceId: getPrimaryDataSourceId(database),
       title: getDatabaseTitle(database),
       properties: getProperties(dataSource)
     };
@@ -148,6 +153,63 @@ async function readSchema(
   }
 }
 
+async function readIntakeSchema(): Promise<SchemaSummary | SchemaFailure> {
+  try {
+    const NOTION_API_KEY = process.env.NOTION_API_KEY?.trim();
+    const intakeId = process.env.NOTION_MEAL_INTAKE_DATABASE_ID?.trim();
+
+    if (!NOTION_API_KEY || !intakeId) {
+      return {
+        key: "intake",
+        ok: false,
+        error:
+          "Meal Intake is not configured. Add NOTION_MEAL_INTAKE_DATABASE_ID only if iOS Shortcut storage should persist shared meals."
+      };
+    }
+
+    const notion = getNotionClient(NOTION_API_KEY);
+
+    try {
+      const dataSource = await notion.dataSources.retrieve({
+        data_source_id: intakeId
+      });
+
+      return {
+        key: "intake",
+        id: intakeId,
+        dataSourceId: intakeId,
+        title: "Meal Intake",
+        properties: getProperties(dataSource)
+      };
+    } catch {
+      const database = await notion.databases.retrieve({
+        database_id: intakeId
+      });
+      const dataSourceId = getPrimaryDataSourceId(database);
+      const dataSource = await notion.dataSources.retrieve({
+        data_source_id: dataSourceId
+      });
+
+      return {
+        key: "intake",
+        id: database.id,
+        dataSourceId,
+        title: getDatabaseTitle(database),
+        properties: getProperties(dataSource)
+      };
+    }
+  } catch (error) {
+    console.error("Notion intake schema diagnostics failure", error);
+
+    return {
+      key: "intake",
+      ok: false,
+      error:
+        "Unable to read intake database schema. Check the database/data source ID and integration sharing."
+    };
+  }
+}
+
 export async function GET() {
   const results = await Promise.all([
     readSchema("meals", getNotionMealsEnv, "NOTION_MEALS_DATABASE_ID"),
@@ -157,24 +219,59 @@ export async function GET() {
       "NOTION_INGREDIENTS_DATABASE_ID"
     ),
     readSchema("feedback", getNotionFeedbackEnv, "NOTION_FEEDBACK_DATABASE_ID"),
-    getPlannerSchemaDiagnostics()
+    getPlannerSchemaDiagnostics(),
+    readIntakeSchema()
   ]);
 
-  const databases = results.filter(
+  const summaries = results.filter(
     (result): result is SchemaSummary => !("ok" in result)
-  ).map((database) =>
-    database.key === "meals"
-      ? {
-          ...database,
-          health: evaluateMealsSchemaHealth(database.properties)
-        }
-      : database.key === "planner" && "health" in database
-        ? {
-            ...database,
-            plannerHealth: database.health
-          }
-      : database
   );
+  const meals = summaries.find((database) => database.key === "meals");
+  const mealsTarget =
+    meals?.dataSourceId
+      ? {
+          databaseId: meals.id,
+          dataSourceId: meals.dataSourceId
+        }
+      : null;
+  const databases = summaries.map((database) => {
+    if (database.key === "meals") {
+      return {
+        ...database,
+        health: evaluateMealsSchemaHealth(database.properties)
+      };
+    }
+
+    if (database.key === "feedback" && mealsTarget) {
+      return {
+        ...database,
+        health: evaluateFeedbackSchemaHealth(database.properties, mealsTarget)
+      };
+    }
+
+    if (database.key === "ingredients" && mealsTarget) {
+      return {
+        ...database,
+        health: evaluateIngredientsSchemaHealth(database.properties, mealsTarget)
+      };
+    }
+
+    if (database.key === "intake") {
+      return {
+        ...database,
+        health: evaluateIntakeSchemaHealth(database.properties)
+      };
+    }
+
+    if (database.key === "planner" && "health" in database) {
+      return {
+        ...database,
+        plannerHealth: database.health
+      };
+    }
+
+    return database;
+  });
   const errors = results.filter(
     (result): result is SchemaFailure => "ok" in result && !result.ok
   );

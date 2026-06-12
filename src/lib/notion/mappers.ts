@@ -131,6 +131,7 @@ export interface MealSourcePropertySchema {
   fiberScore?: { name: string; type: "number" };
   satietyScoreNumeric?: { name: string; type: "number" };
   bloodSugarRiskScore?: { name: string; type: "number" };
+  mealDate?: { name: string; type: "date" };
 }
 
 export function mapMealAnalysisToNotionProperties(
@@ -217,6 +218,10 @@ function applyMealSourceProperties(
 
   if (schema.lastParsedAt && meal.lastParsedAt) {
     properties[schema.lastParsedAt.name] = date(meal.lastParsedAt);
+  }
+
+  if (schema.mealDate) {
+    properties[schema.mealDate.name] = date(meal.importedAt ?? new Date().toISOString());
   }
 
   if (meal.nutritionEstimate) {
