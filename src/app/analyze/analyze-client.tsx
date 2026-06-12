@@ -18,11 +18,11 @@ export function AnalyzeClient({ intakeRecord }: Props) {
   const { state } = controller;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         eyebrow="Recipe intake"
         title="Analyze a recipe"
-        description="Paste a recipe URL, recipe text, or meal idea. The review starts with the practical household answer, then keeps the details editable before saving."
+        description="Paste or share a meal, review the household answer, and save it."
       />
 
       {intakeRecord && <IntakeBridgePanel intake={intakeRecord} />}
@@ -33,7 +33,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
         recipeText={state.recipeText}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-6">
         <MealInputPanel
           isAnalyzeDisabled={controller.isAnalyzeDisabled}
           isLoading={state.isLoading}

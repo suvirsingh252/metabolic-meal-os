@@ -108,6 +108,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Add Beta 3.6 iPhone Share Intake: `POST /api/intake/share` with `IOS_SHORTCUT_TOKEN` auth, URL/text classification, optional Notion intake persistence, and `/analyze?intake=<id>` bridge panel with social URL fallback UX.
 - [x] Add Weekly Dinner Planner v1: Notion-backed current-week dinner slots, saved-meal assignment, clear, status updates, setup diagnostics, and schema-safe writes.
 - [x] Expand Planner v1.1 to Breakfast, Lunch, Dinner, and Snack slots without adding AI generation.
+- [x] Complete Beta 4 mobile-first UX hardening: reduce mobile scrolling/cognitive load across Today, Analyze, Meals, Planner, Dashboard, Feedback, Settings, and Meal Detail while preserving capabilities.
 
 ## Current Sprint
 
@@ -124,6 +125,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
 - [ ] Verify `/planner` against the production Meal Plan data source after adding `NOTION_MEAL_PLAN_SOURCE_ID`.
+- [ ] Run an on-device iPhone Safari Beta 4 pass for `/today`, `/analyze`, `/meals`, `/planner`, `/dashboard`, `/feedback`, `/settings`, and representative `/meals/[id]`.
 
 ## Next Up
 
@@ -138,7 +140,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Add production write-flow smoke automation with explicit opt-in cleanup rules for disposable Notion records.
 - [ ] Run an on-device iPhone Safari pass against the deployed app for `/analyze` estimate review and `/dashboard` cards.
 - [ ] Add a richer household recipe feedback UI/database slice using `HouseholdRecipeFeedback`.
-- [ ] Simplify `/feedback`, `/meals`, and `/settings` flows after the `/analyze` hierarchy pass.
+- [x] Simplify `/feedback`, `/meals`, and `/settings` flows after the `/analyze` hierarchy pass.
+- [ ] Continue Settings simplification if non-technical family members need to operate diagnostics themselves.
 - [ ] Add a persisted household preferences source before adding multi-household support.
 - [ ] Add better empty/error states where needed.
 - [x] Add optimistic refresh after feedback saves on Today and Meal Detail.

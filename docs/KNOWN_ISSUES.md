@@ -53,7 +53,9 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 
 ## UX Problems
 
-- [ ] `/analyze`, Today, Dashboard, Meals, Feedback, and Meal Detail now have Beta 3 household-facing copy/layout improvements. `/settings` remains intentionally admin/operator oriented and still needs deeper simplification if it becomes a household flow.
+- [ ] Beta 4 reduced mobile scrolling and cognitive load across primary routes, but visual verification still needs an on-device iPhone Safari pass because the in-app Browser connector was unavailable during implementation.
+- [ ] `/settings` remains intentionally admin/operator oriented. It has tabs and separates diagnostics from household defaults, but it still needs deeper simplification if non-technical family members must use diagnostics.
+- [ ] Dashboard, Meal Detail, and Today now use progressive disclosure heavily. If family users miss secondary data, revisit which sections should be open by default on desktop versus mobile.
 - [ ] Estimate review controls are intentionally coarse. They handle serving multipliers and butter toggles, but do not support detailed ingredient quantities, cooking fat amounts, or serving-by-weight workflows.
 - [ ] Meals and Ingredients APIs support pagination/search, but client pages only have basic existing UX and should be wired more fully.
 - [ ] `/analyze` is now reducer/component based, but the result panel can still be split into smaller section files if it grows again.

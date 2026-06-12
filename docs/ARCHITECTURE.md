@@ -344,6 +344,24 @@ Rationale:
 - Lower operational complexity.
 - Validate workflows before native investment.
 
+## Beta 4 Mobile-First UX Architecture
+
+The app remains a single Next.js responsive web app. Beta 4 does not add a new mobile codebase, backend service, or Notion schema.
+
+Mobile-first composition rules:
+- Route client components own their mobile disclosure state when it is purely presentational.
+- Domain models, API routes, Notion mappers, and recommendation/planner logic stay unchanged for UX-only hardening.
+- Desktop layouts keep existing dense grids where they are useful; mobile layouts can render a separate compact path when a desktop grid would become a long phone spreadsheet.
+- Long secondary surfaces use native `details`/`summary` or existing route state rather than new modal/drawer infrastructure.
+- Global shell keeps safe-area padding, bottom navigation, and `overflow-x-hidden` to protect iPhone usability.
+
+Route structure after Beta 4:
+- `/today` and `/` both render the existing Today client. `/today` was added as a thin route alias because product scope and family language refer to Today directly.
+- `/planner` uses the same planner mutations for mobile and desktop, but mobile renders `PlannerDayCard` for one selected day while desktop renders all seven days.
+- `/meals` keeps full desktop filtering/sorting and adds a mobile Recent/Favorites/All subset with explicit expansion.
+- `/dashboard`, `/feedback`, and `/meals/[id]` keep existing data surfaces but move secondary details into expandable sections.
+- `/analyze` keeps the same reducer/controller and save API. The save action is moved earlier in the review flow, while advanced review sections remain available.
+
 ## Deployment Architecture
 
 Target:

@@ -271,3 +271,26 @@ npm run dev
 7. Review or edit the analyzed meal fields, then click `Save meal`.
 
 8. Confirm the success state says `Saved to Meal OS.` and, under Advanced details, the saved record opens in the Meals database.
+
+## Mobile UX Principles
+
+Beta 4 pauses feature development and treats iPhone use as the primary design constraint.
+
+Principles:
+- Preserve all existing capabilities.
+- Make each mobile route optimize for one primary job.
+- Keep the primary job within roughly two phone screen lengths where practical.
+- Collapse secondary information by default.
+- Keep desktop workflows information-dense where that helps repeated use.
+- Prefer day selectors, segmented controls, accordions, and expandable sections over long vertical stacks.
+- Avoid rendering entire datasets on phones unless the user explicitly expands them.
+
+Route decisions:
+- `/today`: primary job is getting through today. Daily suggestions and quick `Ate This` / `Loved It` actions stay first; learning, fresh ideas, and health snapshot move behind secondary disclosure.
+- `/analyze`: primary job is saving a meal. Intake is shorter on mobile, the submit button is full-width, and `Save meal` appears immediately after practical guidance and quick edits. Nutrition, scores, evidence, provenance, and advanced saved fields remain expandable.
+- `/meals`: primary job is finding a meal quickly. Mobile starts with Recent/Favorites/All controls, search, and a six-item default list with `Show all`; desktop still renders the full filtered grid.
+- `/planner`: primary job is deciding what we are eating. Mobile uses a horizontal day selector and shows one day at a time; desktop keeps the full week grid.
+- `/dashboard`: primary job is answering "How are we doing?" Household takeaways and today's metrics stay visible; targets, quality/data, weekly insights, and recent meals are expandable.
+- `/feedback`: primary job is logging household learning. Meal selection, feedback entry, and save are first; energy/hunger/cravings/notes are optional details.
+- `/settings`: primary job remains fixing/configuring the system. Household defaults and integration status stay separated from diagnostics.
+- `/meals/[id]`: primary job is reusing the meal. `Would Make Again` is first, quick feedback actions are immediately available, and summary/why/nutrition/provenance are expandable.

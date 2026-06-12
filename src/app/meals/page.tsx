@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
+  Heart,
   Loader2,
   RefreshCw,
   Search,
@@ -40,6 +41,8 @@ export default function MealsPage() {
   const [meals, setMeals] = useState<MealSummary[]>([]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "name" | "protein">("newest");
+  const [mobileFilter, setMobileFilter] = useState<"recent" | "favorites" | "all">("recent");
+  const [showAllMobileMeals, setShowAllMobileMeals] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -104,13 +107,25 @@ export default function MealsPage() {
       );
     });
   }, [meals, query, sort]);
+  const mobileFilteredMeals = useMemo(() => {
+    if (mobileFilter === "favorites") {
+      return filteredMeals.filter(
+        (meal) => meal.familyApproved || meal.comfortMeal || meal.weeknightFriendly
+      );
+    }
+
+    return filteredMeals;
+  }, [filteredMeals, mobileFilter]);
+  const mobileVisibleMeals = showAllMobileMeals
+    ? mobileFilteredMeals
+    : mobileFilteredMeals.slice(0, 6);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         eyebrow="Saved meals"
         title="Meals"
-        description="Browse meals already saved in Meal OS."
+        description="Search recent and favorite meals without scrolling through the full archive."
         action={
           <Button disabled={isLoading} onClick={loadMeals} variant="secondary">
             {isLoading ? (
@@ -126,10 +141,34 @@ export default function MealsPage() {
       {error ? <Alert>{error}</Alert> : null}
 
       <Card>
-        <CardHeader className="gap-4">
+        <CardHeader className="gap-3 sm:gap-4">
           <div className="flex items-center justify-between gap-4">
-            <CardTitle>Saved meal records</CardTitle>
+            <CardTitle>Find a meal</CardTitle>
             <Search className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="grid grid-cols-3 gap-2 lg:hidden">
+            {(["recent", "favorites", "all"] as const).map((filter) => (
+              <Button
+                aria-pressed={mobileFilter === filter}
+                key={filter}
+                onClick={() => {
+                  setMobileFilter(filter);
+                  setShowAllMobileMeals(false);
+                }}
+                size="sm"
+                type="button"
+                variant={mobileFilter === filter ? "default" : "secondary"}
+              >
+                {filter === "favorites" ? (
+                  <Heart className="h-4 w-4" />
+                ) : filter === "recent" ? (
+                  <RefreshCw className="h-4 w-4" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                <span className="capitalize">{filter}</span>
+              </Button>
+            ))}
           </div>
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
             <Input
@@ -173,10 +212,33 @@ export default function MealsPage() {
           ) : null}
 
           {!isLoading && filteredMeals.length > 0 ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {filteredMeals.map((meal) => (
-                <MealCard key={meal.id} meal={meal} />
-              ))}
+            <div className="space-y-4">
+              <div className="grid gap-3 lg:hidden">
+                {mobileVisibleMeals.length > 0 ? (
+                  mobileVisibleMeals.map((meal) => (
+                    <MealCard key={meal.id} meal={meal} />
+                  ))
+                ) : (
+                  <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
+                    No favorite meals match yet. Switch to Recent or All.
+                  </div>
+                )}
+              </div>
+              <div className="hidden gap-3 lg:grid lg:grid-cols-2">
+                {filteredMeals.map((meal) => (
+                  <MealCard key={meal.id} meal={meal} />
+                ))}
+              </div>
+              {mobileFilteredMeals.length > mobileVisibleMeals.length ? (
+                <Button
+                  className="w-full lg:hidden"
+                  onClick={() => setShowAllMobileMeals(true)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Show all {mobileFilteredMeals.length} meals
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </CardContent>
@@ -185,7 +247,13 @@ export default function MealsPage() {
   );
 }
 
-function MealCard({ meal }: { meal: MealSummary }) {
+function MealCard({
+  className,
+  meal
+}: {
+  className?: string;
+  meal: MealSummary;
+}) {
   const badges = [
     meal.cuisine,
     meal.mealType,
@@ -200,7 +268,7 @@ function MealCard({ meal }: { meal: MealSummary }) {
   const preview = getMealPreview(meal.notes);
 
   return (
-    <div className="rounded-md border bg-background p-4">
+    <div className={["rounded-md border bg-background p-4", className].filter(Boolean).join(" ")}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">
@@ -220,7 +288,7 @@ function MealCard({ meal }: { meal: MealSummary }) {
       </div>
 
       {preview ? (
-        <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted-foreground">
+        <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground sm:mt-4 sm:line-clamp-3">
           {preview}
         </p>
       ) : null}
@@ -238,7 +306,7 @@ function MealCard({ meal }: { meal: MealSummary }) {
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-2 text-sm md:grid-cols-3">
+      <div className="mt-4 hidden gap-2 text-sm sm:grid md:grid-cols-3">
         <MealFlag checked={meal.familyApproved} label="Family Approved" />
         <MealFlag checked={meal.weeknightFriendly} label="Weeknight Friendly" />
         <MealFlag checked={meal.comfortMeal} label="Comfort Meal" />

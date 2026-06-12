@@ -704,3 +704,26 @@ Reasoning:
 Tradeoffs:
 - Docs must be maintained.
 - Stale docs can mislead future sessions if not updated.
+
+## 2026-06-11
+
+Decision: Pause new feature development for a Beta 4 mobile-first UX hardening slice.
+
+Reasoning:
+- Family beta testing showed the primary issue is cognitive load and mobile scrolling, not missing capabilities.
+- The app should behave like a phone product first, especially for Today, Analyze, Meals, Planner, Dashboard, Feedback, Settings, and Meal Detail.
+- Existing features are useful and should be preserved, so the right change is progressive disclosure and route-level prioritization rather than removal or rewrite.
+
+Tradeoffs:
+- Some secondary data now requires an extra expand tap on mobile.
+- Source-level regression tests can verify structure and route intent, but they are not a substitute for full visual regression.
+- Desktop remains mostly dense, but a few secondary sections are now expandable there too to keep implementation scoped.
+
+Decision: Add `/today` as a route alias for the existing Today experience.
+
+Reasoning:
+- Product guidance and household language refer to `/today`.
+- The existing home page already renders Today, so the alias avoids duplicate behavior while making the route explicit.
+
+Tradeoffs:
+- There are now two URLs for the Today surface: `/` and `/today`.

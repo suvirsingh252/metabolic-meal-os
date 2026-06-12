@@ -2011,3 +2011,39 @@ Next recommended actions:
 - Run a manual family-device pass on Today and Meal Detail after deployment.
 - Consider a persisted feedback reversal/delete path only if accidental feedback becomes common enough to justify backend semantics.
 - Continue the household UX pass on `/feedback` and `/settings`, which remain more functional than polished.
+
+# 2026-06-11 Beta 4 Mobile-First Experience Redesign
+
+Goals:
+- Pause new feature development and reduce iPhone scrolling/cognitive load while preserving all existing capabilities.
+- Optimize each primary route around one mobile job.
+
+Completed work:
+- Added `/today` as an explicit alias for the existing Today experience.
+- Reduced global mobile header height and tightened route spacing.
+- Today: kept daily suggestions and quick feedback actions primary; moved learning, fresh ideas, and health snapshot behind disclosure.
+- Analyze: shortened mobile intake, made the analyze button full-width on mobile, and moved `Save meal` above nutrition, scores, evidence, and advanced saved fields.
+- Meals: added mobile Recent/Favorites/All controls, a six-meal default render, and `Show all`, while preserving the full desktop grid.
+- Planner: replaced phone week-as-spreadsheet rendering with a horizontal day selector and one-day planner card; desktop still renders the full week.
+- Dashboard: kept household takeaways and today metrics visible; moved targets, quality/data, insights, weekly summary, and recent meals into expandable sections.
+- Feedback: kept meal picker, feedback entry, and save primary; moved energy/hunger/cravings/repeat/notes into optional details.
+- Meal Detail: moved reuse/feedback actions ahead of secondary summaries and made `Would Make Again` the first action.
+- Added `tests/mobile-ux.test.ts` for mobile route structure, planner interaction shape, progressive disclosure, navigation usability, and overflow guardrails.
+- Updated README, architecture, decisions, handoff, roadmap, known issues, and this session log.
+
+Verification:
+- `npm run lint` passed.
+- `npm run typecheck` passed.
+- `npm test` passed: 180 tests.
+- `npm run build` passed.
+- Local dev-server HTTP smoke with an iPhone user agent returned `200` for `/today`, `/`, `/analyze`, `/meals`, `/planner`, `/dashboard`, `/feedback`, `/settings`, and `/meals/not-a-real-meal-id`.
+
+Remaining risks:
+- The in-app Browser connector was unavailable, so visual mobile screenshots and tap/expand checks were not completed in-browser.
+- `/settings` is still more operator/admin oriented than the other household routes.
+- Source-level tests verify structure and regressions, not actual visual screen length.
+
+Next recommended actions:
+- Run an on-device iPhone Safari pass for all primary routes before deployment signoff.
+- Watch family use of the new disclosure sections to decide whether any secondary panel should default open on desktop only.
+- Consider adding scripted visual regression once the mobile design stabilizes.

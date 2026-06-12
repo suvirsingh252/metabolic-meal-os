@@ -63,6 +63,7 @@ export function PlannerClient() {
   const [planner, setPlanner] = useState<PlannerViewModel | null>(null);
   const [meals, setMeals] = useState<MealSummary[]>([]);
   const [selectedMeals, setSelectedMeals] = useState<Record<string, string>>({});
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -248,132 +249,199 @@ export function PlannerClient() {
             </div>
           ) : null}
 
-          <div className="grid gap-3 lg:grid-cols-7">
-            {planner.days.map((day) => {
-              return (
-                <Card className="overflow-hidden" key={day.date}>
-                  <CardHeader className="space-y-1 p-4">
-                    <CardTitle className="text-base">{day.weekday}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{day.label}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-4 p-4 pt-0">
-                    {mealSlots.map((mealSlot) => {
-                      const slotKey = getPlannerSlotKey(day.date, mealSlot);
-                      const slot = slotsByKey.get(slotKey);
-                      const selectedMealId =
-                        selectedMeals[slotKey] ?? slot?.meal?.id ?? "";
-                      const saving = Boolean(
-                        isSaving && isSaving.startsWith(`${day.date}-${mealSlot}-`)
-                      );
-                      const mealGroups = getMealGroupsForSlot(meals, mealSlot);
+          <div className="space-y-3 lg:hidden">
+            <div
+              aria-label="Choose planner day"
+              className="flex gap-2 overflow-x-auto rounded-md border bg-card p-2"
+            >
+              {planner.days.map((day, index) => (
+                <Button
+                  aria-pressed={selectedDayIndex === index}
+                  className="shrink-0"
+                  key={day.date}
+                  onClick={() => setSelectedDayIndex(index)}
+                  size="sm"
+                  type="button"
+                  variant={selectedDayIndex === index ? "default" : "secondary"}
+                >
+                  {day.weekday.slice(0, 3)}
+                </Button>
+              ))}
+            </div>
+            <PlannerDayCard
+              canWrite={canWrite}
+              day={planner.days[selectedDayIndex] ?? planner.days[0]}
+              isSaving={isSaving}
+              meals={meals}
+              mutatePlanner={mutatePlanner}
+              selectedMeals={selectedMeals}
+              slotsByKey={slotsByKey}
+              updateSelectedMeal={updateSelectedMeal}
+            />
+          </div>
 
-                      return (
-                        <section
-                          className="space-y-3 rounded-md border bg-background p-3"
-                          key={slotKey}
-                        >
-                          <div className="flex items-start gap-2">
-                            <Utensils className="mt-0.5 h-4 w-4 text-primary" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium uppercase text-muted-foreground">
-                                {mealSlot}
-                              </p>
-                              <p className="mt-1 truncate text-sm font-medium">
-                                {slot?.meal?.name ?? "Unplanned"}
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {slot?.status ?? "Planned"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor={`meal-${slotKey}`}>Saved meal</Label>
-                            <Select
-                              disabled={!canWrite || meals.length === 0 || saving}
-                              id={`meal-${slotKey}`}
-                              onChange={(event) =>
-                                updateSelectedMeal(slotKey, event.target.value)
-                              }
-                              value={selectedMealId}
-                            >
-                              <option value="">Choose a saved meal</option>
-                              {mealGroups.map((group) => (
-                                <optgroup key={group.label} label={group.label}>
-                                  {group.meals.map((meal) => (
-                                    <option key={meal.id} value={meal.id}>
-                                      {meal.mealName}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </Select>
-                            <Button
-                              className="w-full"
-                              disabled={!canWrite || !selectedMealId || saving}
-                              onClick={() =>
-                                void mutatePlanner(day.date, mealSlot, {
-                                  action: "assign",
-                                  mealId: selectedMealId
-                                })
-                              }
-                              type="button"
-                            >
-                              {saving ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="h-4 w-4" />
-                              )}
-                              Assign {mealSlot}
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            {plannerStatuses.map((status) => (
-                              <Button
-                                disabled={!canWrite || !slot || saving}
-                                key={status}
-                                onClick={() =>
-                                  void mutatePlanner(day.date, mealSlot, {
-                                    action: "status",
-                                    status
-                                  })
-                                }
-                                size="sm"
-                                type="button"
-                                variant={
-                                  slot?.status === status ? "default" : "secondary"
-                                }
-                              >
-                                {status}
-                              </Button>
-                            ))}
-                          </div>
-
-                          <Button
-                            className="w-full"
-                            disabled={!canWrite || !slot || saving}
-                            onClick={() =>
-                              void mutatePlanner(day.date, mealSlot, {
-                                action: "clear"
-                              })
-                            }
-                            type="button"
-                            variant="ghost"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Clear {mealSlot}
-                          </Button>
-                        </section>
-                      );
-                    })}
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="hidden gap-3 lg:grid lg:grid-cols-7">
+            {planner.days.map((day) => (
+              <PlannerDayCard
+                canWrite={canWrite}
+                day={day}
+                isSaving={isSaving}
+                key={day.date}
+                meals={meals}
+                mutatePlanner={mutatePlanner}
+                selectedMeals={selectedMeals}
+                slotsByKey={slotsByKey}
+                updateSelectedMeal={updateSelectedMeal}
+              />
+            ))}
           </div>
         </>
       ) : null}
     </div>
+  );
+}
+
+function PlannerDayCard({
+  canWrite,
+  day,
+  isSaving,
+  meals,
+  mutatePlanner,
+  selectedMeals,
+  slotsByKey,
+  updateSelectedMeal
+}: {
+  canWrite: boolean;
+  day: PlannerViewModel["days"][number];
+  isSaving: string | null;
+  meals: MealSummary[];
+  mutatePlanner: (
+    date: string,
+    slot: MealSlot,
+    body:
+      | { action: "assign"; mealId: string }
+      | { action: "clear" }
+      | { action: "status"; status: PlannerStatus }
+  ) => Promise<void>;
+  selectedMeals: Record<string, string>;
+  slotsByKey: Map<string, PlannerViewModel["slots"][number]>;
+  updateSelectedMeal: (key: string, mealId: string) => void;
+}) {
+  return (
+    <Card className="overflow-hidden" key={day.date}>
+      <CardHeader className="space-y-1 p-4">
+        <CardTitle className="text-base">{day.weekday}</CardTitle>
+        <p className="text-sm text-muted-foreground">{day.label}</p>
+      </CardHeader>
+      <CardContent className="space-y-3 p-4 pt-0 lg:space-y-4">
+        {mealSlots.map((mealSlot) => {
+          const slotKey = getPlannerSlotKey(day.date, mealSlot);
+          const slot = slotsByKey.get(slotKey);
+          const selectedMealId = selectedMeals[slotKey] ?? slot?.meal?.id ?? "";
+          const saving = Boolean(
+            isSaving && isSaving.startsWith(`${day.date}-${mealSlot}-`)
+          );
+          const mealGroups = getMealGroupsForSlot(meals, mealSlot);
+
+          return (
+            <section
+              className="space-y-3 rounded-md border bg-background p-3"
+              key={slotKey}
+            >
+              <div className="flex items-start gap-2">
+                <Utensils className="mt-0.5 h-4 w-4 text-primary" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase text-muted-foreground">
+                    {mealSlot}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium">
+                    {slot?.meal?.name ?? "Unplanned"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {slot?.status ?? "Planned"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`meal-${slotKey}`}>Saved meal</Label>
+                <Select
+                  disabled={!canWrite || meals.length === 0 || saving}
+                  id={`meal-${slotKey}`}
+                  onChange={(event) =>
+                    updateSelectedMeal(slotKey, event.target.value)
+                  }
+                  value={selectedMealId}
+                >
+                  <option value="">Choose a saved meal</option>
+                  {mealGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.meals.map((meal) => (
+                        <option key={meal.id} value={meal.id}>
+                          {meal.mealName}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </Select>
+                <Button
+                  className="w-full"
+                  disabled={!canWrite || !selectedMealId || saving}
+                  onClick={() =>
+                    void mutatePlanner(day.date, mealSlot, {
+                      action: "assign",
+                      mealId: selectedMealId
+                    })
+                  }
+                  type="button"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  Assign {mealSlot}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {plannerStatuses.map((status) => (
+                  <Button
+                    disabled={!canWrite || !slot || saving}
+                    key={status}
+                    onClick={() =>
+                      void mutatePlanner(day.date, mealSlot, {
+                        action: "status",
+                        status
+                      })
+                    }
+                    size="sm"
+                    type="button"
+                    variant={slot?.status === status ? "default" : "secondary"}
+                  >
+                    {status}
+                  </Button>
+                ))}
+              </div>
+
+              <Button
+                className="w-full"
+                disabled={!canWrite || !slot || saving}
+                onClick={() =>
+                  void mutatePlanner(day.date, mealSlot, {
+                    action: "clear"
+                  })
+                }
+                type="button"
+                variant="ghost"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear {mealSlot}
+              </Button>
+            </section>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }

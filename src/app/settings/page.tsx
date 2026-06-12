@@ -2,6 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ChevronDown,
   CheckCircle2,
   KeyRound,
   Loader2,
@@ -527,6 +528,10 @@ export default function SettingsPage() {
 
       {activeSection === "diagnostics" ? (
         <>
+      <SettingsDisclosure
+        helper="Check a single ingredient match without updating Notion."
+        title="Ingredient lookup"
+      >
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -577,7 +582,12 @@ export default function SettingsPage() {
           ) : null}
         </CardContent>
       </Card>
+      </SettingsDisclosure>
 
+      <SettingsDisclosure
+        helper="Run lookup-only enrichment or update a selected Ingredient when needed."
+        title="Ingredient enrichment"
+      >
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -689,7 +699,12 @@ export default function SettingsPage() {
           ) : null}
         </CardContent>
       </Card>
+      </SettingsDisclosure>
 
+      <SettingsDisclosure
+        helper="Inspect Notion database properties and setup gaps."
+        title="Notion schema diagnostics"
+      >
       <Card>
         <CardHeader>
           <CardTitle>Notion schema diagnostics</CardTitle>
@@ -752,9 +767,35 @@ export default function SettingsPage() {
           ) : null}
         </CardContent>
       </Card>
+      </SettingsDisclosure>
         </>
       ) : null}
     </div>
+  );
+}
+
+function SettingsDisclosure({
+  children,
+  helper,
+  title
+}: {
+  children: ReactNode;
+  helper: string;
+  title: string;
+}) {
+  return (
+    <details className="group rounded-md border bg-card p-4">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-medium">{title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{helper}</p>
+          </div>
+          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </div>
+      </summary>
+      <div className="mt-4 border-t pt-4">{children}</div>
+    </details>
   );
 }
 

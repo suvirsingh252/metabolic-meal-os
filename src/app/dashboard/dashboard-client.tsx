@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
+  ChevronDown,
   Flame,
   Gauge,
   Loader2,
@@ -137,7 +138,7 @@ export function DashboardClient() {
   }, [appliedTargets, loadDashboard, targetsReady]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         action={
           <div className="flex flex-wrap gap-2">
@@ -157,7 +158,7 @@ export function DashboardClient() {
             </Button>
           </div>
         }
-        description="Daily nutrition, weekly patterns, and the next useful action from saved meal records."
+        description="Key household metrics, highlights, and the next useful action."
         eyebrow="Behavioral intelligence"
         title="Dashboard"
       />
@@ -175,24 +176,64 @@ export function DashboardClient() {
         <>
           <HouseholdTakeaways dashboard={dashboard} />
           <TodayOverview dashboard={dashboard} />
-          <TargetProgress dashboard={dashboard} />
-          <TargetSettings
-            isLoading={isLoading}
-            onApply={() => setAppliedTargets(draftTargets)}
-            onTargetsChange={setDraftTargets}
-            targets={draftTargets}
-            targetsChanged={!areTargetsEqual(draftTargets, appliedTargets)}
-          />
-          <QualitySummary dashboard={dashboard} />
-          <DataReliabilitySummary dashboard={dashboard} />
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
-            <SmartInsights insights={dashboard.insights} />
-            <WeeklySummary dashboard={dashboard} />
-          </div>
-          <RecentMeals meals={dashboard.recentMeals} />
+          <CollapsibleDashboardSection
+            helper="Daily target progress and editable nutrition targets."
+            title="Targets"
+          >
+            <TargetProgress dashboard={dashboard} />
+            <TargetSettings
+              isLoading={isLoading}
+              onApply={() => setAppliedTargets(draftTargets)}
+              onTargetsChange={setDraftTargets}
+              targets={draftTargets}
+              targetsChanged={!areTargetsEqual(draftTargets, appliedTargets)}
+            />
+          </CollapsibleDashboardSection>
+          <CollapsibleDashboardSection
+            helper="Quality scores, opportunities, and data coverage."
+            title="Quality and data"
+          >
+            <QualitySummary dashboard={dashboard} />
+            <DataReliabilitySummary dashboard={dashboard} />
+          </CollapsibleDashboardSection>
+          <CollapsibleDashboardSection
+            helper="Detailed insights, weekly patterns, and recent saved meals."
+            title="Details"
+          >
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+              <SmartInsights insights={dashboard.insights} />
+              <WeeklySummary dashboard={dashboard} />
+            </div>
+            <RecentMeals meals={dashboard.recentMeals} />
+          </CollapsibleDashboardSection>
         </>
       ) : null}
     </div>
+  );
+}
+
+function CollapsibleDashboardSection({
+  children,
+  helper,
+  title
+}: {
+  children: ReactNode;
+  helper: string;
+  title: string;
+}) {
+  return (
+    <details className="group rounded-md border bg-card p-4">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-normal">{title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{helper}</p>
+          </div>
+          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </div>
+      </summary>
+      <div className="mt-4 space-y-5 border-t pt-4">{children}</div>
+    </details>
   );
 }
 

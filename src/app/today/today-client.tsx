@@ -1,10 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
+  ChevronDown,
   Check,
   ExternalLink,
   Heart,
@@ -361,26 +369,24 @@ export function TodayClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+    <div className="space-y-4 md:space-y-6">
+      <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
         <div className="space-y-2">
           <p className="text-sm font-medium text-primary">Today</p>
-          <h1 className="max-w-3xl text-3xl font-semibold tracking-normal sm:text-4xl">
+          <h1 className="max-w-3xl text-2xl font-semibold tracking-normal sm:text-4xl">
             What should we eat today?
           </h1>
-          <p className="max-w-2xl text-muted-foreground">
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             Based on your saved meals, recent use, and household signals already
             in Meal OS.
           </p>
         </div>
-        <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">
+        <div className="rounded-md border bg-card p-3 text-sm text-muted-foreground sm:p-4">
           {isLoading
             ? "Loading saved meals..."
             : `${meals.length} saved meals checked for today's ideas.`}
         </div>
       </section>
-
-      <HouseholdLearningStrip learning={learningStrip} />
 
       {loadError ? (
         <div className="space-y-3">
@@ -390,34 +396,8 @@ export function TodayClient() {
       ) : null}
       {saveMessage ? <Alert>{saveMessage}</Alert> : null}
 
-      {viewModel?.freshIdeas.length ? (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Fresh Ideas</h2>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {viewModel.freshIdeas.map((idea) => (
-              <a
-                className="rounded-md border bg-card p-4 transition-colors hover:bg-secondary/60"
-                href={getMealDetailPath(idea.meal.id)}
-                key={idea.meal.id}
-              >
-                <Badge>New Idea</Badge>
-                <h3 className="mt-3 font-semibold leading-tight">
-                  {idea.meal.mealName}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {idea.reason}. Not yet treated as a household favorite.
-                </p>
-              </a>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Daily Suggestions</h2>
+        <h2 className="text-lg font-semibold sm:text-xl">Daily Suggestions</h2>
         {isLoading ? (
           <div className="flex items-center gap-2 rounded-md border bg-card p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -454,18 +434,80 @@ export function TodayClient() {
       </section>
 
       {viewModel ? (
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Health Snapshot</h2>
-          <div className="grid gap-3 md:grid-cols-3">
-            {viewModel.healthSnapshot.map((item) => (
-              <div className="rounded-md border bg-card p-4 text-sm" key={item.id}>
-                {item.text}
+        <MobileDisclosure
+          summary="Learning and secondary insights"
+          description="Household learning, fresh ideas, and health snapshot stay available without blocking today's choice."
+        >
+          <div className="space-y-4">
+            <HouseholdLearningStrip learning={learningStrip} />
+
+            {viewModel.freshIdeas.length ? (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold">Fresh Ideas</h2>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {viewModel.freshIdeas.map((idea) => (
+                    <a
+                      className="rounded-md border bg-card p-4 transition-colors hover:bg-secondary/60"
+                      href={getMealDetailPath(idea.meal.id)}
+                      key={idea.meal.id}
+                    >
+                      <Badge>New Idea</Badge>
+                      <h3 className="mt-3 font-semibold leading-tight">
+                        {idea.meal.mealName}
+                      </h3>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {idea.reason}. Not yet treated as a household favorite.
+                      </p>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Health Snapshot</h2>
+              <div className="grid gap-3 md:grid-cols-3">
+                {viewModel.healthSnapshot.map((item) => (
+                  <div className="rounded-md border bg-card p-4 text-sm" key={item.id}>
+                    {item.text}
+                  </div>
+                ))}
               </div>
-            ))}
+            </section>
           </div>
-        </section>
+        </MobileDisclosure>
       ) : null}
     </div>
+  );
+}
+
+function MobileDisclosure({
+  children,
+  description,
+  summary
+}: {
+  children: ReactNode;
+  description: string;
+  summary: string;
+}) {
+  return (
+    <details className="group rounded-md border bg-card p-4 lg:open">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-medium">{summary}</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+              {description}
+            </p>
+          </div>
+          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </div>
+      </summary>
+      <div className="mt-4 border-t pt-4">{children}</div>
+    </details>
   );
 }
 
@@ -610,13 +652,13 @@ function SuggestionCard({
           ) : null}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4">
         <div className="flex flex-wrap gap-2">
           {getVisibleRecommendationReasons(recommendation).map((reason) => (
             <Badge key={reason}>{reason}</Badge>
           ))}
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="line-clamp-2 text-sm text-muted-foreground sm:line-clamp-none">
           {recommendation.confidenceNote}
         </p>
         {explanation?.details.length ? (
@@ -705,7 +747,7 @@ function SuggestionCard({
             Suggest Another
           </Button>
         </div>
-        <div className="grid gap-1 text-xs leading-5 text-muted-foreground sm:grid-cols-2">
+        <div className="hidden gap-1 text-xs leading-5 text-muted-foreground sm:grid sm:grid-cols-2">
           <p>Ate This records: logged as eaten.</p>
           <p>Loved It records: eaten, loved, and worth repeating.</p>
         </div>

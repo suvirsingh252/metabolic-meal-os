@@ -109,6 +109,19 @@ export default async function MealDetailPage({
         ) : null}
       </section>
 
+      <MealDetailActions
+        initialFeedbackSummary={feedbackSummary}
+        key={[
+          meal.id,
+          feedbackSummary.totalEvents,
+          feedbackSummary.lastEatenAt ?? "never"
+        ].join(":")}
+        meal={meal}
+      />
+
+      <details className="rounded-md border bg-card p-4">
+        <summary className="cursor-pointer font-medium">Household summary</summary>
+        <div className="mt-4 border-t pt-4">
       <Card>
         <CardHeader>
           <CardTitle>Household summary</CardTitle>
@@ -139,18 +152,12 @@ export default async function MealDetailPage({
           </div>
         </CardContent>
       </Card>
+        </div>
+      </details>
 
-      <MealDetailActions
-        initialFeedbackSummary={feedbackSummary}
-        key={[
-          meal.id,
-          feedbackSummary.totalEvents,
-          feedbackSummary.lastEatenAt ?? "never"
-        ].join(":")}
-        meal={meal}
-      />
-
-      <section className="grid gap-4 lg:grid-cols-2">
+      <details className="rounded-md border bg-card p-4">
+        <summary className="cursor-pointer font-medium">Why and what we know</summary>
+        <section className="mt-4 grid gap-4 border-t pt-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Why this meal</CardTitle>
@@ -203,13 +210,12 @@ export default async function MealDetailPage({
             </EmptyText>
           </CardContent>
         </Card>
-      </section>
+        </section>
+      </details>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Nutrition / quality</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <details className="rounded-md border bg-card p-4">
+        <summary className="cursor-pointer font-medium">Nutrition / quality</summary>
+        <div className="mt-4 space-y-4 border-t pt-4">
           {detail.hasNutritionData ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {detail.nutritionItems.map((item) => (
@@ -224,8 +230,8 @@ export default async function MealDetailPage({
           ) : (
             <EmptyText>Nutrition details have not been saved for this meal yet.</EmptyText>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </details>
 
       <details className="rounded-md border bg-card p-4">
         <summary className="cursor-pointer font-medium">Advanced details</summary>

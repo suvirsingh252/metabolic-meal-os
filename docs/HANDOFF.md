@@ -626,6 +626,32 @@ Current Ingredients behavior:
 
 # Mandatory Start-of-Session Procedure
 
+## Current State - 2026-06-11 Beta 4 Mobile-First Redesign
+
+Metabolic Meal OS is a functional family MVP. New feature development is paused while the app is hardened for iPhone use.
+
+Completed in Beta 4:
+- Added explicit `/today` route alias while preserving `/`.
+- Reduced mobile page header height globally.
+- Reworked Today so daily suggestions and feedback actions are primary; learning, fresh ideas, and health snapshot are secondary disclosure.
+- Reworked Analyze so mobile intake is shorter and `Save meal` appears before advanced nutrition/scores/evidence/provenance sections.
+- Reworked Meals so mobile defaults to Recent/Favorites/All controls plus a six-item list and explicit `Show all`; desktop keeps full filtered grid.
+- Reworked Planner so mobile uses a horizontal day selector and one-day-at-a-time planning; desktop keeps the full week grid.
+- Reworked Dashboard so household takeaways and today metrics are primary, with targets, quality/data, details, and recent meals expandable.
+- Reworked Feedback so meal selection, feedback entry, and save are primary; after-meal details are expandable.
+- Reworked Meal Detail so reuse/feedback actions come first and `Would Make Again` is the first action.
+- Added source-level mobile UX regression tests in `tests/mobile-ux.test.ts`.
+
+Verification completed:
+- `npm run lint` passed.
+- `npm run typecheck` passed.
+- `npm test` passed.
+- `npm run build` passed.
+- Local HTTP mobile-user-agent smoke returned `200` for `/today`, `/`, `/analyze`, `/meals`, `/planner`, `/dashboard`, `/feedback`, `/settings`, and `/meals/not-a-real-meal-id`.
+
+Verification limitation:
+- The in-app Browser connector was unavailable in this session, so visual mobile smoke screenshots/interactions could not be completed. Run an on-device iPhone Safari pass before calling Beta 4 visually complete.
+
 At the beginning of EVERY future Codex session:
 
 1. Read:

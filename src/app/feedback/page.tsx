@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ExternalLink, Loader2, MessageSquare, Save } from "lucide-react";
+import { ChevronDown, ExternalLink, Loader2, MessageSquare, Save } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -212,11 +212,11 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         eyebrow="Review loop"
         title="Meal feedback"
-        description="Log how a meal felt after eating so future planning can learn from real household experience."
+        description="Capture what happened after a meal so household suggestions learn."
       />
 
       {error ? <Alert>{error}</Alert> : null}
@@ -229,7 +229,7 @@ export default function FeedbackPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="mealSelection">Meal</Label>
               <Input
@@ -271,7 +271,7 @@ export default function FeedbackPage() {
                   ))}
                 </div>
               ) : null}
-              <p className="text-sm text-muted-foreground">
+              <p className="hidden text-sm text-muted-foreground sm:block">
                 Search narrows the picker. Recent meals are shown first for
                 quick logging.
               </p>
@@ -292,50 +292,65 @@ export default function FeedbackPage() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <EnumSelect<EnergyAfter>
-                id="energyAfter"
-                label="Energy after"
-                onChange={setEnergyAfter}
-                options={energyAfterOptions}
-                value={energyAfter}
-              />
-              <EnumSelect<HungerLater>
-                id="hungerLater"
-                label="Hunger later"
-                onChange={setHungerLater}
-                options={hungerLaterOptions}
-                value={hungerLater}
-              />
-            </div>
+            <details className="group rounded-md border bg-background p-4">
+              <summary className="cursor-pointer list-none">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">Optional after-meal details</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Energy, hunger, cravings, repeat intent, and notes.
+                    </p>
+                  </div>
+                  <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                </div>
+              </summary>
+              <div className="mt-4 space-y-4 border-t pt-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <EnumSelect<EnergyAfter>
+                    id="energyAfter"
+                    label="Energy after"
+                    onChange={setEnergyAfter}
+                    options={energyAfterOptions}
+                    value={energyAfter}
+                  />
+                  <EnumSelect<HungerLater>
+                    id="hungerLater"
+                    label="Hunger later"
+                    onChange={setHungerLater}
+                    options={hungerLaterOptions}
+                    value={hungerLater}
+                  />
+                </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <BooleanInput
-                checked={cravingsLater}
-                id="cravingsLater"
-                label="Cravings later"
-                onChange={setCravingsLater}
-              />
-              <BooleanInput
-                checked={wouldRepeat}
-                id="wouldRepeat"
-                label="Would repeat"
-                onChange={setWouldRepeat}
-              />
-            </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <BooleanInput
+                    checked={cravingsLater}
+                    id="cravingsLater"
+                    label="Cravings later"
+                    onChange={setCravingsLater}
+                  />
+                  <BooleanInput
+                    checked={wouldRepeat}
+                    id="wouldRepeat"
+                    label="Would repeat"
+                    onChange={setWouldRepeat}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="Add hunger, energy, digestion, prep, leftovers, or family comments."
-                rows={8}
-                value={notes}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    onChange={(event) => setNotes(event.target.value)}
+                    placeholder="Add hunger, energy, digestion, prep, leftovers, or family comments."
+                    rows={4}
+                    value={notes}
+                  />
+                </div>
+              </div>
+            </details>
 
-            <Button disabled={isSaving} type="submit">
+            <Button className="w-full sm:w-auto" disabled={isSaving} type="submit">
               {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

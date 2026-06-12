@@ -87,6 +87,7 @@ const actionCopy: Record<
     successMessage: "Saved: marked as worth repeating."
   }
 };
+const primaryActionOrder: ActionId[] = ["repeat", "ate", "loved", "disliked"];
 
 function getErrorMessage(value: unknown, fallback: string) {
   if (
@@ -235,7 +236,7 @@ export function MealDetailActions({
     <div className="space-y-3">
       {message ? <Alert>{message}</Alert> : null}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {(Object.keys(actionCopy) as ActionId[]).map((actionId) => {
+        {primaryActionOrder.map((actionId) => {
           const action = actionCopy[actionId];
           const state = saveState[actionId];
 
@@ -259,8 +260,8 @@ export function MealDetailActions({
           );
         })}
       </div>
-      <div className="grid gap-2 text-xs leading-5 text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-        {(Object.keys(actionCopy) as ActionId[]).map((actionId) => (
+      <div className="hidden gap-2 text-xs leading-5 text-muted-foreground sm:grid sm:grid-cols-2 lg:grid-cols-4">
+        {primaryActionOrder.map((actionId) => (
           <p key={actionId}>{actionCopy[actionId].helper}</p>
         ))}
       </div>

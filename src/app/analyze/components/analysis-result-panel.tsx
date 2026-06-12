@@ -311,6 +311,14 @@ export function AnalysisResultPanel({
               onBooleanFieldChange={onBooleanFieldChange}
               onTextFieldChange={onTextFieldChange}
             />
+            <SaveMealSection
+              analysis={analysis}
+              ingredientPersistence={state.ingredientPersistence}
+              isSaving={state.isSaving}
+              onSave={onSave}
+              saveError={state.saveError}
+              savedMeal={state.savedMeal}
+            />
             <NutritionTotalsSection
               analysis={analysis}
               onAnalysisChange={onAnalysisChange}
@@ -344,14 +352,6 @@ export function AnalysisResultPanel({
               onArrayFieldChange={onArrayFieldChange}
               onIngredientSuggestionsChange={onIngredientSuggestionsChange}
               onTextFieldChange={onTextFieldChange}
-            />
-            <SaveMealSection
-              analysis={analysis}
-              ingredientPersistence={state.ingredientPersistence}
-              isSaving={state.isSaving}
-              onSave={onSave}
-              saveError={state.saveError}
-              savedMeal={state.savedMeal}
             />
           </div>
         ) : (
