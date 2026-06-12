@@ -13,7 +13,7 @@ Reasoning:
 
 Boundaries:
 - This is still one shared token per deployment, not user accounts, sessions with server-side state, or RBAC.
-- `ALLOW_UNAUTHENTICATED=true` exists only for local development and must never be set in production.
+- `ALLOW_UNAUTHENTICATED=true` is an explicit trusted family/beta open mode. It bypasses app login and guarded app API auth even when `APP_AUTH_TOKEN` is set, but `/api/intake/share` still requires `IOS_SHORTCUT_TOKEN`. It is not recommended for broader production use.
 
 ## 2026-06-11 — Beta 5 Makes Meal Detail A Family Cookbook
 

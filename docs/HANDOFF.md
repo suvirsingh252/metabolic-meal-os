@@ -309,7 +309,7 @@ Auth variables (private by default since 2026-06-12; `APP_AUTH_TOKEN` is require
 
 ```bash
 APP_AUTH_TOKEN=
-# Local/dev only; never true in production.
+# Trusted family/beta open mode; bypasses app auth for browser/API app routes.
 ALLOW_UNAUTHENTICATED=false
 # Deprecated legacy opt-out, warns at runtime: PRIVATE_DEPLOYMENT_MODE=false
 APP_HOUSEHOLD_ID=
@@ -371,6 +371,7 @@ Do not deploy automatically from Codex. When Suvir is ready:
    - Unauthenticated `/api/today` returns JSON 401.
    - API access works with `Authorization: Bearer <APP_AUTH_TOKEN>` or `x-app-auth-token: <APP_AUTH_TOKEN>`.
    - The iPhone Shortcut still works with `Authorization: Bearer <IOS_SHORTCUT_TOKEN>`.
+   - If `ALLOW_UNAUTHENTICATED=true` is intentionally set for a trusted family beta, browser pages and guarded app API routes skip app auth even when `APP_AUTH_TOKEN` is present. The iPhone Shortcut intake endpoint still requires `IOS_SHORTCUT_TOKEN`.
 
 ## Manual Notion Schema Checklist
 

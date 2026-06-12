@@ -387,6 +387,30 @@ test("intake share: missing shortcut token rejected with 401", () =>
     assert.equal(response.status, 401);
   }));
 
+test("intake share: ALLOW_UNAUTHENTICATED=true still requires shortcut token", () =>
+  withIntakeEnv(
+    { IOS_SHORTCUT_TOKEN: "ios-token", ALLOW_UNAUTHENTICATED: "true" },
+    async () => {
+      const response = await postIntakeShare(
+        intakeRequest({ input: "some recipe text" })
+      );
+
+      assert.equal(response.status, 401);
+    }
+  ));
+
+test("intake share: ALLOW_UNAUTHENTICATED=true still fails closed when shortcut token is unconfigured", () =>
+  withIntakeEnv({ ALLOW_UNAUTHENTICATED: "true" }, async () => {
+    const response = await postIntakeShare(
+      intakeRequest(
+        { input: "some recipe text" },
+        { authorization: "Bearer anything" }
+      )
+    );
+
+    assert.equal(response.status, 503);
+  }));
+
 test("intake share: invalid shortcut token rejected with 401", () =>
   withIntakeEnv({ IOS_SHORTCUT_TOKEN: "ios-token" }, async () => {
     const response = await postIntakeShare(

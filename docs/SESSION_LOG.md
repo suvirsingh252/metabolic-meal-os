@@ -1,5 +1,16 @@
 # Session Log
 
+## 2026-06-12 Beta Open-Mode Auth Fix
+
+Goal:
+- Make `ALLOW_UNAUTHENTICATED=true` an explicit trusted family/beta open mode that wins even when `APP_AUTH_TOKEN` is configured.
+
+Implementation:
+- Updated the shared auth helper to check explicit open mode before token validation by default.
+- Added a per-call opt-out so dedicated token checks can still require their own secret.
+- Middleware, guarded app routes, and the auth session route now respect open mode with `APP_AUTH_TOKEN` present.
+- `/api/intake/share` still requires `IOS_SHORTCUT_TOKEN` in open mode.
+
 ## 2026-06-12 P0 Private Deployment Auth Release (A1–A4, branch `auth-private-deployment-release`)
 
 Goal:

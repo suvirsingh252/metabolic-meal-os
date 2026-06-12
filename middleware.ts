@@ -1,28 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   isAuthorizedRequest,
-  shouldAllowUnauthenticated
+  isExplicitUnauthenticatedMode
 } from "@/src/lib/server/auth";
 
 export function middleware(request: NextRequest) {
-  const authToken = process.env.APP_AUTH_TOKEN?.trim();
-
-  if (!authToken) {
-    if (shouldAllowUnauthenticated()) {
-      return NextResponse.next();
-    }
-
-    // Fail closed: an unset APP_AUTH_TOKEN must never expose the deployment.
-    return NextResponse.json(
-      {
-        error:
-          "Metabolic Meal OS is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out (local development only)."
-      },
-      { status: 503 }
-    );
-  }
-
-  if (isAuthorizedRequest(request, { allowCookie: true }).ok) {
+  const appAuthDecision = isAuthorizedRequest(request, { allowCookie: true });
+  if (appAuthDecision.ok) {
     return NextResponse.next();
   }
 
@@ -31,10 +15,26 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname === "/api/intake/share" &&
     isAuthorizedRequest(request, {
       expectedToken: process.env.IOS_SHORTCUT_TOKEN,
-      allowCookie: false
+      allowCookie: false,
+      allowUnauthenticatedBypass: false
     }).ok
   ) {
     return NextResponse.next();
+  }
+
+  if (appAuthDecision.reason === "missing_server_token") {
+    if (isExplicitUnauthenticatedMode()) {
+      return NextResponse.next();
+    }
+
+    // Fail closed: an unset APP_AUTH_TOKEN must never expose the deployment.
+    return NextResponse.json(
+      {
+        error:
+          "Metabolic Meal OS is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out for trusted family/beta testing."
+      },
+      { status: 503 }
+    );
   }
 
   // API callers get JSON, never an HTML redirect.

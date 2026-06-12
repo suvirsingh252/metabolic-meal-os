@@ -60,6 +60,20 @@ test("middleware: missing token with ALLOW_UNAUTHENTICATED=true passes", () =>
     assert.equal(response.status, 200);
   }));
 
+test("middleware: ALLOW_UNAUTHENTICATED=true passes page requests even when APP_AUTH_TOKEN is set", () =>
+  withEnv({ APP_AUTH_TOKEN: "test-token", ALLOW_UNAUTHENTICATED: "true" }, () => {
+    const response = middleware(pageRequest("/today"));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("location"), null);
+  }));
+
+test("middleware: ALLOW_UNAUTHENTICATED=true passes app API requests without token", () =>
+  withEnv({ APP_AUTH_TOKEN: "test-token", ALLOW_UNAUTHENTICATED: "true" }, async () => {
+    const response = middleware(apiRequest("/api/today"));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("location"), null);
+  }));
+
 test("middleware: missing token with legacy PRIVATE_DEPLOYMENT_MODE=false passes", () =>
   withEnv({ PRIVATE_DEPLOYMENT_MODE: "false" }, () => {
     const response = middleware(pageRequest("/today"));

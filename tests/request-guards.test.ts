@@ -195,6 +195,30 @@ test("isAuthorizedRequest: explicit expectedToken overrides APP_AUTH_TOKEN", () 
     assert.deepEqual(decision, { ok: true });
   }));
 
+test("isAuthorizedRequest: ALLOW_UNAUTHENTICATED=true bypasses auth even when APP_AUTH_TOKEN is set", () =>
+  withEnv({ APP_AUTH_TOKEN: "test-token", ALLOW_UNAUTHENTICATED: "true" }, () => {
+    const decision = isAuthorizedRequest(makeRequest());
+    assert.deepEqual(decision, { ok: true });
+  }));
+
+test("isAuthorizedRequest: legacy PRIVATE_DEPLOYMENT_MODE=false bypasses auth even when APP_AUTH_TOKEN is set", () =>
+  withEnv({ APP_AUTH_TOKEN: "test-token", PRIVATE_DEPLOYMENT_MODE: "false" }, () => {
+    const decision = isAuthorizedRequest(makeRequest());
+    assert.deepEqual(decision, { ok: true });
+  }));
+
+test("isAuthorizedRequest: unauthenticated bypass can be disabled for dedicated tokens", () =>
+  withEnv({ IOS_SHORTCUT_TOKEN: "ios-token", ALLOW_UNAUTHENTICATED: "true" }, () => {
+    const decision = isAuthorizedRequest(makeRequest(), {
+      expectedToken: process.env.IOS_SHORTCUT_TOKEN,
+      allowUnauthenticatedBypass: false
+    });
+    assert.deepEqual(decision, {
+      ok: false,
+      reason: "missing_request_token"
+    });
+  }));
+
 // --- enforcePrivateDeployment ---
 
 test("enforcePrivateDeployment: missing token with no opt-out fails closed with 503", () =>
@@ -206,6 +230,11 @@ test("enforcePrivateDeployment: missing token with no opt-out fails closed with 
 
 test("enforcePrivateDeployment: missing token with ALLOW_UNAUTHENTICATED=true passes", () =>
   withEnv({ ALLOW_UNAUTHENTICATED: "true" }, () => {
+    assert.equal(enforcePrivateDeployment(makeRequest()), null);
+  }));
+
+test("enforcePrivateDeployment: ALLOW_UNAUTHENTICATED=true passes when APP_AUTH_TOKEN is set", () =>
+  withEnv({ APP_AUTH_TOKEN: "test-token", ALLOW_UNAUTHENTICATED: "true" }, () => {
     assert.equal(enforcePrivateDeployment(makeRequest()), null);
   }));
 

@@ -89,3 +89,11 @@ test("session route allows through when server token missing but opt-out set", (
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("set-cookie"), null);
   }));
+
+test("session route allows through when ALLOW_UNAUTHENTICATED=true and server token is set", () =>
+  withEnv({ APP_AUTH_TOKEN: "test-token", ALLOW_UNAUTHENTICATED: "true" }, async () => {
+    const response = await createSession(loginRequest({ token: "wrong-token" }));
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("set-cookie"), null);
+  }));

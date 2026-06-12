@@ -1,5 +1,6 @@
 export type AuthOptions = {
   allowCookie?: boolean;
+  allowUnauthenticatedBypass?: boolean;
   expectedToken?: string;
 };
 
@@ -29,7 +30,7 @@ export function constantTimeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
-export function shouldAllowUnauthenticated(): boolean {
+export function isExplicitUnauthenticatedMode(): boolean {
   if (process.env.ALLOW_UNAUTHENTICATED?.trim() === "true") {
     return true;
   }
@@ -46,6 +47,8 @@ export function shouldAllowUnauthenticated(): boolean {
 
   return false;
 }
+
+export const shouldAllowUnauthenticated = isExplicitUnauthenticatedMode;
 
 function getCookieValue(cookieHeader: string, name: string): string | null {
   for (const part of cookieHeader.split(";")) {
@@ -102,6 +105,12 @@ export function isAuthorizedRequest(
   request: Request,
   options?: AuthOptions
 ): AuthDecision {
+  if (options?.allowUnauthenticatedBypass !== false) {
+    if (isExplicitUnauthenticatedMode()) {
+      return { ok: true };
+    }
+  }
+
   const expectedToken =
     options && "expectedToken" in options
       ? options.expectedToken?.trim()

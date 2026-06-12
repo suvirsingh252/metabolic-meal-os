@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { classifyInput, normalizeUrl, parseUrl } from "@/src/lib/intake/classify";
 import { saveIntakeToNotion, getIntakeDbId } from "@/src/lib/intake/notion";
 import {
-  isAuthorizedRequest,
-  shouldAllowUnauthenticated
+  isAuthorizedRequest
 } from "@/src/lib/server/auth";
 import {
   enforceRateLimit,
@@ -24,7 +23,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function validateToken(request: Request): NextResponse | null {
   const decision = isAuthorizedRequest(request, {
     expectedToken: process.env.IOS_SHORTCUT_TOKEN,
-    allowCookie: false
+    allowCookie: false,
+    allowUnauthenticatedBypass: false
   });
 
   if (decision.ok) {
@@ -32,10 +32,6 @@ function validateToken(request: Request): NextResponse | null {
   }
 
   if (decision.reason === "missing_server_token") {
-    if (shouldAllowUnauthenticated()) {
-      return null;
-    }
-
     return NextResponse.json(
       { error: "Intake endpoint is not configured." },
       { status: 503 }

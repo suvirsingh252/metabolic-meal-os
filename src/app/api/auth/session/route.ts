@@ -27,17 +27,17 @@ export async function POST(request: Request) {
     return rateLimitResponse;
   }
 
+  if (shouldAllowUnauthenticated()) {
+    return NextResponse.json({
+      ok: true,
+      message: "Authentication is disabled on this deployment.",
+      redirectTo: "/today"
+    });
+  }
+
   const expectedToken = process.env.APP_AUTH_TOKEN?.trim();
 
   if (!expectedToken) {
-    if (shouldAllowUnauthenticated()) {
-      return NextResponse.json({
-        ok: true,
-        message: "Authentication is disabled on this deployment.",
-        redirectTo: "/today"
-      });
-    }
-
     return NextResponse.json(
       {
         error:

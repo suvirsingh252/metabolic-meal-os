@@ -76,7 +76,7 @@ Required Vercel environment variables:
 - `NOTION_WEEKLY_PLANS_DATABASE_ID`
 - `NOTION_MEAL_TEMPLATES_DATABASE_ID`
 - `APP_AUTH_TOKEN` — **required**; long random secret that gates every page and API route
-- `ALLOW_UNAUTHENTICATED` — set to `false` in production; `true` is a local/dev-only opt-out
+- `ALLOW_UNAUTHENTICATED` — set to `false` for private production; `true` is an explicit trusted family/beta open mode
 - `IOS_SHORTCUT_TOKEN` — **required for iPhone intake**; secret token for the iPhone Share Sheet Shortcut (Beta 3.6)
 - `NOTION_MEAL_INTAKE_DATABASE_ID` — optional; enables intake persistence (Beta 3.6)
 
@@ -88,7 +88,8 @@ The deployment is private by default:
 - Browser users sign in at `/login` by entering the `APP_AUTH_TOKEN` value. A successful login sets an `HttpOnly` `app_auth_token` cookie (Secure in production, SameSite=Lax, 30-day expiry). Unauthenticated page requests redirect to `/login`; unauthenticated API requests get a JSON 401.
 - API clients authenticate with `Authorization: Bearer <APP_AUTH_TOKEN>` or `x-app-auth-token: <APP_AUTH_TOKEN>`.
 - The iPhone Shortcut authenticates `POST /api/intake/share` with `Authorization: Bearer <IOS_SHORTCUT_TOKEN>` (cookies are not accepted there).
-- `ALLOW_UNAUTHENTICATED=true` explicitly disables authentication. Use it for local development only; never in production.
+- `ALLOW_UNAUTHENTICATED=true` explicitly disables app authentication for browser users and guarded app API routes, even when `APP_AUTH_TOKEN` is set. Use it only for trusted family/beta testing; it is not recommended for broader production use.
+- `POST /api/intake/share` still requires `IOS_SHORTCUT_TOKEN` when `ALLOW_UNAUTHENTICATED=true`.
 - `PRIVATE_DEPLOYMENT_MODE=false` is a deprecated legacy opt-out kept for one release; it logs a warning. Migrate to `ALLOW_UNAUTHENTICATED=true`.
 
 > **Warning:** Do not deploy the auth release to production until `APP_AUTH_TOKEN` and `IOS_SHORTCUT_TOKEN` are set in Vercel production (and `ALLOW_UNAUTHENTICATED=false`). Deploying without them fails closed and locks out the app.
