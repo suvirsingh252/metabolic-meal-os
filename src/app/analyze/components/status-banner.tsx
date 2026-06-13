@@ -3,6 +3,28 @@
 import { Alert } from "@/components/ui/alert";
 import type { AnalyzeState } from "@/src/app/analyze/types";
 
+export function getUrlRecoveryCopy(inputLooksLikeUrl: boolean, error: string) {
+  if (!inputLooksLikeUrl) {
+    return null;
+  }
+
+  if (
+    !/(could not|did not return|returned \d{3}|blocked|too large|not allowed|recipe url)/i.test(
+      error
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    title: "Meal OS could not read that page automatically.",
+    body:
+      "Some publishers block automated recipe reading, hide recipe text behind scripts, or return limited page data. The app is still working; it just needs the recipe details another way.",
+    nextStep:
+      "Leave the link here if you want, then paste the ingredients, recipe text, caption, transcript, or a rough summary into the same box and run Analyze again."
+  };
+}
+
 export function StatusBanner({
   error,
   inputLooksLikeUrl,
@@ -39,10 +61,24 @@ export function StatusBanner({
     );
   }
 
+  const urlRecoveryCopy = getUrlRecoveryCopy(inputLooksLikeUrl, error);
+
   return (
     <Alert>
       <div className="space-y-2">
-        <p>{error}</p>
+        {urlRecoveryCopy ? (
+          <>
+            <p className="font-medium">{urlRecoveryCopy.title}</p>
+            <p>{urlRecoveryCopy.body}</p>
+            <p>{urlRecoveryCopy.nextStep}</p>
+            <details className="text-xs opacity-80">
+              <summary className="cursor-pointer">Technical detail</summary>
+              <p className="mt-1 break-words">{error}</p>
+            </details>
+          </>
+        ) : (
+          <p>{error}</p>
+        )}
         {usesBestEffortSocialIntake ? (
           <>
             <p>
@@ -56,11 +92,6 @@ export function StatusBanner({
           </>
         ) : inputLooksLikeUrl ? (
           <>
-            <p>
-              The link is still in the box. Paste any caption, transcript,
-              ingredient list, or spoken recipe summary into the same box and
-              run the analysis again.
-            </p>
             <p className="break-all text-xs opacity-80">
               Source tried: {recipeText.trim()}
             </p>
