@@ -723,6 +723,14 @@ Verification limitation:
 
 At the beginning of EVERY future Codex session:
 
+0. Read the AI workflow (AgentOps) entry points so multiple CLI tools do not
+   cross wires:
+   - `ai/AGENT_RULES.md` (binding rules)
+   - `ai/CLI_ROLES.md` (tool lanes + installed-status table — only Claude Code
+     and npm are installed today; Codex/Gemini/aider/Neon are candidates)
+   - `ai/CURRENT_TASK.md` (active task + working-tree owner)
+   Optionally run `bash scripts/agent-status.sh` for a live snapshot.
+
 1. Read:
 - `docs/HANDOFF.md`
 - `docs/ROADMAP.md`
@@ -753,6 +761,9 @@ At the end of EVERY future Codex session:
 8. Add any deployment changes
 9. Add unfinished work and blockers
 10. Verify all docs remain internally consistent
+11. Complete `ai/CLOSEOUT_CHECKLIST.md` and update `ai/SESSION_HANDOFF.md` with
+    the ownership handoff. `bash scripts/agent-closeout.sh` runs the validation
+    gate (lint/typecheck/test/build) and degrades gracefully.
 
 This is REQUIRED before ending a session.
 

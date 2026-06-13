@@ -31,6 +31,31 @@ The persistent engineering docs live in:
 
 Follow the mandatory start-of-session and end-of-session procedures in `docs/HANDOFF.md`.
 
+## AI Development Workflow (AgentOps)
+
+This repo uses a repo-local AI workflow so multiple CLI tools (Claude Code,
+Codex, Gemini CLI, aider, and deterministic CLIs like `gh`/`vercel`/`drizzle`)
+do not cross wires. It lives in `/ai`:
+
+- `ai/AGENT_RULES.md` — binding rules for any AI agent (read first).
+- `ai/CLI_ROLES.md` — which tool does what, plus an installed-status table.
+  **Only Claude Code and npm are installed today; the others are candidates.**
+- `ai/CURRENT_TASK.md` — the single active task packet / tree owner.
+- `ai/TASK_PACKET_TEMPLATE.md` — how the PM defines a unit of work.
+- `ai/CLOSEOUT_CHECKLIST.md` — end-of-task gate (mirrors HANDOFF).
+- `ai/SESSION_HANDOFF.md` — explicit ownership handoffs between agents.
+- `ai/PROMPT_LIBRARY.md` — reusable per-tool prompts.
+
+Helper scripts (read-only / safe, degrade gracefully if a CLI is absent):
+
+```bash
+bash scripts/agent-status.sh      # what's installed + active task
+bash scripts/agent-closeout.sh    # run lint/typecheck/test/build gate
+```
+
+Agents must not install CLIs or add dependencies, must not change app behavior
+for tooling tasks, and must not commit unless asked. See `ai/AGENT_RULES.md`.
+
 ## Routes
 
 - `/`
