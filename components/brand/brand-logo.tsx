@@ -13,46 +13,61 @@ interface BrandLogoProps {
 }
 
 /**
- * "The Threaded Table" mark — a single continuous, rounded line that reads as a
- * Tablewise "T": a soft horizontal tabletop, a gentle loop on the right
- * suggesting household memory/continuity, and a central stem descending from it.
- * Decorative: the brand name is always conveyed by adjacent text or an
- * aria-label on the wrapper, so the SVG itself is hidden from assistive tech.
+ * Tablewise "Ingredients Bowl" mark — a warm-cream bowl with a subtle
+ * integrated "T" on the front and sage / apricot / muted-green ingredient
+ * shapes nestled at the rim. It is multi-color (explicit brand hex rather than
+ * currentColor) and decorative: the brand name is always conveyed by adjacent
+ * text or an aria-label on the wrapper, so the SVG is hidden from assistive tech.
  */
-function ThreadedTableMark({ className }: { className?: string }) {
+function IngredientsBowlMark({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       focusable="false"
       viewBox="0 0 48 48"
-      fill="none"
       className={className}
     >
-      <path
-        d="M13 16 C18 14 30 14 35 16 C35 22 27 19 24 25 C22 31 24 34 21 38"
-        stroke="currentColor"
-        strokeWidth={5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <g transform="translate(24 24) scale(1.12) translate(-24 -28.5)">
+        <ellipse cx="24" cy="27" rx="15" ry="4" fill="#DDEBDD" />
+        <path
+          d="M24 16 C27.5 18 28.5 22.5 24 26.5 C19.5 22.5 20.5 18 24 16 Z"
+          fill="#DDEBDD"
+        />
+        <path d="M24 18.5 L24 25" stroke="#4C8267" strokeWidth="1" strokeLinecap="round" />
+        <circle cx="15" cy="24" r="3.6" fill="#F4A261" />
+        <circle cx="20" cy="20.5" r="2.8" fill="#4C8267" />
+        <circle cx="33" cy="24" r="3.2" fill="#F4A261" />
+        <circle cx="29" cy="20.5" r="2.6" fill="#DDEBDD" />
+        <path
+          d="M8 27 C8 27 13 30 24 30 C35 30 40 27 40 27 C40 34.5 33 41 24 41 C15 41 8 34.5 8 27 Z"
+          fill="#FFF8EC"
+        />
+        <path
+          d="M18.5 34 L29.5 34 M24 34 L24 38.5"
+          stroke="#1F5E46"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
     </svg>
   );
 }
 
 /**
- * App-icon style glyph: a deep-green rounded tile with a warm-cream thread.
- * Colors come from brand tokens (`bg-primary` / `text-primary-foreground`) so
- * the mark stays on-brand in any theme context.
+ * App-icon style glyph: a deep-green rounded tile holding the bowl mark.
+ * The tile background uses the brand token (`bg-primary`) so it stays on-brand
+ * in any theme context; the mark's own colors are fixed brand hex.
  */
-function ThreadTile({ className }: { className?: string }) {
+function IconTile({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-[28%] bg-primary text-primary-foreground",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-[28%] bg-primary",
         className
       )}
     >
-      <ThreadedTableMark className="h-[64%] w-[64%]" />
+      <IngredientsBowlMark className="h-full w-full" />
     </span>
   );
 }
@@ -77,7 +92,7 @@ export function BrandLogo({
         aria-label={BRAND_NAME}
         className={cn("inline-flex", className)}
       >
-        <ThreadTile className="h-9 w-9" />
+        <IconTile className="h-9 w-9" />
       </span>
     );
   }
@@ -85,7 +100,7 @@ export function BrandLogo({
   if (variant === "stacked") {
     return (
       <span className={cn("flex flex-col items-center gap-3 text-center", className)}>
-        <ThreadTile className="h-14 w-14" />
+        <IconTile className="h-14 w-14" />
         <span className="flex flex-col items-center gap-1">
           <Wordmark className="text-xl" />
           {showTagline ? (
@@ -99,7 +114,7 @@ export function BrandLogo({
   // variant === "full"
   return (
     <span className={cn("flex min-w-0 items-center gap-3", className)}>
-      <ThreadTile className="h-9 w-9" />
+      <IconTile className="h-9 w-9" />
       <span className="flex min-w-0 flex-col">
         <Wordmark className="truncate text-base" />
         {showTagline ? (

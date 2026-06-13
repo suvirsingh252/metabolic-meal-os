@@ -12,37 +12,37 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#1F5E46",
     icons: [
       {
-        src: "/icons/tablewise-icon-192.png",
+        src: "/icons/tablewise-bowl-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any"
       },
       {
-        src: "/icons/tablewise-icon-192.png",
+        src: "/icons/tablewise-bowl-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable"
       },
       {
-        src: "/icons/tablewise-icon-512.png",
+        src: "/icons/tablewise-bowl-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any"
       },
       {
-        src: "/icons/tablewise-icon-512.png",
+        src: "/icons/tablewise-bowl-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable"
       },
       {
-        src: "/icons/tablewise-icon.svg",
+        src: "/icons/tablewise-bowl-icon.svg",
         sizes: "any",
         type: "image/svg+xml",
         purpose: "any"
       },
       {
-        src: "/icons/tablewise-apple-touch-icon.png",
+        src: "/icons/tablewise-bowl-apple-touch-icon.png",
         sizes: "180x180",
         type: "image/png",
         purpose: "any"

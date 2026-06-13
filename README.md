@@ -147,7 +147,7 @@ LAN testing is not a substitute for the Vercel test because it uses plain HTTP, 
 PWA notes:
 
 - The app includes a web app manifest at `/manifest.webmanifest`.
-- App icons are the Tablewise "Threaded Table" mark: `public/icons/tablewise-icon.svg`, `tablewise-icon-192.png`, `tablewise-icon-512.png`, and `tablewise-apple-touch-icon.png`, plus `public/favicon.ico`. They live under `public/icons/` (and `favicon.ico` at root) because the auth middleware exempts those paths, so PWA/iOS clients can fetch them unauthenticated.
+- App icons are the Tablewise "Ingredients Bowl" mark: `public/icons/tablewise-bowl-icon.svg`, `tablewise-bowl-192.png`, `tablewise-bowl-512.png`, and `tablewise-bowl-apple-touch-icon.png`, plus `public/favicon.ico`. They live under `public/icons/` (and `favicon.ico` at root) because the auth middleware exempts those paths, so PWA/iOS clients can fetch them unauthenticated.
 - There is no service worker or offline mode yet.
 
 ## iPhone Shortcut Setup (Beta 3.6)
