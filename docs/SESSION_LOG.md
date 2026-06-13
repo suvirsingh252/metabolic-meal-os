@@ -1,5 +1,36 @@
 # Session Log
 
+## 2026-06-13 Security Audit Status Reconciliation
+
+Goal:
+- Reconcile `docs/AUDIT-2026-06-11.md`, `docs/KNOWN_ISSUES.md`, and `docs/HANDOFF.md` against the actual current code for audit findings B1-B7. Documentation-led verification only; no product feature work.
+
+Repo state at start:
+- Branch `main`, clean working tree.
+- `main` at `a4c03d2` and even with `origin/main`.
+
+Verification summary:
+- B1 is fixed: `/api/ingredients/lookup` uses `guardApiRequest` and `readJsonWithLimit(request, 10_000)` (`7b9fad7`).
+- B2 is fixed: both Notion diagnostics routes use in-route `guardApiRequest` with the shared `diagnostics` limit (`5c0d5e6`).
+- B3 is fixed for the reported unbounded expired-bucket risk: `MemoryRateLimiter` sweeps expired buckets by size/interval and documents the per-process Vercel limitation (`3774c24`). Distributed rate limiting remains future work.
+- B4 is fixed: numeric HTML entities decode with guarded `String.fromCodePoint`, including astral code points and invalid fallback tests (`cb30621`).
+- B5 is partially fixed: `src/lib/notion/route-helpers.ts` and data-driven `save-meal` schema mapping reduced duplication (`461819b`), but local helper copies remain in several API/lib paths.
+- B6 is fixed: `sourceUrl` now goes through shared `getSafeHttpUrl` in both validators and Meal Detail revalidates links before rendering (`048add8`).
+- B7 is reworked: the old dead classifier branch is gone; the current source classifier intentionally treats non-social URL-ish input as `recipe_page` and covers that behavior in tests (`46afa65`).
+
+Docs changed:
+- `docs/AUDIT-2026-06-11.md`: added current B1-B7 reconciliation table, evidence, commit hashes, and residual risks.
+- `docs/KNOWN_ISSUES.md`: replaced stale all-open wording with the current B-series status and kept B5 as active technical debt.
+- `docs/HANDOFF.md`: corrected the current security/audit risk language.
+- `docs/SESSION_LOG.md`: added this entry and marked the prior all-open note as superseded.
+
+Validation:
+- Documentation-only change. Run `npm run typecheck` before commit; run `npm test` if time allows.
+
+Remaining open risks:
+- B5 residual helper duplication.
+- Memory rate limiting is bounded but still per-process/best-effort; replace with distributed throttling before broader public launch.
+
 ## 2026-06-13 Beta 6 QA Closeout
 
 Goal:
@@ -20,7 +51,7 @@ Validation gate (run twice — before and after doc edits, working tree includin
 QA review findings:
 - README, HANDOFF, ARCHITECTURE, ROADMAP, DECISIONS, KNOWN_ISSUES were already current as of the 2026-06-13 family-feedback closeout. Routes, API endpoints, auth/open-mode behavior, intake/Instagram recovery, nutrition estimation, feedback, planner, Cook Again Loop, saved-meal intelligence summary, and save-continuity all match the code.
 - No new product/architecture decisions surfaced that DECISIONS.md does not already record.
-- Security posture is unchanged from the 2026-06-12 re-audit (`docs/AUDIT-2026-06-11.md`): findings B1–B7 remain OPEN and tracked there. This QA pass did not resolve or change them, so the audit doc was deliberately left unchanged to avoid overclaiming.
+- Superseded by the later 2026-06-13 Security Audit Status Reconciliation entry above: the blanket B1-B7 OPEN language was stale. Current status is B1, B2, B3, B4, and B6 fixed; B7 reworked; B5 partially fixed.
 - No runtime code was changed in this closeout.
 
 Recommended next slice — Beta 6.6 URL Recovery / Guided Intake Fallback v1 (small reliability/UX slice, not a rewrite):

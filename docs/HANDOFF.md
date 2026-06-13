@@ -16,7 +16,9 @@ Local validation gate, run against `main` including the guided-recovery change (
 - `npm test`: passed, 358/358 tests across 41 files.
 - `npm run build`: passed; 28 routes generated, matching the route inventory below.
 
-This was a documentation/QA closeout: no runtime behavior was changed. Docs were verified against the code for routes, API endpoints, auth/open-mode, intake/Instagram recovery, nutrition estimation, feedback, planner, Cook Again Loop, saved-meal intelligence summary, and save continuity, and found accurate. Security findings B1–B7 in `docs/AUDIT-2026-06-11.md` remain OPEN and tracked there; this pass did not change them.
+This was a documentation/QA closeout: no runtime behavior was changed. Docs were verified against the code for routes, API endpoints, auth/open-mode, intake/Instagram recovery, nutrition estimation, feedback, planner, Cook Again Loop, saved-meal intelligence summary, and save continuity, and found accurate.
+
+Security audit reconciliation after that closeout found the blanket B1–B7 OPEN language was stale. As of `main` at `a4c03d2`, B1, B2, B3, B4, and B6 are fixed; B7 is reworked; B5 is partially fixed with residual helper duplication. See `docs/AUDIT-2026-06-11.md` for evidence and commit hashes.
 
 In progress (committed locally as `ce7dc0d`, not yet pushed): `getUrlRecoveryCopy` in `src/app/analyze/components/status-banner.tsx` plus `tests/analyze-guided-recovery.test.ts` — the first step of the Beta 6.6 URL Recovery slice (see Immediate Next Tasks).
 
