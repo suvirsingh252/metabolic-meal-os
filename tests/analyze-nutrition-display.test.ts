@@ -8,6 +8,7 @@ import {
   getNutritionTotalsDisplayState,
   hasAnyNutritionValue
 } from "@/src/app/analyze/components/analysis-result-panel";
+import { basicRecipeParserAdapter } from "@/src/lib/integrations/recipe-parser";
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
 
 test("nutrition display uses unavailable state when no nutrition source exists", () => {
@@ -100,6 +101,87 @@ test("vague free-text meal analysis keeps nutrition unavailable", async () => {
     hasAnyNutritionValue(getNutritionTotalsDisplayState(null).estimate.totals),
     false
   );
+});
+
+test("parsed recipe ingredients get estimated nutrition when structured nutrition is missing", async () => {
+  const originalParseFromUrl = basicRecipeParserAdapter.parseFromUrl;
+
+  basicRecipeParserAdapter.parseFromUrl = async (url) => ({
+    name: "Chana rice bowl",
+    source: {
+      sourceType: "url",
+      sourceUrl: url,
+      sourceName: "Example",
+      sourceClassification: "recipe-page",
+      parserVersion: "test-parser"
+    },
+    ingredients: [
+      { rawText: "1 can chickpeas, drained" },
+      { rawText: "1 cup cooked rice" }
+    ],
+    instructions: ["Simmer and serve."],
+    nutrition: null
+  });
+
+  try {
+    const prepared = await prepareRecipeForMealAnalysis({
+      recipeText: "https://example.com/recipes/chana-rice"
+    });
+
+    assert.equal(prepared.nutritionEstimate?.source, "estimated");
+    assert.equal(prepared.nutritionEstimate?.totals.calories, 385);
+    assert.equal(prepared.nutritionEstimate?.totals.protein, 14);
+    assert.equal(prepared.nutritionEstimate?.totals.fiber, 9);
+    assert.match(prepared.nutritionEstimate?.provenance ?? "", /recipe ingredients/i);
+  } finally {
+    basicRecipeParserAdapter.parseFromUrl = originalParseFromUrl;
+  }
+});
+
+test("parsed recipe structured nutrition still wins over ingredient estimates", async () => {
+  const originalParseFromUrl = basicRecipeParserAdapter.parseFromUrl;
+
+  basicRecipeParserAdapter.parseFromUrl = async (url) => ({
+    name: "Chana rice bowl",
+    source: {
+      sourceType: "url",
+      sourceUrl: url,
+      sourceName: "Example",
+      sourceClassification: "recipe-page",
+      parserVersion: "test-parser"
+    },
+    ingredients: [
+      { rawText: "1 can chickpeas, drained" },
+      { rawText: "1 cup cooked rice" }
+    ],
+    nutrition: {
+      calories: 520,
+      protein: 18,
+      carbs: 72,
+      fat: 14,
+      fiber: 12,
+      sodium: 680,
+      sugar: 6,
+      confidence: "medium",
+      provenance: "Recipe page structured nutrition facts"
+    }
+  });
+
+  try {
+    const prepared = await prepareRecipeForMealAnalysis({
+      recipeText: "https://example.com/recipes/chana-rice"
+    });
+
+    assert.equal(prepared.nutritionEstimate?.source, "recipe-json-ld");
+    assert.equal(prepared.nutritionEstimate?.totals.calories, 520);
+    assert.equal(prepared.nutritionEstimate?.totals.carbs, 72);
+    assert.match(
+      prepared.nutritionEstimate?.provenance ?? "",
+      /structured nutrition facts/i
+    );
+  } finally {
+    basicRecipeParserAdapter.parseFromUrl = originalParseFromUrl;
+  }
 });
 
 test("manual edits convert estimated nutrition to user-entered provenance", async () => {

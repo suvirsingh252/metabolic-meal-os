@@ -2,10 +2,14 @@ import {
   basicRecipeParserAdapter,
   formatParsedRecipeForAnalysis,
   isProbablyUrl,
+  type ParsedRecipeDraft,
   RecipeParserError
 } from "@/src/lib/integrations/recipe-parser";
 import type { MealAnalysisRequest, MealSourceClassification } from "@/src/lib/types/meal";
-import { estimateFreeTextNutrition } from "@/src/lib/domain/nutrition";
+import {
+  estimateFreeTextNutrition,
+  estimateNutritionFromIngredients
+} from "@/src/lib/domain/nutrition";
 import {
   defaultManualRecipeSource,
   manualParserVersion
@@ -29,6 +33,31 @@ const socialParserVersion = "social-normalizer-v1";
 
 interface PrepareRecipeOptions {
   instagramMetadataLoader?: typeof fetchStaticSocialMetadata;
+}
+
+function mapRecipeNutritionEstimate(parsedRecipe: ParsedRecipeDraft) {
+  if (parsedRecipe.nutrition) {
+    return {
+      totals: {
+        calories: parsedRecipe.nutrition.calories,
+        protein: parsedRecipe.nutrition.protein,
+        carbs: parsedRecipe.nutrition.carbs,
+        fat: parsedRecipe.nutrition.fat,
+        fiber: parsedRecipe.nutrition.fiber,
+        sodium: parsedRecipe.nutrition.sodium,
+        sugar: parsedRecipe.nutrition.sugar
+      },
+      confidence: parsedRecipe.nutrition.confidence,
+      provenance: parsedRecipe.nutrition.provenance,
+      source: "recipe-json-ld" as const
+    };
+  }
+
+  return estimateNutritionFromIngredients({
+    recipeName: parsedRecipe.name,
+    ingredients: parsedRecipe.ingredients,
+    notes: parsedRecipe.notes ?? null
+  });
 }
 
 const sourceClassificationMap: Record<
@@ -150,22 +179,7 @@ export async function prepareRecipeForMealAnalysis(
             parsedRecipe.source.lastParsedAt ?? new Date().toISOString(),
           parserVersion: parsedRecipe.source.parserVersion ?? null,
           socialRecipeCandidate: null,
-          nutritionEstimate: parsedRecipe.nutrition
-            ? {
-                totals: {
-                  calories: parsedRecipe.nutrition.calories,
-                  protein: parsedRecipe.nutrition.protein,
-                  carbs: parsedRecipe.nutrition.carbs,
-                  fat: parsedRecipe.nutrition.fat,
-                  fiber: parsedRecipe.nutrition.fiber,
-                  sodium: parsedRecipe.nutrition.sodium,
-                  sugar: parsedRecipe.nutrition.sugar
-                },
-                confidence: parsedRecipe.nutrition.confidence,
-                provenance: parsedRecipe.nutrition.provenance,
-                source: "recipe-json-ld" as const
-              }
-            : null
+          nutritionEstimate: mapRecipeNutritionEstimate(parsedRecipe)
         };
       }
 
@@ -205,7 +219,11 @@ export async function prepareRecipeForMealAnalysis(
           lastParsedAt: now,
           parserVersion: intakeV2ParserVersion,
           socialRecipeCandidate: candidate,
-          nutritionEstimate: null
+          nutritionEstimate: estimateNutritionFromIngredients({
+            recipeName: candidate.title,
+            ingredients: candidate.ingredients.map((rawText) => ({ rawText })),
+            notes: candidate.assumptions.join("\n")
+          })
         };
       }
 
@@ -231,22 +249,7 @@ export async function prepareRecipeForMealAnalysis(
       lastParsedAt: parsedRecipe.source.lastParsedAt ?? new Date().toISOString(),
       parserVersion: parsedRecipe.source.parserVersion ?? null,
       socialRecipeCandidate: null,
-      nutritionEstimate: parsedRecipe.nutrition
-        ? {
-            totals: {
-              calories: parsedRecipe.nutrition.calories,
-              protein: parsedRecipe.nutrition.protein,
-              carbs: parsedRecipe.nutrition.carbs,
-              fat: parsedRecipe.nutrition.fat,
-              fiber: parsedRecipe.nutrition.fiber,
-              sodium: parsedRecipe.nutrition.sodium,
-              sugar: parsedRecipe.nutrition.sugar
-            },
-            confidence: parsedRecipe.nutrition.confidence,
-            provenance: parsedRecipe.nutrition.provenance,
-            source: "recipe-json-ld" as const
-          }
-        : null
+      nutritionEstimate: mapRecipeNutritionEstimate(parsedRecipe)
     };
   }
 
@@ -289,7 +292,11 @@ export async function prepareRecipeForMealAnalysis(
       lastParsedAt: now,
       parserVersion: socialParserVersion,
       socialRecipeCandidate: candidate,
-      nutritionEstimate: null
+      nutritionEstimate: estimateNutritionFromIngredients({
+        recipeName: candidate.title,
+        ingredients: candidate.ingredients.map((rawText) => ({ rawText })),
+        notes: candidate.assumptions.join("\n")
+      })
     };
   }
 

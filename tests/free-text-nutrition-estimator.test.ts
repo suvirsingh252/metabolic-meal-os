@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { estimateFreeTextNutrition } from "@/src/lib/domain/nutrition";
+import {
+  estimateFreeTextNutrition,
+  estimateNutritionFromIngredients
+} from "@/src/lib/domain/nutrition";
 import { parseRecipeJsonLd } from "@/src/lib/integrations/recipe-parser";
 
 test("free-text nutrition estimator returns null for vague input", () => {
@@ -213,4 +216,35 @@ test("recipe JSON-LD structured nutrition remains available ahead of estimates",
   assert.equal(parsed?.nutrition?.fat, 21);
   assert.equal(parsed?.nutrition?.sodium, 700);
   assert.notEqual(parsed?.nutrition?.calories, freeTextEstimate?.totals.calories);
+});
+
+test("ingredient nutrition estimator covers common parsed recipe ingredients", () => {
+  const estimate = estimateNutritionFromIngredients({
+    recipeName: "Chana rice bowl",
+    ingredients: [
+      { rawText: "1 can chickpeas, drained" },
+      { rawText: "1 cup cooked rice" },
+      { rawText: "2 cups spinach" }
+    ]
+  });
+
+  assert.equal(estimate?.source, "estimated");
+  assert.equal(estimate?.totals.calories, 385);
+  assert.equal(estimate?.totals.protein, 14);
+  assert.equal(estimate?.totals.fiber, 9);
+  assert.equal(estimate?.totals.carbs, null);
+  assert.match(estimate?.provenance ?? "", /recipe ingredients/i);
+  assert.match(
+    estimate?.assumptions?.matchedComponents.join(" | ") ?? "",
+    /chickpeas\/chana serving/i
+  );
+});
+
+test("ingredient nutrition estimator stays unavailable for unknown ingredient lists", () => {
+  const estimate = estimateNutritionFromIngredients({
+    recipeName: "Mystery dish",
+    ingredients: [{ rawText: "1 packet seasoning" }, { rawText: "water" }]
+  });
+
+  assert.equal(estimate, null);
 });

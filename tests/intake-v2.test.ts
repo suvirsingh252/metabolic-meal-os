@@ -292,6 +292,9 @@ test("caption under Instagram URL improves Intake v2 confidence", async () => {
   assert.equal(withCaption.socialRecipeCandidate?.confidence, "medium");
   assert.match(withCaption.analysisText, /Shared text \(user_text, medium\)/);
   assert.match(withCaption.analysisText, /dal, rice, spinach/);
+  assert.equal(withCaption.nutritionEstimate?.source, "estimated");
+  assert.equal(withCaption.nutritionEstimate?.totals.calories, 385);
+  assert.match(withCaption.nutritionEstimate?.provenance ?? "", /recipe ingredients/i);
 });
 
 test("Analyze view model never dead-ends for Instagram URL-only", () => {

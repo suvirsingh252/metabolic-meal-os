@@ -1,4 +1,5 @@
 import type { MealNutritionEstimate } from "@/src/lib/types/meal";
+import type { RecipeIngredient } from "@/src/lib/types/recipe";
 
 interface FreeTextNutritionRule {
   id: string;
@@ -82,6 +83,21 @@ const freeTextNutritionRules: FreeTextNutritionRule[] = [
     primaryFood: true
   },
   {
+    id: "chickpeas",
+    label: "chickpeas/chana serving",
+    patterns: [/\bchickpeas?\b/i, /\bchana\b/i, /\bchole\b/i, /\bgarbanzo\b/i],
+    quantityPatterns: [
+      /\bchickpeas?\b/i,
+      /\bchana\b/i,
+      /\bchole\b/i,
+      /\bgarbanzo\b/i
+    ],
+    calories: 180,
+    protein: 10,
+    fiber: 8,
+    primaryFood: true
+  },
+  {
     id: "rice",
     label: "cooked rice serving",
     patterns: [/\brice\b/i, /\bchawal\b/i],
@@ -92,11 +108,51 @@ const freeTextNutritionRules: FreeTextNutritionRule[] = [
     primaryFood: true
   },
   {
+    id: "quinoa",
+    label: "cooked quinoa serving",
+    patterns: [/\bquinoa\b/i],
+    quantityPatterns: [/\bquinoa\b/i],
+    calories: 220,
+    protein: 8,
+    fiber: 5,
+    primaryFood: true
+  },
+  {
+    id: "pasta",
+    label: "pasta/noodles serving",
+    patterns: [/\bpasta\b/i, /\bnoodles?\b/i, /\bspaghetti\b/i],
+    quantityPatterns: [/\bpasta\b/i, /\bnoodles?\b/i, /\bspaghetti\b/i],
+    calories: 220,
+    protein: 8,
+    fiber: 2,
+    primaryFood: true
+  },
+  {
+    id: "potato",
+    label: "potato serving",
+    patterns: [/\bpotatoes\b/i, /\bpotato\b/i, /\baloo\b/i],
+    quantityPatterns: [/\bpotatoes\b/i, /\bpotato\b/i, /\baloo\b/i],
+    calories: 160,
+    protein: 4,
+    fiber: 4,
+    primaryFood: true
+  },
+  {
     id: "yogurt",
     label: "plain yogurt/curd serving",
     patterns: [/\byogurt\b/i, /\byoghurt\b/i, /\bcurd\b/i, /\bdahi\b/i],
     quantityPatterns: [/\byogurt\b/i, /\byoghurt\b/i, /\bcurd\b/i, /\bdahi\b/i],
     calories: 100,
+    protein: 8,
+    fiber: 0,
+    primaryFood: true
+  },
+  {
+    id: "milk",
+    label: "milk serving",
+    patterns: [/\bmilk\b/i],
+    quantityPatterns: [/\bmilk\b/i],
+    calories: 120,
     protein: 8,
     fiber: 0,
     primaryFood: true
@@ -112,6 +168,16 @@ const freeTextNutritionRules: FreeTextNutritionRule[] = [
     primaryFood: true
   },
   {
+    id: "bread",
+    label: "bread serving",
+    patterns: [/\bbread\b/i, /\bbuns?\b/i, /\brolls?\b/i],
+    quantityPatterns: [/\bbread\b/i, /\bbuns?\b/i, /\brolls?\b/i],
+    calories: 90,
+    protein: 3,
+    fiber: 2,
+    primaryFood: true
+  },
+  {
     id: "oats",
     label: "oats serving",
     patterns: [/\boats?\b/i, /\boatmeal\b/i],
@@ -119,6 +185,66 @@ const freeTextNutritionRules: FreeTextNutritionRule[] = [
     calories: 150,
     protein: 5,
     fiber: 4,
+    primaryFood: true
+  },
+  {
+    id: "tofu",
+    label: "tofu serving",
+    patterns: [/\btofu\b/i],
+    quantityPatterns: [/\btofu\b/i],
+    calories: 180,
+    protein: 18,
+    fiber: 2,
+    primaryFood: true
+  },
+  {
+    id: "fish",
+    label: "fish/salmon serving",
+    patterns: [/\bfish\b/i, /\bsalmon\b/i, /\bcod\b/i, /\btuna\b/i],
+    quantityPatterns: [/\bfish\b/i, /\bsalmon\b/i, /\bcod\b/i, /\btuna\b/i],
+    calories: 220,
+    protein: 28,
+    fiber: 0,
+    primaryFood: true
+  },
+  {
+    id: "shrimp",
+    label: "shrimp serving",
+    patterns: [/\bshrimp\b/i, /\bprawns?\b/i],
+    quantityPatterns: [/\bshrimp\b/i, /\bprawns?\b/i],
+    calories: 120,
+    protein: 24,
+    fiber: 0,
+    primaryFood: true
+  },
+  {
+    id: "cheese",
+    label: "cheese serving",
+    patterns: [/\bcheese\b/i],
+    quantityPatterns: [/\bcheese\b/i],
+    calories: 110,
+    protein: 7,
+    fiber: 0,
+    primaryFood: true
+  },
+  {
+    id: "fruit",
+    label: "fruit serving",
+    patterns: [/\bbanana\b/i, /\bapple\b/i, /\bberries\b/i, /\bfruit\b/i],
+    quantityPatterns: [/\bbanana\b/i, /\bapple\b/i, /\bberries\b/i, /\bfruit\b/i],
+    calories: 100,
+    protein: 1,
+    fiber: 3,
+    primaryFood: true
+  },
+  {
+    id: "nuts",
+    label: "nuts serving",
+    patterns: [/\bnuts\b/i, /\balmonds?\b/i, /\bcashews?\b/i, /\bwalnuts?\b/i],
+    quantityPatterns: [/\bnuts\b/i, /\balmonds?\b/i, /\bcashews?\b/i, /\bwalnuts?\b/i],
+    calories: 170,
+    protein: 6,
+    fiber: 3,
     primaryFood: true
   },
   {
@@ -307,7 +433,8 @@ function buildProvenance({
   matchedComponents,
   servingSizeAssumptions,
   quantityMultipliers,
-  confidence
+  confidence,
+  estimateBasis
 }: {
   matchedComponents: string[];
   servingSizeAssumptions: string[];
@@ -315,13 +442,14 @@ function buildProvenance({
     MealNutritionEstimate["assumptions"]
   >["quantityMultipliers"];
   confidence: MealNutritionEstimate["confidence"];
+  estimateBasis: string;
 }) {
   const quantityNotes = quantityMultipliers
     .filter((item) => item.multiplier !== 1)
     .map((item) => `${item.multiplier}x for ${item.component}`);
 
   return [
-    `Estimated from free-text meal description using conservative assumptions: ${matchedComponents.join(" + ")}.`,
+    `Estimated from ${estimateBasis} using conservative assumptions: ${matchedComponents.join(" + ")}.`,
     servingSizeAssumptions.length
       ? `Serving-size assumptions: ${servingSizeAssumptions.join("; ")}.`
       : null,
@@ -336,6 +464,45 @@ function buildProvenance({
 
 export function estimateFreeTextNutrition(
   description: string
+): MealNutritionEstimate | null {
+  return estimateNutritionFromDescription(description, {
+    estimateBasis: "free-text meal description",
+    reviewBeforeSave:
+      "Review serving assumptions before saving; estimates cover calories, protein, and fiber only."
+  });
+}
+
+export function estimateNutritionFromIngredients(input: {
+  ingredients: RecipeIngredient[];
+  recipeName?: string | null;
+  notes?: string | null;
+}): MealNutritionEstimate | null {
+  const ingredientText = input.ingredients
+    .map((ingredient) => ingredient.rawText.trim())
+    .filter(Boolean)
+    .join("\n");
+  const description = [input.recipeName, ingredientText, input.notes]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join("\n");
+
+  if (!ingredientText) {
+    return null;
+  }
+
+  return estimateNutritionFromDescription(description, {
+    estimateBasis: "recipe ingredients",
+    reviewBeforeSave:
+      "Review serving assumptions before saving; ingredient estimates cover calories, protein, and fiber only."
+  });
+}
+
+function estimateNutritionFromDescription(
+  description: string,
+  options: {
+    estimateBasis: string;
+    reviewBeforeSave: string;
+  }
 ): MealNutritionEstimate | null {
   const normalizedDescription = description.trim();
 
@@ -422,7 +589,8 @@ export function estimateFreeTextNutrition(
       matchedComponents,
       servingSizeAssumptions: Array.from(new Set(servingSizeAssumptions)),
       quantityMultipliers,
-      confidence
+      confidence,
+      estimateBasis: options.estimateBasis
     }),
     assumptions: {
       matchedComponents,
@@ -432,8 +600,7 @@ export function estimateFreeTextNutrition(
       servingMultiplier: 1,
       butterInferred: !withoutButter && (hasExplicitButter(normalizedDescription) || hasExtraButter(normalizedDescription)),
       confidence,
-      reviewBeforeSave:
-        "Review serving assumptions before saving; estimates cover calories, protein, and fiber only."
+      reviewBeforeSave: options.reviewBeforeSave
     },
     source: "estimated"
   };
