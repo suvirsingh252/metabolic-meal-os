@@ -32,23 +32,23 @@ export const metadata: Metadata = {
         type: "image/x-icon"
       },
       {
-        url: "/icon-192.png",
+        url: "/icons/tablewise-icon-192.png",
         sizes: "192x192",
         type: "image/png"
       },
       {
-        url: "/icon-512.png",
+        url: "/icons/tablewise-icon-512.png",
         sizes: "512x512",
         type: "image/png"
       },
       {
-        url: "/icon.svg",
+        url: "/icons/tablewise-icon.svg",
         type: "image/svg+xml"
       }
     ],
     apple: [
       {
-        url: "/apple-touch-icon.png",
+        url: "/icons/tablewise-apple-touch-icon.png",
         sizes: "180x180",
         type: "image/png"
       }
