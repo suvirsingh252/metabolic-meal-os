@@ -147,7 +147,7 @@ LAN testing is not a substitute for the Vercel test because it uses plain HTTP, 
 PWA notes:
 
 - The app includes a web app manifest at `/manifest.webmanifest`.
-- Current icons are simple original placeholder SVG and generated PNG assets in `public/icons`.
+- App icons are the Tablewise "Threaded Table" mark, served from `public/` as `icon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, and `favicon.ico`.
 - There is no service worker or offline mode yet.
 
 ## iPhone Shortcut Setup (Beta 3.6)
