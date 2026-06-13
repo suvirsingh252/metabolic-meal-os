@@ -139,6 +139,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 
 ## Next Up
 
+- [ ] **Postgres Phase 2 — Shadow writes:** add a non-blocking Postgres shadow write to `POST /api/notion/save-meal` after Notion write succeeds. Run `scripts/backfill-meals-to-postgres.ts` (to be written) against the live meal archive. Validate row counts before enabling reads.
 - [ ] **Beta 6.6 (recommended next slice) — URL Recovery / Guided Intake Fallback v1:** improve blocked or script-rendered URL recovery with clearer guided paste/caption fallback while preserving source-URL re-attachment. Keep it a small reliability/UX slice — no Notion schema changes, no new AI calls. A first step already exists, committed locally as `ce7dc0d` but not yet pushed (`getUrlRecoveryCopy` in `src/app/analyze/components/status-banner.tsx` + `tests/analyze-guided-recovery.test.ts`). Domain-specific learning and a richer parser dependency stay deferred unless the tradeoff proves worth it.
 - [ ] Persistent Intelligence Snapshot v2: preserve more exact Analyze fields with a deliberate schema/storage plan once the compact Meal OS Summary proves useful.
 - [ ] Schema Independence: reduce dependence on manually configured Notion properties and active data-source quirks before broader use.
@@ -192,7 +193,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Household-level analytics after auth/tenancy exists.
 - [ ] Predictive coaching or ML only after reliable nutrition/feedback data exists.
 - [ ] Add real model-quality golden fixtures/evals beyond parser/schema unit tests.
-- [ ] Migration from Notion to a dedicated database if needed.
+- [x] Migration from Notion to a dedicated database — Phase 1 foundation complete (Drizzle + Neon schema, migration file, DB client; no active reads/writes yet).
 - [ ] Provider abstraction for AI and storage.
 
 ## Technical Debt

@@ -1,5 +1,42 @@
 # Session Log
 
+## 2026-06-13 Postgres Phase 1 Foundation + Notion Pagination Hardening
+
+### Notion Pagination Hardening (eb51e4f)
+
+Goal: close uncommitted pagination work before starting Postgres migration.
+
+What changed:
+- Extracted `collectAllPages<T>` generic cursor-follower to `src/lib/notion/pagination.ts`. Three unit tests added in `tests/notion-pagination.test.ts`.
+- Added `queryAllMealSummaries` to `src/lib/notion/meals-query.ts`. It exhausts all Notion pages via `collectAllPages` so the previous 100-record cap is gone.
+- Widened `buildHouseholdFilter` to `or [equals householdId, is_empty]` so legacy rows added directly in Notion (before household tagging) remain visible.
+- Updated 5 call sites (dashboard, today, meal detail, planner, meals list) from `queryMealSummaries({ pageSize: 100 })` to `queryAllMealSummaries()`.
+- Updated `tests/schema-health.test.ts` to match the new filter shape.
+
+Validation: lint clean, typecheck clean, 369/369 tests, build clean.
+
+### Postgres Phase 1 Foundation (this commit)
+
+Goal: add Drizzle + Neon infrastructure. No production behavior changed; no DB reads or writes added.
+
+What changed:
+- Added `drizzle-orm` + `@neondatabase/serverless` as runtime dependencies.
+- Added `drizzle-kit` as dev dependency.
+- Added `src/lib/db/client.ts`: server-only `getDbClient()` that reads `DATABASE_URL` at call time; throws on browser.
+- Added `src/lib/db/schema.ts`: `meals` table with 52 columns including `notion_page_id` (unique sync anchor), `notion_url`, `household_id NOT NULL`, `source_url`, and full nutrition/quality/source/tracking fields.
+- Added `drizzle.config.ts` at repo root: points to `src/lib/db/schema.ts`, output to `drizzle/`, dialect `postgresql`.
+- Generated `drizzle/0000_friendly_big_bertha.sql` (52-column `meals` table, `notion_page_id` UNIQUE constraint) via `npx drizzle-kit generate`. **No live database touched.**
+- Added `scripts/check-db.ts`: connectivity probe, lists public tables, reads no app data.
+- Added `npm run db:check`, `npm run db:generate`, `npm run db:migrate` scripts to `package.json`.
+- Updated `docs/ARCHITECTURE.md`: new "Postgres / Drizzle Layer" section covering client, schema, scripts, migration policy, and 4-phase roadmap.
+- Updated `docs/ROADMAP.md`: checked off Phase 1, added Phase 2 shadow-write item to Next Up.
+- Updated `docs/HANDOFF.md`: new QA status block, updated dateline.
+- Updated `docs/SESSION_LOG.md`: this entry.
+
+Live database status: **not touched**. Run `npm run db:check` then `npm run db:migrate` to apply the first migration when ready.
+
+Validation: lint clean, typecheck clean, 369/369 tests, build clean (28 routes unchanged).
+
 ## 2026-06-13 B5 Notion Helper Consolidation (close-out)
 
 Goal:

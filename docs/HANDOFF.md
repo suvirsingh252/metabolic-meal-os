@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-13 (Beta 6 QA Closeout; Beta 6.3 Save Continuity, Beta 6.4 Saved Intelligence Summary, Beta 6.5 Nutrition Reliability v1)
+Last updated: 2026-06-13 (Postgres Phase 1 foundation; Notion pagination hardening)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -8,7 +8,17 @@ For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`,
 
 Metabolic Meal OS is a production-oriented MVP Next.js app for household meal optimization. It remains a private/beta household tool, not a publicly hardened multi-tenant product.
 
-### Current QA Status (2026-06-13 Beta 6 QA Closeout)
+### Current QA Status (2026-06-13 Postgres Phase 1 + Notion pagination hardening)
+
+Local validation gate (post Phase 1 commit):
+- `npm run lint`: passed (clean).
+- `npm run typecheck`: passed (clean).
+- `npm test`: passed, 369/369 tests.
+- `npm run build`: passed; 28 routes, route inventory unchanged.
+
+No live database was touched in Phase 1. `drizzle-kit generate` ran locally to produce the migration SQL; `drizzle-kit migrate` has not been run yet.
+
+### QA Status (2026-06-13 Beta 6 QA Closeout — prior baseline)
 
 Local validation gate, run against `main` including the guided-recovery change (`ce7dc0d`, committed locally mid-session by the user, not yet pushed):
 - `npm run typecheck`: passed (clean).

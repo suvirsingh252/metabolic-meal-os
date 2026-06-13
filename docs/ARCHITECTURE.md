@@ -356,10 +356,55 @@ Tenancy:
 - Meals reads filter by configured `householdId` when a compatible `Household ID` rich_text property exists.
 - True multi-household auth/RBAC is not implemented yet. Do not operate this as a public multi-tenant app until login identity and authorization are enforced.
 
+## Postgres / Drizzle Layer (Phase 1 Foundation)
+
+Added 2026-06-13. Notion remains the active source of truth; Postgres is not yet read or written by any API route.
+
+### Infrastructure
+
+- Runtime: `@neondatabase/serverless` (Neon HTTP driver, works in Vercel serverless functions without a persistent connection pool).
+- ORM: `drizzle-orm` with `drizzle-orm/neon-http` adapter.
+- Migrations: `drizzle-kit` (`npm run db:generate`, `npm run db:migrate`). Migration files live in `drizzle/`. Never run `drizzle-kit push` in production — always generate then migrate.
+
+### Client
+
+`src/lib/db/client.ts` exports `getDbClient()`. It is server-only (throws if called from the browser) and reads `DATABASE_URL` at call time. Call it inside a route/server action; do not store the client at module scope.
+
+### Schema
+
+`src/lib/db/schema.ts` — `meals` table only. Phase 2+ will add `meal_feedback`, `ingredients`, `meal_ingredient_links`, `planner_slots`, and `intake_queue`.
+
+Key design decisions:
+- `notion_page_id` (unique) and `notion_url` are permanent sync anchors; they survive even after Notion is demoted to archive.
+- `household_id NOT NULL` is populated from `APP_HOUSEHOLD_ID` on every write. All read query paths must include `WHERE household_id = $householdId` — this is the only tenancy primitive until per-user auth exists.
+- Numeric scores use `numeric` (not `float`) to preserve exact decimal values.
+- `meal_date` is a `date` column (not timestamp) to match Notion's date-type property.
+- `created_at` and `updated_at` are `timestamptz` with server-side defaults; `updated_at` must be touched on every UPDATE.
+
+### Scripts
+
+- `npm run db:check` — `scripts/check-db.ts`: connectivity probe, lists public tables. Reads no app data.
+- `npm run db:generate` — generate a migration from `src/lib/db/schema.ts`.
+- `npm run db:migrate` — apply pending migrations to the live database.
+
+### Migration policy
+
+1. Schema changes: edit `src/lib/db/schema.ts`, then `npm run db:generate`.
+2. Apply: `npm run db:migrate` (uses `DATABASE_URL`).
+3. Never hand-edit migration SQL after generating.
+4. `drizzle/` directory is committed — migration history is source-controlled.
+
+### Phase roadmap
+
+- **Phase 1 (current):** Infrastructure only. Drizzle schema, migration file, DB client. No reads, no writes.
+- **Phase 2:** Shadow writes to `meals` from `POST /api/notion/save-meal` (non-blocking try-catch). Run backfill script.
+- **Phase 3:** Dual-read behind `POSTGRES_SOURCE_ENABLED` feature flag. Validate row counts match Notion.
+- **Phase 4:** Postgres primary for meals reads/writes. Notion kept as archive. Migrate feedback, planner, ingredients.
+
 ## Planned Data Model Evolution
 
 Current source of truth:
-- Notion databases.
+- Notion databases (Postgres shadow layer added in Phase 1; not yet active).
 
 Actively used entities:
 - Meals.

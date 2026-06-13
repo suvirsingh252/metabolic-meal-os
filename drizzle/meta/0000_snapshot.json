@@ -1,0 +1,358 @@
+{
+  "id": "84738b34-66a6-4d35-98b0-3f1c7f040d6a",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.meals": {
+      "name": "meals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "notion_page_id": {
+          "name": "notion_page_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notion_url": {
+          "name": "notion_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "household_id": {
+          "name": "household_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "schema_version": {
+          "name": "schema_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meal_name": {
+          "name": "meal_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cuisine": {
+          "name": "cuisine",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meal_type": {
+          "name": "meal_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "protein_level": {
+          "name": "protein_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "satiety_level": {
+          "name": "satiety_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blood_sugar_impact": {
+          "name": "blood_sugar_impact",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "effort_level": {
+          "name": "effort_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "family_approved": {
+          "name": "family_approved",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "weeknight_friendly": {
+          "name": "weeknight_friendly",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "comfort_meal": {
+          "name": "comfort_meal",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_classification": {
+          "name": "source_classification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_notes": {
+          "name": "source_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "imported_at": {
+          "name": "imported_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_parsed_at": {
+          "name": "last_parsed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parser_version": {
+          "name": "parser_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analysis_version": {
+          "name": "analysis_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analysis_model": {
+          "name": "analysis_model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ingredients_text": {
+          "name": "ingredients_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instructions_text": {
+          "name": "instructions_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "optimized_version": {
+          "name": "optimized_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "calories": {
+          "name": "calories",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "protein_g": {
+          "name": "protein_g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "carbohydrates_g": {
+          "name": "carbohydrates_g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fat_g": {
+          "name": "fat_g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fiber_g": {
+          "name": "fiber_g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sodium_mg": {
+          "name": "sodium_mg",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sugar_g": {
+          "name": "sugar_g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nutrition_confidence": {
+          "name": "nutrition_confidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nutrition_source": {
+          "name": "nutrition_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nutrition_provenance": {
+          "name": "nutrition_provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quality_score": {
+          "name": "quality_score",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metabolic_score": {
+          "name": "metabolic_score",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "protein_score": {
+          "name": "protein_score",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fiber_score": {
+          "name": "fiber_score",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "energy_density_score": {
+          "name": "energy_density_score",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processing_score": {
+          "name": "processing_score",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "satiety_score_numeric": {
+          "name": "satiety_score_numeric",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blood_sugar_risk_score": {
+          "name": "blood_sugar_risk_score",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meal_date": {
+          "name": "meal_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meals_notion_page_id_unique": {
+          "name": "meals_notion_page_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "notion_page_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
