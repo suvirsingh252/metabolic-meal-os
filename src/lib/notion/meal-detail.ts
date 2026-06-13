@@ -10,7 +10,7 @@ import {
   mapNotionPageToMealSummary,
   type MealSummary
 } from "@/src/lib/notion/meal-summary";
-import { queryMealSummaries } from "@/src/lib/notion/meals-query";
+import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 
 async function queryMealSummaryByPageId(
   mealId: string
@@ -27,7 +27,7 @@ async function queryMealSummaryByPageId(
 export async function getMealDetail(
   mealId: string
 ): Promise<MealDetailViewModel | null> {
-  const mealResult = await queryMealSummaries({ pageSize: 100 });
+  const mealResult = await queryAllMealSummaries();
   let meals = mealResult.meals;
   let feedbackByMealId: MealFeedbackSummaryByMealId = {};
 

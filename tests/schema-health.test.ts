@@ -79,12 +79,29 @@ test("meal query household filter uses active data source properties", () => {
 
   assert.equal(findHouseholdIdProperty(parentDatabase), undefined);
   assert.equal(findHouseholdIdProperty(activeDataSource), "Household ID");
+
+  // The filter must include untagged (legacy / manually-added) rows alongside
+  // rows tagged to this household, so existing recipes without a Household ID
+  // are not hidden. Records tagged to a different household stay excluded.
   assert.deepEqual(buildHouseholdFilter("Household ID", "household-main"), {
-    property: "Household ID",
-    rich_text: {
-      equals: "household-main"
-    }
+    or: [
+      {
+        property: "Household ID",
+        rich_text: {
+          equals: "household-main"
+        }
+      },
+      {
+        property: "Household ID",
+        rich_text: {
+          is_empty: true
+        }
+      }
+    ]
   });
+
+  // No Household ID property on the data source means no filtering at all.
+  assert.equal(buildHouseholdFilter(undefined, "household-main"), undefined);
 });
 
 test("feedback schema health detects missing or wrong Meal relation", () => {

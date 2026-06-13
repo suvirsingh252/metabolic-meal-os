@@ -5,6 +5,7 @@ import {
   mapNotionPageToMealSummary,
   type MealSummary
 } from "@/src/lib/notion/meal-summary";
+import { collectAllPages } from "@/src/lib/notion/pagination";
 import { getPrimaryDataSourceId, isRecord } from "@/src/lib/notion/route-helpers";
 
 const MEALS_DATA_SOURCE_ERROR =
@@ -36,14 +37,30 @@ export function findHouseholdIdProperty(schemaSource: unknown) {
 }
 
 export function buildHouseholdFilter(propertyName: string | undefined, householdId: string) {
-  return propertyName
-    ? {
+  if (!propertyName) {
+    return undefined;
+  }
+
+  // Show records tagged to this household plus legacy/manually-added rows that
+  // have no Household ID yet, while still excluding records explicitly tagged
+  // to a different household. Without the is_empty branch, every recipe added
+  // before household tagging (or added directly in Notion) is hidden.
+  return {
+    or: [
+      {
         property: propertyName,
         rich_text: {
           equals: householdId
         }
+      },
+      {
+        property: propertyName,
+        rich_text: {
+          is_empty: true as const
+        }
       }
-    : undefined;
+    ]
+  };
 }
 
 export interface QueryMealSummariesOptions {
@@ -104,4 +121,26 @@ export async function queryMealSummaries(
     nextCursor: response.next_cursor,
     hasMore: response.has_more
   };
+}
+
+/**
+ * Fetch every matching meal by following Notion's pagination cursor. Use this
+ * wherever the caller needs the complete set (list views, dashboards, planner)
+ * rather than a single page; a lone `queryMealSummaries` call silently caps at
+ * one page (max 100 records).
+ */
+export async function queryAllMealSummaries(
+  options: Omit<QueryMealSummariesOptions, "cursor"> = {}
+): Promise<{ meals: MealSummary[] }> {
+  const meals = await collectAllPages<MealSummary>(async (cursor) => {
+    const page = await queryMealSummaries({ ...options, pageSize: 100, cursor });
+
+    return {
+      items: page.meals,
+      nextCursor: page.nextCursor,
+      hasMore: page.hasMore
+    };
+  });
+
+  return { meals };
 }

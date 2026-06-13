@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildDashboardViewModel, type AnalyticsMeal } from "@/src/lib/domain/analytics";
-import { queryMealSummaries } from "@/src/lib/notion/meals-query";
+import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 import { guardApiRequest } from "@/src/lib/server/request-guards";
 
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { meals } = await queryMealSummaries({ pageSize: 100 });
+    const { meals } = await queryAllMealSummaries();
     const dashboard = buildDashboardViewModel(
       meals.map(mapMealSummaryToAnalyticsMeal),
       { targets: readTargets(request) }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { MealFeedbackSummaryByMealId } from "@/src/lib/domain/feedback";
 import { queryMealFeedbackSummaries } from "@/src/lib/notion/feedback-summary";
-import { queryMealSummaries } from "@/src/lib/notion/meals-query";
+import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 import { guardApiRequest } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const mealResult = await queryMealSummaries({ pageSize: 100 });
+    const mealResult = await queryAllMealSummaries();
     let feedbackByMealId: MealFeedbackSummaryByMealId = {};
 
     try {

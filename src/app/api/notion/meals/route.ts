@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { queryMealSummaries } from "@/src/lib/notion/meals-query";
+import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 import { guardApiRequest } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
@@ -30,12 +30,12 @@ export async function GET(request: Request) {
 
   try {
     const params = parseListParams(request);
-    const result = await queryMealSummaries(params);
+    const result = await queryAllMealSummaries({ search: params.search });
 
     return NextResponse.json({
       meals: result.meals,
-      nextCursor: result.nextCursor,
-      hasMore: result.hasMore
+      nextCursor: null,
+      hasMore: false
     });
   } catch (error) {
     console.error("Notion meals query failure", error);

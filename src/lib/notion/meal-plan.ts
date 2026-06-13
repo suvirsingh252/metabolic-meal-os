@@ -16,7 +16,7 @@ import {
 } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
-import { queryMealSummaries } from "@/src/lib/notion/meals-query";
+import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 import { getPrimaryDataSourceId, isRecord } from "@/src/lib/notion/route-helpers";
 
 const requiredPlannerProperties = [
@@ -307,7 +307,7 @@ export async function getWeeklyDinnerPlanner(): Promise<PlannerViewModel> {
         }
       ]
     }),
-    queryMealSummaries({ pageSize: 100 })
+    queryAllMealSummaries()
   ]);
   const mealById = new Map(mealsResult.meals.map((meal) => [meal.id, meal]));
 
