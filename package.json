@@ -11,6 +11,7 @@
     "smoke:prod": "tsx scripts/smoke-test.ts",
     "smoke:prod:writes": "tsx scripts/smoke-test-writes.ts",
     "db:check": "node --env-file-if-exists=.env.local --import tsx scripts/check-db.ts",
+    "audit:backfill": "node --env-file-if-exists=.env.local --import tsx scripts/audit-backfill.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/.bin/drizzle-kit migrate"
   },
