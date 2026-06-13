@@ -211,7 +211,7 @@ export function generateRecommendationExplanation(
   }
 
   if (scoreBreakdown.varietyPenalty < 0) {
-    details.push("This meal has repeated recently, so Meal OS is cautious about suggesting it again.");
+    details.push("This meal has repeated recently, so Tablewise is cautious about suggesting it again.");
   } else {
     details.push("This adds variety because it has not repeated too often lately.");
   }

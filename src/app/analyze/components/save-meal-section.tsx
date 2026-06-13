@@ -38,7 +38,7 @@ export function SaveMealSection({
       {saveError ? <Alert className="mt-4">{saveError}</Alert> : null}
       {savedMeal ? (
         <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
-          <p className="font-medium text-primary">Saved to Meal OS.</p>
+          <p className="font-medium text-primary">Saved to Tablewise.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button asChild>
               <Link href={savedMeal.mealDetailPath}>View saved meal</Link>

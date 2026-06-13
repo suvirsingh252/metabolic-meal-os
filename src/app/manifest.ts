@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Metabolic Meal OS",
-    short_name: "Meal OS",
-    description: "AI-assisted household meal optimization",
+    name: "Tablewise",
+    short_name: "Tablewise",
+    description: "Meal planning that learns your household's real preferences.",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#f7f2e8",
-    theme_color: "#28715f",
+    background_color: "#FFF8EC",
+    theme_color: "#1F5E46",
     icons: [
       {
         src: "/icons/icon-192.png",

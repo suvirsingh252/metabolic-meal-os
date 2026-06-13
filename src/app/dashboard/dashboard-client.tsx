@@ -312,7 +312,7 @@ function HouseholdTakeaways({ dashboard }: { dashboard: DashboardViewModel }) {
           </CardHeader>
           <CardContent className="p-4 pt-2 text-sm leading-6 text-muted-foreground">
             {dashboard.week.mealCount > 0
-              ? `${dashboard.week.mealCount} saved meals are shaping this week's view. Meal OS is using saved quality, nutrition, and household feedback where available.`
+              ? `${dashboard.week.mealCount} saved meals are shaping this week's view. Tablewise is using saved quality, nutrition, and household feedback where available.`
               : "No saved meals are in this week's window yet."}
           </CardContent>
         </Card>
@@ -333,7 +333,7 @@ function HouseholdTakeaways({ dashboard }: { dashboard: DashboardViewModel }) {
             <p>{confidence}</p>
             {nutritionLimited ? (
               <p>
-                Nutrition totals are limited right now, so Meal OS is leaning more
+                Nutrition totals are limited right now, so Tablewise is leaning more
                 on meal quality and household feedback.
               </p>
             ) : null}
@@ -541,7 +541,7 @@ function DataReliabilitySummary({ dashboard }: { dashboard: DashboardViewModel }
               {mix.structured} recipe nutrition
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.estimated > 0 ? "steady" : "unavailable"}>
-              {mix.estimated} Meal OS estimates
+              {mix.estimated} Tablewise estimates
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.userEntered + mix.reviewed > 0 ? "positive" : "unavailable"}>
               {mix.userEntered + mix.reviewed} reviewed by household

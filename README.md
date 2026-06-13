@@ -1,6 +1,20 @@
-# Metabolic Meal OS
+# Tablewise
+
+**Tablewise remembers what works.** Smarter meals for your household.
+
+Tablewise is a household meal intelligence app — meal planning that learns your
+household's real preferences over time: meals, feedback, substitutions, recipes,
+nutrition context, and planning patterns.
 
 A production-oriented MVP scaffold for a household meal optimization app.
+
+> **Rebrand note:** This product was previously named **Metabolic Meal OS** (also
+> referred to as "Meal OS"). It has been rebranded to **Tablewise**. Historical
+> references to the old name remain in changelog and decision history below for
+> continuity. Internal identifiers — the repository, npm package name, deployment
+> project, environment variables, Notion schema fields, database names, and API
+> routes — intentionally keep their original names and were not changed by the
+> rebrand.
 
 ## Project Handoff
 
@@ -119,7 +133,7 @@ To add the app to an iPhone home screen:
 1. Open the Vercel deployment URL in Safari.
 2. Tap the Share button.
 3. Choose `Add to Home Screen`.
-4. Keep the suggested name, `Meal OS`, or rename it.
+4. Keep the suggested name, `Tablewise`, or rename it.
 5. Launch the app from the new home screen icon.
 
 LAN testing can be useful for quick local checks while developing:
@@ -138,7 +152,7 @@ PWA notes:
 
 ## iPhone Shortcut Setup (Beta 3.6)
 
-The iPhone Share Sheet Shortcut lets you send recipe URLs, social post URLs, or copied recipe text from any app directly into Metabolic Meal OS for analysis.
+The iPhone Share Sheet Shortcut lets you send recipe URLs, social post URLs, or copied recipe text from any app directly into Tablewise for analysis.
 
 ### Notion Intake Database
 
@@ -159,7 +173,7 @@ Copy the database ID from the Notion URL and set `NOTION_MEAL_INTAKE_DATABASE_ID
 ### Shortcut steps
 
 1. Open the **Shortcuts** app on your iPhone.
-2. Tap **+** to create a new shortcut. Name it **Send to Metabolic Meal OS**.
+2. Tap **+** to create a new shortcut. Name it **Send to Tablewise**.
 3. Tap the info icon and enable **Use as Share Sheet**.
 4. Under **Share Sheet Types**, enable **URLs**, **Text**, **Safari Web Pages**, **Rich Text**, and **Apps** if available.
 5. Set **If there's no input** to **Continue**.
@@ -224,7 +238,7 @@ Dashboard reliability behavior:
 
 - Beta 3.5 audit verified the full Analyze -> Save -> Notion -> Meals -> Dashboard nutrition lifecycle with a known meal. New saves now inspect the active Notion data source before writing optional nutrition fields, so compatible Meals properties receive calories, protein, fiber, nutrition source/provenance/confidence, and meal quality.
 - Historical Meals are enriched at read time only. Existing Notion nutrition and score properties win; legacy Notes scorecards can backfill quality metadata; exact nutrition totals are never invented.
-- `/dashboard` starts with household takeaways: what Meal OS learned, what to do next, and how confident the dashboard is. Technical data coverage indicators live under Advanced data coverage.
+- `/dashboard` starts with household takeaways: what Tablewise learned, what to do next, and how confident the dashboard is. Technical data coverage indicators live under Advanced data coverage.
 - `/settings` Notion schema diagnostics reports optional Meals field gaps and incompatible property types without mutating Notion schema or blocking the app.
 
 Feedback behavior:
@@ -308,7 +322,7 @@ Meal Plan Notion database:
 
 Beta 3 usability behavior:
 
-- Normal household flows use Meal OS language (`Save meal`, `Saved to Meal OS`, `Saved meals`) instead of Notion-facing copy.
+- Normal household flows use Tablewise language (`Save meal`, `Saved to Tablewise`, `Saved meals`) instead of Notion-facing copy.
 - External saved-record links remain available only in Advanced details where kept.
 - Analyze uses staged loading copy (`Reading meal details...`, `Estimating household fit...`, `Checking nutrition signals...`, `Preparing your review...`) and tells users detailed meals can take about 20-30 seconds.
 - Meal Detail starts with household summary, quick feedback semantics, why the meal works, nutrition/quality, and recent feedback. Raw notes, provenance, and external saved-record links live under Advanced details.
@@ -337,7 +351,7 @@ npm run dev
 
 7. Review or edit the analyzed meal fields, then click `Save meal`.
 
-8. Confirm the success state says `Saved to Meal OS.` and, under Advanced details, the saved record opens in the Meals database.
+8. Confirm the success state says `Saved to Tablewise.` and, under Advanced details, the saved record opens in the Meals database.
 
 ## Mobile UX Principles
 

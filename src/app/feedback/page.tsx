@@ -362,7 +362,7 @@ export default function FeedbackPage() {
 
           {savedFeedback ? (
             <div className="mt-6 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
-              <p className="font-medium text-primary">Saved to Meal OS.</p>
+              <p className="font-medium text-primary">Saved to Tablewise.</p>
               <details className="mt-3 text-muted-foreground">
                 <summary className="cursor-pointer font-medium text-foreground">
                   Advanced details

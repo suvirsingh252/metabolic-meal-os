@@ -6,17 +6,23 @@ import { AppShell } from "@/components/layout/app-shell";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  applicationName: "Metabolic Meal OS",
+  applicationName: "Tablewise",
   title: {
-    default: "Metabolic Meal OS",
-    template: "%s | Metabolic Meal OS"
+    default: "Tablewise — Smarter meals for your household",
+    template: "%s | Tablewise"
   },
-  description: "AI-assisted household meal optimization",
+  description: "Meal planning that learns your household's real preferences.",
+  openGraph: {
+    title: "Tablewise — Smarter meals for your household",
+    description: "Tablewise remembers what works. Meal planning that learns your household's real preferences.",
+    siteName: "Tablewise",
+    type: "website"
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Meal OS"
+    title: "Tablewise"
   },
   icons: {
     icon: [
@@ -49,7 +55,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#28715f"
+  themeColor: "#1F5E46"
 };
 
 export default function RootLayout({

@@ -154,7 +154,7 @@ export function MealInputPanel({
             </p>
             <p className="text-sm text-muted-foreground">
               {usesBestEffortSocialIntake
-                ? "Instagram captions may not be visible, but Meal OS can still prepare a reviewable best guess."
+                ? "Instagram captions may not be visible, but Tablewise can still prepare a reviewable best guess."
                 : "This can take about 20-30 seconds for detailed meals."}
             </p>
             {usesBestEffortSocialIntake ? (
@@ -216,7 +216,7 @@ export function MealInputPanel({
             </button>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
-                Meal OS is still working. Detailed reviews can take a short moment.
+                Tablewise is still working. Detailed reviews can take a short moment.
               </p>
             ) : null}
           </div>

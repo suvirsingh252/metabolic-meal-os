@@ -17,7 +17,7 @@ export function getUrlRecoveryCopy(inputLooksLikeUrl: boolean, error: string) {
   }
 
   return {
-    title: "Meal OS could not read that page automatically.",
+    title: "Tablewise could not read that page automatically.",
     body:
       "Some publishers block automated recipe reading, hide recipe text behind scripts, or return limited page data. The app is still working; it just needs the recipe details another way.",
     nextStep:
@@ -82,7 +82,7 @@ export function StatusBanner({
         {usesBestEffortSocialIntake ? (
           <>
             <p>
-              Meal OS tried the Instagram enrichment path. Captions are often
+              Tablewise tried the Instagram enrichment path. Captions are often
               hidden from static page reads, so add notes if you have them or
               run a best-guess analysis again.
             </p>

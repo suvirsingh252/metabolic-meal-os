@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity } from "lucide-react";
 import { navItems } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -14,13 +14,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 border-b bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Link className="flex min-w-0 items-center gap-3" href="/">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Activity className="h-5 w-5" />
-            </span>
-            <span className="truncate text-base font-semibold">
-              Metabolic Meal OS
-            </span>
+          <Link className="flex min-w-0 items-center" href="/">
+            <BrandLogo variant="full" />
           </Link>
 
           <nav className="ml-auto hidden items-center gap-1 md:flex">

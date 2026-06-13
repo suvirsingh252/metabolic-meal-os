@@ -4,23 +4,36 @@
 
 @layer base {
   :root {
-    --background: 43 35% 96%;
-    --foreground: 210 24% 16%;
+    /*
+     * Tablewise brand palette (rebranded from Metabolic Meal OS).
+     * Source hex -> HSL token mapping:
+     *   Warm cream   #FFF8EC -> background / surface
+     *   Charcoal     #26322D -> foreground (primary text)
+     *   Deep green   #1F5E46 -> primary, ring, strong headings, logo
+     *   Soft sage    #DDEBDD -> secondary / muted surfaces, calm panels
+     *   Accent apricot #F4A261 -> accent (sparing warmth / new moments)
+     */
+    --background: 38 100% 96%;
+    --foreground: 155 14% 17%;
     --card: 0 0% 100%;
-    --card-foreground: 210 24% 16%;
-    --primary: 164 54% 28%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 30 28% 90%;
-    --secondary-foreground: 210 24% 16%;
-    --muted: 36 18% 88%;
-    --muted-foreground: 215 13% 42%;
-    --accent: 12 72% 52%;
-    --accent-foreground: 0 0% 100%;
+    --card-foreground: 155 14% 17%;
+    --primary: 157 50% 25%;
+    --primary-foreground: 40 100% 97%;
+    --secondary: 120 26% 89%;
+    --secondary-foreground: 157 38% 22%;
+    --muted: 110 22% 91%;
+    --muted-foreground: 150 10% 36%;
+    --accent: 27 87% 67%;
+    --accent-foreground: 155 30% 18%;
+    --success: 150 48% 32%;
+    --success-foreground: 40 100% 97%;
+    --warning: 30 85% 55%;
+    --warning-foreground: 155 30% 18%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 32 20% 83%;
-    --input: 32 20% 83%;
-    --ring: 164 54% 28%;
+    --border: 135 14% 84%;
+    --input: 135 14% 84%;
+    --ring: 157 50% 25%;
     --radius: 0.5rem;
   }
 

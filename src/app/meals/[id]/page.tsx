@@ -117,7 +117,7 @@ export default async function MealDetailPage({
         <PageHeader
           eyebrow="Meal detail"
           title="Meal not found"
-          description="This saved meal could not be found in the current Meal OS meal archive."
+          description="This saved meal could not be found in the current Tablewise meal archive."
           action={
             <Button asChild variant="secondary">
               <Link href="/meals">Back to meals</Link>
@@ -128,7 +128,7 @@ export default async function MealDetailPage({
           <CardContent className="p-6">
             <EmptyText>
               The meal may have moved in Notion, or it may be outside the meals
-              currently loaded by Meal OS.
+              currently loaded by Tablewise.
             </EmptyText>
           </CardContent>
         </Card>
@@ -183,7 +183,7 @@ export default async function MealDetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
-              MEAL OS SUMMARY
+              TABLEWISE SUMMARY
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
@@ -380,7 +380,7 @@ export default async function MealDetailPage({
                 </div>
               ) : (
                 <EmptyText>
-                  Meal OS has limited recommendation context for this meal so far.
+                  Tablewise has limited recommendation context for this meal so far.
                 </EmptyText>
               )}
             </div>
