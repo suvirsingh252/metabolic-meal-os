@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
+Last updated: 2026-06-13 (Beta 6 QA closeout; Beta 6.3-6.5 family-feedback closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -139,7 +139,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 
 ## Next Up
 
-- [ ] URL Recovery / Guided Intake Fallbacks: improve blocked or script-rendered URL recovery with clearer guided paste/caption fallback, domain-specific learning, and possibly a richer parser dependency if the tradeoff is worth it.
+- [ ] **Beta 6.6 (recommended next slice) — URL Recovery / Guided Intake Fallback v1:** improve blocked or script-rendered URL recovery with clearer guided paste/caption fallback while preserving source-URL re-attachment. Keep it a small reliability/UX slice — no Notion schema changes, no new AI calls. A first step already exists, committed locally as `ce7dc0d` but not yet pushed (`getUrlRecoveryCopy` in `src/app/analyze/components/status-banner.tsx` + `tests/analyze-guided-recovery.test.ts`). Domain-specific learning and a richer parser dependency stay deferred unless the tradeoff proves worth it.
 - [ ] Persistent Intelligence Snapshot v2: preserve more exact Analyze fields with a deliberate schema/storage plan once the compact Meal OS Summary proves useful.
 - [ ] Schema Independence: reduce dependence on manually configured Notion properties and active data-source quirks before broader use.
 - [ ] Planner Recommendation Layer: recommend saved meals into planner slots using existing feedback, nutrition reliability, and household context without inventing meals.

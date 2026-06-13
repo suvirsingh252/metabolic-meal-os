@@ -1,5 +1,38 @@
 # Session Log
 
+## 2026-06-13 Beta 6 QA Closeout
+
+Goal:
+- Run a full QA pass over the current app state and bring all project documentation into line with reality. Documentation closeout, not feature work.
+
+Repo state at start:
+- Branch `main`, in sync with `origin/main` (0 ahead / 0 behind) after fetch.
+- All Beta 6.1 → 6.5 work plus social intake normalization, Notion schema hardening, the open-mode auth fix, and the Intake v2 Instagram recovery path are committed and already documented.
+- Two uncommitted local changes were present at session start and intentionally preserved (not overwritten): `src/app/analyze/components/status-banner.tsx` (new `getUrlRecoveryCopy` guided URL-recovery copy on Analyze) and a new `tests/analyze-guided-recovery.test.ts`. Mid-session the user committed those two files as `ce7dc0d Add guided recovery for blocked recipe URLs` (local only, not yet pushed). This is the first step of the Beta 6.6 / "URL Recovery" slice; see below.
+- `main` is now ahead of `origin/main` by `ce7dc0d` (guided recovery) plus this docs closeout commit. Neither has been pushed.
+
+Validation gate (run twice — before and after doc edits, working tree including the uncommitted guided-recovery change):
+- `npm run typecheck`: passed (clean).
+- `npm run lint`: passed (clean).
+- `npm test`: passed, 358/358 tests across 41 files (was 356 before the uncommitted guided-recovery test added 2).
+- `npm run build`: passed; 28 routes generated, matching the documented route inventory.
+
+QA review findings:
+- README, HANDOFF, ARCHITECTURE, ROADMAP, DECISIONS, KNOWN_ISSUES were already current as of the 2026-06-13 family-feedback closeout. Routes, API endpoints, auth/open-mode behavior, intake/Instagram recovery, nutrition estimation, feedback, planner, Cook Again Loop, saved-meal intelligence summary, and save-continuity all match the code.
+- No new product/architecture decisions surfaced that DECISIONS.md does not already record.
+- Security posture is unchanged from the 2026-06-12 re-audit (`docs/AUDIT-2026-06-11.md`): findings B1–B7 remain OPEN and tracked there. This QA pass did not resolve or change them, so the audit doc was deliberately left unchanged to avoid overclaiming.
+- No runtime code was changed in this closeout.
+
+Recommended next slice — Beta 6.6 URL Recovery / Guided Intake Fallback v1 (small reliability/UX slice, not a rewrite):
+- When a URL paste fails because a publisher blocks automated reading or hides recipe text behind scripts, Analyze should reassure the user the app still works and guide them to paste caption/transcript/ingredients/recipe text into the same box and re-run.
+- The `getUrlRecoveryCopy` helper + its test (committed locally as `ce7dc0d`, not yet pushed) are the first step. Finishing the slice means pushing/deploying that change, optionally recording which domains tend to fail, and keeping the existing source-URL re-attachment behavior. No Notion schema changes, no new AI calls.
+
+Remaining known gaps (unchanged):
+- Publisher-blocked / login-gated / script-rendered URLs still occur and need the guided paste fallback above.
+- Visible nutrition tables are not parsed unless exposed as schema.org JSON-LD.
+- Full Analyze parity is not preserved on saved meals; Persistent Intelligence Snapshot v2 remains a future candidate.
+- Notion schema dependence still exists; optional fields persist only when compatible properties already exist.
+
 ## 2026-06-13 Beta 6.3-6.5 Family Feedback Closeout
 
 Goal:

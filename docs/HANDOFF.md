@@ -1,12 +1,24 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-13 (Beta 6.3 Save Continuity, Beta 6.4 Saved Intelligence Summary, Beta 6.5 Nutrition Reliability v1)
+Last updated: 2026-06-13 (Beta 6 QA Closeout; Beta 6.3 Save Continuity, Beta 6.4 Saved Intelligence Summary, Beta 6.5 Nutrition Reliability v1)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
 ## Current Project Status
 
-Metabolic Meal OS is a production-oriented MVP Next.js app for household meal optimization.
+Metabolic Meal OS is a production-oriented MVP Next.js app for household meal optimization. It remains a private/beta household tool, not a publicly hardened multi-tenant product.
+
+### Current QA Status (2026-06-13 Beta 6 QA Closeout)
+
+Local validation gate, run against `main` including the guided-recovery change (`ce7dc0d`, committed locally mid-session by the user, not yet pushed):
+- `npm run typecheck`: passed (clean).
+- `npm run lint`: passed (clean).
+- `npm test`: passed, 358/358 tests across 41 files.
+- `npm run build`: passed; 28 routes generated, matching the route inventory below.
+
+This was a documentation/QA closeout: no runtime behavior was changed. Docs were verified against the code for routes, API endpoints, auth/open-mode, intake/Instagram recovery, nutrition estimation, feedback, planner, Cook Again Loop, saved-meal intelligence summary, and save continuity, and found accurate. Security findings B1–B7 in `docs/AUDIT-2026-06-11.md` remain OPEN and tracked there; this pass did not change them.
+
+In progress (committed locally as `ce7dc0d`, not yet pushed): `getUrlRecoveryCopy` in `src/app/analyze/components/status-banner.tsx` plus `tests/analyze-guided-recovery.test.ts` — the first step of the Beta 6.6 URL Recovery slice (see Immediate Next Tasks).
 
 Production verified:
 - Public Vercel deployment exists and is live.
@@ -498,6 +510,8 @@ Reasoning:
 - Structured ingredient persistence is not implemented yet.
 
 ## Immediate Next Tasks
+
+Recommended next slice — Beta 6.6 URL Recovery / Guided Intake Fallback v1 (small reliability/UX slice, not a rewrite): when a URL paste fails because a publisher blocks automated reading or hides recipe text behind scripts, Analyze should reassure the user the app still works and guide them to paste caption/transcript/ingredients/recipe text into the same box and re-run, while preserving the existing source-URL re-attachment behavior. A first step already exists, committed locally as `ce7dc0d` but not yet pushed (`getUrlRecoveryCopy` + `tests/analyze-guided-recovery.test.ts`). No Notion schema changes and no new AI calls.
 
 1. Review FoodData Central matching quality on a larger household ingredient set and add targeted query expansions only where needed.
 2. Review Evidence-Aware Analysis v3 plus known Ingredient context output quality on real household meals and tighten prompt/schema language if it drifts into medical claims or over-precise nutrition claims.

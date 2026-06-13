@@ -1,8 +1,12 @@
 # Known Issues
 
-Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
+Last updated: 2026-06-13 (Beta 6 QA closeout; Beta 6.3-6.5 family-feedback closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
+
+## Current QA Status (2026-06-13)
+
+Validation gate is green on `main`: `npm run typecheck`, `npm run lint`, `npm test` (358/358), and `npm run build` all pass. The 2026-06-13 QA pass was documentation-only and changed no runtime behavior. Security findings B1–B7 remain OPEN and tracked in `docs/AUDIT-2026-06-11.md`; this pass did not change them. A first step toward Beta 6.6 URL Recovery exists, committed locally as `ce7dc0d` (`getUrlRecoveryCopy` + `tests/analyze-guided-recovery.test.ts`) but not yet pushed.
 
 ## Critical
 
