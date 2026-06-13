@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type React from "react";
-import { CalendarDays, ExternalLink, Soup, Star } from "lucide-react";
+import { Brain, CalendarDays, ExternalLink, Soup, Star } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,27 @@ function formatValue(value: number | null, unit: string) {
 
 function EmptyText({ children }: { children: string }) {
   return <p className="text-sm leading-6 text-muted-foreground">{children}</p>;
+}
+
+function SummaryItem({
+  label,
+  value
+}: {
+  label: string;
+  value: string | null;
+}) {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="text-sm leading-6 text-foreground">{value}</p>
+    </div>
+  );
 }
 
 function SectionTitle({
@@ -156,6 +177,43 @@ export default async function MealDetailPage({
         ].join(":")}
         meal={meal}
       />
+
+      {detail.mealOsSummary.hasContent ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              MEAL OS SUMMARY
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <SummaryItem
+              label="Quick Verdict"
+              value={detail.mealOsSummary.quickVerdict}
+            />
+            <SummaryItem
+              label="Why It Works"
+              value={detail.mealOsSummary.whyItWorks}
+            />
+            <SummaryItem
+              label="Minimal Change / Optimization"
+              value={detail.mealOsSummary.optimization}
+            />
+            <SummaryItem
+              label="Family Consideration"
+              value={detail.mealOsSummary.familyConsideration}
+            />
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Nutrition Confidence
+              </p>
+              <Badge className="bg-background text-foreground">
+                {detail.mealOsSummary.nutritionConfidence}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

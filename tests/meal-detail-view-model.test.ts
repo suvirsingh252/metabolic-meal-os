@@ -101,6 +101,7 @@ test("buildMealDetailViewModel returns a detail model for a saved meal", () => {
   assert.equal(detail?.hasNutritionData, true);
   assert.equal(detail?.cookbook.hasOriginalRecipe, true);
   assert.equal(detail?.cookbook.originalRecipeUrl, "https://example.com/chana");
+  assert.equal(detail?.mealOsSummary.nutritionConfidence, "Estimated");
   assert.equal(
     detail?.nutritionItems.find((item) => item.id === "protein")?.value,
     28
@@ -241,7 +242,11 @@ test("meal detail cookbook gracefully handles missing recipe fields", () => {
       meal({
         notes: null,
         optimizedVersion: null,
-        sourceUrl: null
+        sourceUrl: null,
+        nutritionConfidence: null,
+        nutritionSource: null,
+        nutritionProvenance: null,
+        qualityScore: null
       })
     ],
     "meal-1",
@@ -253,4 +258,105 @@ test("meal detail cookbook gracefully handles missing recipe fields", () => {
   assert.equal(detail?.cookbook.familyAdjustments.length, 0);
   assert.equal(detail?.cookbook.originalRecipeUrl, "https://notion.so/meal-1");
   assert.equal(detail?.cookbook.hasOriginalRecipe, false);
+  assert.deepEqual(detail?.mealOsSummary, {
+    quickVerdict: null,
+    whyItWorks: "You have not had this recently.",
+    optimization: null,
+    nutritionConfidence: "Unknown",
+    familyConsideration: null,
+    hasContent: true
+  });
+});
+
+test("meal detail summary extracts persisted Analyze intelligence from notes", () => {
+  const detail = buildMealDetailViewModel(
+    [
+      meal({
+        notes: [
+          "Original Notes:",
+          "Family liked this as written.",
+          "",
+          "Ingredients:",
+          "- chickpeas",
+          "",
+          "Analysis Framework v2 Summary:",
+          "",
+          "Quick Verdict:",
+          "Balanced weeknight option with strong protein and familiar flavors.",
+          "",
+          "Scorecard:",
+          "- Metabolic: 8/10",
+          "",
+          "Main Concerns:",
+          "- Watch rice portion.",
+          "",
+          "Plate Strategy:",
+          "Pair with cucumber salad and keep rice to a quarter plate.",
+          "",
+          "Cautions:",
+          "- Sodium depends on canned chickpeas.",
+          "",
+          "Evidence-Aware v3 Summary:",
+          "",
+          "Confidence Notes:",
+          "- Portions vary."
+        ].join("\n"),
+        optimizedVersion: "Add extra spinach and use less oil.",
+        nutritionSource: "recipe-json-ld",
+        nutritionConfidence: "high",
+        nutritionProvenance: "Imported from recipe metadata."
+      })
+    ],
+    "meal-1",
+    { generatedAt }
+  );
+
+  assert.equal(
+    detail?.mealOsSummary.quickVerdict,
+    "Balanced weeknight option with strong protein and familiar flavors."
+  );
+  assert.equal(
+    detail?.mealOsSummary.whyItWorks,
+    "Pair with cucumber salad and keep rice to a quarter plate."
+  );
+  assert.equal(
+    detail?.mealOsSummary.optimization,
+    "Add extra spinach and use less oil."
+  );
+  assert.equal(detail?.mealOsSummary.nutritionConfidence, "Imported");
+  assert.equal(detail?.mealOsSummary.hasContent, true);
+});
+
+test("meal detail summary handles manual and unknown nutrition confidence", () => {
+  const manual = buildMealDetailViewModel(
+    [
+      meal({
+        id: "manual",
+        notes: null,
+        optimizedVersion: null,
+        nutritionSource: "user-entered",
+        nutritionConfidence: null,
+        nutritionProvenance: "Manually entered by household."
+      })
+    ],
+    "manual",
+    { generatedAt }
+  );
+  const unknown = buildMealDetailViewModel(
+    [
+      meal({
+        id: "unknown",
+        notes: null,
+        optimizedVersion: null,
+        nutritionSource: null,
+        nutritionConfidence: null,
+        nutritionProvenance: null
+      })
+    ],
+    "unknown",
+    { generatedAt }
+  );
+
+  assert.equal(manual?.mealOsSummary.nutritionConfidence, "Manual");
+  assert.equal(unknown?.mealOsSummary.nutritionConfidence, "Unknown");
 });

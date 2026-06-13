@@ -22,6 +22,21 @@ export interface MealDetailNutritionItem {
   unit: string;
 }
 
+export type MealOsNutritionConfidence =
+  | "Imported"
+  | "Estimated"
+  | "Manual"
+  | "Unknown";
+
+export interface MealOsSummaryViewModel {
+  quickVerdict: string | null;
+  whyItWorks: string | null;
+  optimization: string | null;
+  nutritionConfidence: MealOsNutritionConfidence;
+  familyConsideration: string | null;
+  hasContent: boolean;
+}
+
 export interface MealDetailViewModel {
   meal: MealSummary;
   feedbackSummary: MealFeedbackSummary;
@@ -33,6 +48,7 @@ export interface MealDetailViewModel {
   nutritionItems: MealDetailNutritionItem[];
   nutritionProvenance: string | null;
   hasNutritionData: boolean;
+  mealOsSummary: MealOsSummaryViewModel;
   cookbook: MealCookbook;
 }
 
@@ -110,6 +126,150 @@ function buildNutritionItems(meal: MealSummary): MealDetailNutritionItem[] {
   ];
 }
 
+function normalizeNotesLine(value: string) {
+  return value.replace(/\[Truncated for Notion rich_text limit\]/gi, "").trim();
+}
+
+function extractNotesSection(notes: string | null, heading: string) {
+  if (!notes) {
+    return null;
+  }
+
+  const target = heading.toLowerCase();
+  const lines = notes.split(/\r?\n/);
+  const collected: string[] = [];
+  let active = false;
+
+  for (const line of lines) {
+    const trimmed = normalizeNotesLine(line);
+    const headingMatch = trimmed.match(/^([^:]+):$/);
+
+    if (headingMatch) {
+      if (active) {
+        break;
+      }
+
+      active = headingMatch[1].trim().toLowerCase() === target;
+      continue;
+    }
+
+    if (active && trimmed) {
+      collected.push(trimmed.replace(/^\s*[-*]\s+/, "").trim());
+    }
+  }
+
+  const value = collected.join(" ").trim();
+
+  return value || null;
+}
+
+function normalizeNutritionConfidence(meal: MealSummary): MealOsNutritionConfidence {
+  const source = meal.nutritionSource?.toLowerCase() ?? "";
+  const provenance = meal.nutritionProvenance?.toLowerCase() ?? "";
+  const confidence = meal.nutritionConfidence?.toLowerCase() ?? "";
+  const combined = `${source} ${provenance} ${confidence}`;
+
+  if (
+    combined.includes("user-entered") ||
+    combined.includes("manual") ||
+    combined.includes("manually")
+  ) {
+    return "Manual";
+  }
+
+  if (
+    combined.includes("recipe-json-ld") ||
+    combined.includes("import") ||
+    combined.includes("parsed")
+  ) {
+    return "Imported";
+  }
+
+  if (
+    combined.includes("estimated") ||
+    combined.includes("notion-backfill") ||
+    combined.includes("backfill") ||
+    ["high", "medium", "low"].includes(confidence)
+  ) {
+    return "Estimated";
+  }
+
+  return "Unknown";
+}
+
+function firstUsefulReason(reasons: string[]) {
+  return reasons.map((reason) => reason.trim()).find(Boolean) ?? null;
+}
+
+function buildFamilyConsideration(
+  meal: MealSummary,
+  feedbackReasons: string[],
+  feedbackSummary: MealFeedbackSummary
+) {
+  const feedbackReason = firstUsefulReason(feedbackReasons);
+
+  if (feedbackReason) {
+    return feedbackReason;
+  }
+
+  if (feedbackSummary.recentNotes.length > 0) {
+    const note = feedbackSummary.recentNotes
+      .map((value) => value.trim())
+      .find((value) => value.length > 0);
+
+    if (note) {
+      return note;
+    }
+  }
+
+  if (meal.familyApproved) {
+    return "Marked family approved.";
+  }
+
+  if (meal.weeknightFriendly) {
+    return "Marked weeknight friendly.";
+  }
+
+  if (meal.comfortMeal) {
+    return "Marked as a comfort meal.";
+  }
+
+  return null;
+}
+
+function buildMealOsSummary(
+  meal: MealSummary,
+  whyReasons: string[],
+  feedbackReasons: string[],
+  feedbackSummary: MealFeedbackSummary
+): MealOsSummaryViewModel {
+  const quickVerdict = extractNotesSection(meal.notes, "Quick Verdict");
+  const whyItWorks =
+    extractNotesSection(meal.notes, "Plate Strategy") ?? firstUsefulReason(whyReasons);
+  const optimization = meal.optimizedVersion?.trim() || null;
+  const familyConsideration = buildFamilyConsideration(
+    meal,
+    feedbackReasons,
+    feedbackSummary
+  );
+  const nutritionConfidence = normalizeNutritionConfidence(meal);
+
+  return {
+    quickVerdict,
+    whyItWorks,
+    optimization,
+    nutritionConfidence,
+    familyConsideration,
+    hasContent: Boolean(
+      quickVerdict ||
+        whyItWorks ||
+        optimization ||
+        familyConsideration ||
+        nutritionConfidence !== "Unknown"
+    )
+  };
+}
+
 function toHouseholdWhyReason(reason: string) {
   if (/not recently|haven't had/i.test(reason)) {
     return "You have not had this recently.";
@@ -167,6 +327,7 @@ export function buildMealDetailViewModel(
     )
   );
   const nutritionItems = buildNutritionItems(meal);
+  const feedbackReasons = buildFeedbackReasons(feedbackSummary);
 
   return {
     meal,
@@ -175,10 +336,16 @@ export function buildMealDetailViewModel(
     confidenceBadge: meal.nutritionConfidence,
     dateLabel: feedbackSummary.lastEatenAt ?? meal.createdAt ?? null,
     whyReasons,
-    feedbackReasons: buildFeedbackReasons(feedbackSummary),
+    feedbackReasons,
     nutritionItems,
     nutritionProvenance: meal.nutritionProvenance ?? meal.nutritionSource,
     hasNutritionData: nutritionItems.some((item) => typeof item.value === "number"),
+    mealOsSummary: buildMealOsSummary(
+      meal,
+      whyReasons,
+      feedbackReasons,
+      feedbackSummary
+    ),
     cookbook: buildMealCookbook(meal, feedbackSummary)
   };
 }

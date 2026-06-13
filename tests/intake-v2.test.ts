@@ -12,7 +12,11 @@ import {
   supportsIntakeV2Instagram,
   type IntakeEnrichmentResult
 } from "@/src/lib/intake-v2";
-import { parseRecipeJsonLd, RecipeParserError } from "@/src/lib/integrations/recipe-parser";
+import {
+  basicRecipeParserAdapter,
+  parseRecipeJsonLd,
+  RecipeParserError
+} from "@/src/lib/integrations/recipe-parser";
 
 const instagramFixture = `
 <!doctype html>
@@ -332,25 +336,20 @@ test("normal recipe URLs still use the existing parser primitives", () => {
 });
 
 test("prepareRecipeForMealAnalysis still routes normal recipe URLs through parser", async () => {
-  const originalFetch = globalThis.fetch;
+  const originalParseFromUrl = basicRecipeParserAdapter.parseFromUrl;
 
-  globalThis.fetch = async () =>
-    new Response(
-      `<script type="application/ld+json">${JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "Recipe",
-        name: "Chana dinner",
-        recipeIngredient: ["1 cup chana", "1 cup rice"],
-        recipeInstructions: ["Cook chana.", "Serve with rice."]
-      })}</script>`,
-      {
-        status: 200,
-        headers: {
-          "content-type": "text/html",
-          "content-length": "300"
-        }
-      }
-    );
+  basicRecipeParserAdapter.parseFromUrl = async (url) => ({
+    name: "Chana dinner",
+    source: {
+      sourceType: "url",
+      sourceUrl: url,
+      sourceName: "Example",
+      sourceClassification: "recipe-page",
+      parserVersion: "test-parser"
+    },
+    ingredients: [{ rawText: "1 cup chana" }, { rawText: "1 cup rice" }],
+    instructions: ["Cook chana.", "Serve with rice."]
+  });
 
   try {
     const prepared = await prepareRecipeForMealAnalysis({
@@ -364,7 +363,7 @@ test("prepareRecipeForMealAnalysis still routes normal recipe URLs through parse
       "1 cup rice"
     ]);
   } finally {
-    globalThis.fetch = originalFetch;
+    basicRecipeParserAdapter.parseFromUrl = originalParseFromUrl;
   }
 });
 
