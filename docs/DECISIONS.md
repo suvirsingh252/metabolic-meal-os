@@ -1,6 +1,49 @@
 # Architectural Decisions
 
-Last updated: 2026-06-12 (Private Deployment Auth Release)
+Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
+
+## 2026-06-13 — Beta 6.5 Nutrition Reliability Uses Ingredient Estimates Before Manual Entry
+
+Decision: Keep structured recipe nutrition as the highest-confidence source, then fill missing dashboard-critical nutrition with deterministic ingredient-based estimates when parsed recipe ingredients or social-normalized ingredients are available.
+
+Reasoning:
+- Family users frequently skipped manual nutrition entry, which made Dashboard less useful downstream.
+- Most recipe pages expose ingredients more often than complete structured nutrition facts.
+- A conservative deterministic estimator is safer and more testable than asking OpenAI to invent calories or macros.
+- Reusing the existing `nutritionEstimate` source/confidence/provenance model keeps Analyze, Save, Notion, Meal Detail, and Dashboard compatible.
+
+Boundaries:
+- Estimates cover calories, protein, and fiber only; carbs, fat, sodium, and sugar remain blank unless structured nutrition or manual review supplies them.
+- Visible nutrition tables are not parsed yet.
+- No USDA/FoodData integration, new AI generation, wizard, schema migration, or storage architecture was added.
+
+## 2026-06-13 — Beta 6.4 Saved Meal Intelligence Is A Read Model, Not A Snapshot
+
+Decision: Add a compact `Meal OS Summary` to Meal Detail by reusing already persisted data instead of introducing a new analysis snapshot or storage layer.
+
+Reasoning:
+- Family users expected the most valuable Analyze intelligence to remain attached to a saved meal.
+- Existing Notes already preserve a concise Analysis Framework summary; optimized version, nutrition metadata, recommendation reasons, and feedback summaries provide enough signal for v1.
+- A read-model approach avoids a schema migration and preserves compatibility with older meals.
+
+Boundaries:
+- Full Analyze parity is not preserved. Fields that are not currently saved cannot be reconstructed exactly.
+- No AI call runs during Meal Detail rendering.
+- Empty sections are omitted rather than invented.
+- Persistent Intelligence Snapshot v2 remains a valid future candidate.
+
+## 2026-06-13 — Beta 6.3 Save Success Should Continue In Meal OS
+
+Decision: After saving an analysis, route the user toward app-native next steps: `View saved meal` first, `Add to Planner` second, and external Notion record links only as secondary/advanced actions.
+
+Reasoning:
+- Family feedback showed users perceived Save as an endpoint.
+- Analyze is experienced as "the meal"; after saving, the next natural step is to inspect or plan that meal inside Meal OS.
+- Keeping Notion links secondary preserves admin/debug access without making Notion feel like the product destination.
+
+Boundaries:
+- This is a routing/copy/CTA change only.
+- It does not change Notion persistence or create a new save target.
 
 ## 2026-06-12 — Production Is Private By Default (Fail-Closed Auth)
 

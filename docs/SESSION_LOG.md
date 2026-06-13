@@ -1,5 +1,44 @@
 # Session Log
 
+## 2026-06-13 Beta 6.3-6.5 Family Feedback Closeout
+
+Goal:
+- Close the major family-feedback cycle around save continuity, saved meal intelligence, and nutrition reliability.
+
+Beta 6.3 Save Continuity (`f49d023`, `Add app-native save continuity links`):
+- Save now routes users into Meal OS rather than treating Notion as the destination.
+- Primary CTA after save: `View saved meal`.
+- Secondary CTA after save: `Add to Planner`.
+- Notion links moved to advanced/secondary position.
+- Motivation: family users perceived Save as an endpoint rather than continuity.
+
+Beta 6.4 Saved Intelligence Summary (`8be7817`, `Surface saved meal intelligence summary`):
+- Meal Detail now prominently surfaces a compact `Meal OS Summary`.
+- Summary includes Quick Verdict, Why It Works, Minimal Change / Optimization, Nutrition Confidence, and Family Consideration when available.
+- Reuses existing persisted Notes, optimized version, nutrition metadata, recommendation reasons, and feedback summaries.
+- No new storage architecture, AI call, schema migration, or required Notion property.
+- Motivation: users expected Analyze intelligence to remain attached to saved meals.
+
+Beta 6.5 Nutrition Reliability v1 (`9a04047`, `Estimate nutrition from recipe ingredients`):
+- Structured recipe nutrition still wins.
+- Ingredient-based nutrition estimates automatically fill gaps when structured nutrition is unavailable.
+- Estimator coverage expanded for common household ingredients.
+- Social intake paths benefit when ingredients are recovered from captions or normalized recipe text.
+- Manual nutrition entry remains optional and editable.
+- Motivation: users frequently skipped manual nutrition entry, degrading Dashboard usefulness.
+
+Validation for the Beta 6.5 implementation before docs closeout:
+- `npm run typecheck`: passed.
+- `npm test`: passed, 356/356 tests.
+- `npm run lint`: passed.
+- `npm run build`: passed.
+
+Remaining known gaps:
+- Publisher-blocked/script-rendered URLs still occur.
+- Visible nutrition tables are not parsed yet.
+- Full Analyze parity is not preserved in saved meals; Persistent Intelligence Snapshot v2 remains a future candidate.
+- Notion schema dependence still exists.
+
 ## 2026-06-12 Beta Open-Mode Auth Fix
 
 Goal:

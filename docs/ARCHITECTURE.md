@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-11 (Beta 5 Family Cookbook)
+Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -25,6 +25,8 @@ Frontend surfaces:
 - `lucide-react` for icons.
 
 The UI is still intentionally MVP-simple: cards, forms, badges, alerts, buttons, and native progressive disclosure. No global state manager is used. `/analyze` has a household-first hierarchy pass and staged loading copy; Today, Dashboard, Meals, Feedback, and Meal Detail now use Meal OS language in normal household flows instead of Notion-facing copy. External saved-record links, raw notes, provenance, and diagnostics are kept in Advanced/Settings-oriented areas where practical.
+
+Beta 6.3 save continuity makes `/analyze` save success an app-native continuation point: the primary CTA is `View saved meal`, the secondary CTA is `Add to Planner`, and the Notion record link is secondary/advanced. This keeps the household flow inside Meal OS after Save.
 
 ## Backend/API Architecture
 
@@ -94,7 +96,8 @@ Recipe extraction:
 - Social/video pages only use accessible HTML/OpenGraph metadata. The app does not use browser automation, video downloads, paid scraping, or platform bypasses.
 - If a social/video link or blocked page does not expose enough recipe detail, `/api/analyze-meal` returns a clear fallback asking the user to paste the caption, transcript, ingredients, or spoken recipe summary instead of calling OpenAI.
 - If a recipe page exposes schema.org JSON-LD nutrition facts, the parser carries meal-level totals forward with provenance. Structured recipe nutrition takes precedence over any estimate.
-- For manual/free-text meals without structured nutrition, `src/lib/domain/nutrition/free-text-estimator.ts` can add conservative dashboard-critical estimates for calories, protein, and fiber only. It now parses coarse household shorthand such as `2 rotis and dal`, `paneer wrap`, `rice and chicken`, `egg bhurji and toast`, `oats with yogurt`, `leftover curry and rice`, `half bowl dal`, `small paneer bowl`, `large chicken salad`, and butter inclusion/exclusion. Sodium, sugar, fat, and carbs remain `null` unless they came from structured data or user review.
+- If structured nutrition is missing but the parser or social intake recovery produces ingredient lines, `src/lib/domain/nutrition/free-text-estimator.ts` can estimate dashboard-critical calories, protein, and fiber from those ingredients. This uses `nutritionEstimate.source: estimated`, not imported/structured provenance.
+- For manual/free-text meals without structured nutrition, the same estimator can add conservative dashboard-critical estimates for calories, protein, and fiber only. It parses coarse household shorthand such as `2 rotis and dal`, `paneer wrap`, `rice and chicken`, `egg bhurji and toast`, `oats with yogurt`, `leftover curry and rice`, `half bowl dal`, `small paneer bowl`, `large chicken salad`, and butter inclusion/exclusion, plus common ingredients such as chickpeas/chana, quinoa, pasta/noodles, potatoes/aloo, tofu, fish/salmon, shrimp, cheese, milk, fruit, and nuts. Sodium, sugar, fat, and carbs remain `null` unless they came from structured data or user review.
 - The AI prompt still does not ask OpenAI to calculate calories or exact macros.
 
 Structured output is used so the review screen receives predictable fields.
@@ -129,7 +132,8 @@ Meals list:
 4. Server maps Notion pages to `MealSummary`.
 5. `pageSize`, `cursor`, and `search` are supported to avoid unbounded scans.
 6. `/meals/[id]` reads saved meal detail and household feedback summaries server-side for the detail page.
-7. Beta 5 cookbook data is built by `src/lib/domain/meals/cookbook.ts`. It layers family adjustments on top of saved source data, parses available ingredient and instruction sections from saved notes, and keeps `name`, `quantity`, `unit`, and `rawText` separate for ingredient rows.
+7. Beta 6.4 saved intelligence is built in `src/lib/domain/meals/detail-view-model.ts` as `mealOsSummary`. It conservatively extracts Quick Verdict and Plate Strategy from the persisted Notes summary, uses Optimized Version as the minimal optimization when present, normalizes nutrition confidence to Imported/Estimated/Manual/Unknown, and adds a family consideration from existing feedback/recommendation signals. It makes no AI call and requires no new persisted snapshot.
+8. Beta 5 cookbook data is built by `src/lib/domain/meals/cookbook.ts`. It layers family adjustments on top of saved source data, parses available ingredient and instruction sections from saved notes, and keeps `name`, `quantity`, `unit`, and `rawText` separate for ingredient rows.
 
 Feedback:
 1. `/feedback` calls `POST /api/notion/log-feedback`.
@@ -237,6 +241,7 @@ Nutrition provenance:
 - FoodData Central mappings emit explicit `amountBasis`, `basisUnit`, `per100g`, source ID, confidence, food state, nutrients, and `lastVerifiedAt`.
 - Runtime validation rejects snapshots that would persist nutrients without a basis.
 - Free-text meal estimates use `nutritionEstimate.source: estimated`, low/medium confidence, optional assumption metadata, and provenance that names matched components, serving-size assumptions, quantity multipliers, confidence, and review-before-save guidance.
+- Ingredient-based recipe estimates use the same `nutritionEstimate.source: estimated` contract and explicitly say they were estimated from recipe ingredients. They are used only when structured recipe nutrition is unavailable.
 - The `/analyze` review panel distinguishes structured recipe nutrition, estimated nutrition, reviewed estimates, user-edited estimate values, manual values, and unavailable nutrition. Estimate assumptions are shown only for estimated/reviewed-estimate nutrition, not structured recipe JSON-LD nutrition.
 - Users can apply coarse serving multipliers (`0.5x`, `1x`, `1.5x`, `2x`) and add/remove inferred butter before saving. Repeated serving or butter changes replace stale review notes so provenance stays concise.
 - User edits in the review panel convert the nutrition source to `user-entered` and append review-edit provenance. Blank fields remain blank/null, not zero.

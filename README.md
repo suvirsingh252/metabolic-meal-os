@@ -206,11 +206,19 @@ This endpoint requires `OPENAI_API_KEY` in `.env.local`.
 Nutrition behavior:
 
 - Recipe pages with schema.org JSON-LD nutrition facts populate structured meal-level nutrition when available.
-- Manual/free-text meals can receive conservative estimated calories, protein, and fiber for a small set of common household foods and shorthand such as `2 rotis and dal`, `paneer wrap`, `rice and chicken`, `egg bhurji and toast`, `oats with yogurt`, `leftover curry and rice`, `half bowl dal`, `large chicken salad`, and `with/without butter`.
+- When structured nutrition is unavailable, parsed recipe ingredients can now receive conservative estimated calories, protein, and fiber. Structured nutrition still wins; ingredient-based estimates are labeled as `estimated`.
+- Manual/free-text meals can receive conservative estimated calories, protein, and fiber for a set of common household foods and shorthand such as `2 rotis and dal`, `paneer wrap`, `rice and chicken`, `egg bhurji and toast`, `oats with yogurt`, `leftover curry and rice`, `half bowl dal`, `large chicken salad`, and `with/without butter`.
+- Social intake paths benefit when they recover ingredient lists from captions or normalized recipe text.
 - Sodium, sugar, fat, and carbs remain blank unless structured data or review edits provide them.
 - Estimated nutrition is labeled with matched components, serving assumptions, confidence, and review guidance. Structured recipe nutrition, estimated nutrition, user-entered edits, and unavailable nutrition are shown separately in the review flow.
 - Estimated meals expose coarse review controls before save: serving multiplier `0.5x`, `1x`, `1.5x`, `2x`, plus add/remove butter where relevant.
 - User edits or reviewed estimate adjustments become `user-entered` provenance while preserving blank values as `null`, not zero. Repeated serving and butter changes replace stale review notes so saved provenance stays concise.
+
+Saved meal continuity and intelligence:
+
+- Beta 6.3 (`f49d023`, Add app-native save continuity links): after Save, the primary next action is `View saved meal`, with `Add to Planner` as the secondary app-native continuation. Notion links remain secondary/advanced.
+- Beta 6.4 (`8be7817`, Surface saved meal intelligence summary): Meal Detail now surfaces a compact Meal OS Summary with quick verdict, why it works, minimal optimization, nutrition confidence, and family considerations by reusing already persisted Notes, optimized version, nutrition metadata, and feedback signals. No new storage architecture or Notion schema change was introduced.
+- Beta 6.5 (`9a04047`, Estimate nutrition from recipe ingredients): missing nutrition is reduced by using ingredient-based estimates when structured recipe nutrition is unavailable. Manual nutrition entry remains optional.
 
 Dashboard reliability behavior:
 

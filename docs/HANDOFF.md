@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-12 (Beta 6.1 Analyze Optimization, Beta 6.2 Cook Again Loop v1, social intake normalization)
+Last updated: 2026-06-13 (Beta 6.3 Save Continuity, Beta 6.4 Saved Intelligence Summary, Beta 6.5 Nutrition Reliability v1)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -56,6 +56,9 @@ Implemented:
 - Notion schema hardening: Meals household filtering checks the active data source for `Household ID`, new saves write `Meal Date` when compatible, and schema diagnostics now check Feedback Meal relations, Ingredients Meal relations/nutrient basis fields, and optional Meal Intake storage fields. `Energy Density Score` and `Processing Score` remain read/backfill-only and are documented in `docs/NOTION_SCHEMA_CHECKLIST.md`.
 - Beta 6.1 Analyze Optimization: after a completed analysis, `/analyze` shows four optimization buttons — More Protein, Healthier, Kid-Friendly, and Budget. Each calls `POST /api/optimize-meal` lazily on first click, is cached per analysis in reducer state, and is cleared when a new analysis starts. Backed by a versioned `src/lib/ai/meal-optimization/v1` module (config, prompt, strict JSON schema, parser, service) with its own rate limit. No Notion schema changes.
 - Beta 6.2 Cook Again Loop v1: Meal Detail's existing Add to Planner button deep-links to `/planner?meal=<id>`; the planner reads the query param and preselects that meal into the matching slot (by Meal Type, defaulting to Dinner) on the default day, with a guidance banner. After assigning, Meal Detail shows a lightweight planning-context badge — "Planned for Tuesday dinner", "Cooked — ...", "Skipped — ...", or "Not planned this week" — fetched in parallel with the meal detail and degrading gracefully when the planner is not configured. The status path remains the existing Planned / Cooked / Skipped buttons. No Notion schema changes.
+- Beta 6.3 Save Continuity (`f49d023`): Analyze save success now routes users into Meal OS instead of treating Notion as the destination. The primary CTA is `View saved meal`, the secondary CTA is `Add to Planner`, and Notion links moved to a secondary/advanced position. This addressed family feedback that Save felt like an endpoint instead of continuity.
+- Beta 6.4 Saved Intelligence Summary (`8be7817`): Meal Detail now shows a first-class `Meal OS Summary` with Quick Verdict, Why It Works, Minimal Change / Optimization, Nutrition Confidence, and Family Consideration. It reuses existing persisted Notes, optimized version, nutrition metadata, recommendation reasons, and feedback summaries; it adds no new storage architecture, AI call, or required Notion property. This addressed the expectation that Analyze intelligence should stay attached to saved meals.
+- Beta 6.5 Nutrition Reliability v1 (`9a04047`): structured recipe nutrition still wins, but when it is unavailable Analyze can now estimate calories, protein, and fiber from parsed recipe ingredients and social-normalized ingredient lists. The deterministic estimator's common-food coverage expanded, provenance remains `estimated`, and manual entry stays optional. This addressed the family complaint that manual nutrition entry was too tedious and often skipped.
 - Social intake normalization (parallel share-intake hardening; landed outside the approved Beta 6 PR sequence): a dedicated `src/lib/intake/source-classifier.ts` classifies pasted/shared input (TikTok, Instagram, YouTube/Shorts/youtu.be, Pinterest, Facebook, recipe pages, plain text), and a new versioned `src/lib/ai/social-recipe-normalization/v1` module can normalize caption/transcript-style social text into recipe candidates with confidence labels. Analyze input/status/evidence UI reflects the detected source, and a social fallback path re-attaches source URL metadata when users paste caption text after a social link fails. No Notion schema changes.
 - Analyze now has staged loading copy for long analysis runs and tells users detailed meals can take about 20-30 seconds.
 - Feedback quick actions now have explicit semantics: `Ate This` logs eaten only, `Loved It` logs eaten/loved/worth repeating, and Meal Detail `Would Make Again` is repeat-only in household summaries.
@@ -104,23 +107,25 @@ Not implemented yet:
 - Full pantry management.
 - Live Open Food Facts, nutrition, grocery price, flyer, or weather API integrations.
 - Persistence for structured ingredients, pantry items, household preferences, or separate AI analysis records beyond current safe Notion meal-source writes.
-- Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not calculate serving-level totals from ingredient context without quantities; the only automatic free-text estimate is the limited deterministic calories/protein/fiber path with coarse beta-grade serving controls.
+- Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not calculate serving-level totals from USDA ingredient records; automatic nutrition remains limited to structured recipe nutrition and deterministic calories/protein/fiber estimates from free text or parsed recipe ingredients with coarse beta-grade serving controls.
 - Automatic USDA lookup/enrichment during meal analysis or ingredient suggestion persistence.
 - Multi-household Notion partitioning.
 
-Manual Vercel/Notion verification required after deploying Beta 3.5:
+Manual Vercel/Notion verification recommended after deploying the Beta 6.3-6.5 family-feedback cycle:
 1. Analyze still saves meals successfully to Notion.
-2. Newly saved meals with estimated nutrition populate Calories, Protein, Fiber, Nutrition Source, Nutrition Provenance, Nutrition Confidence, and Meal Quality Score in Notion when compatible properties exist.
-3. `/api/notion/meals` retrieves those values and `/api/dashboard` aggregates them.
-4. Saved meals appear in Meals with Meal OS wording, not Notion wording.
-5. Today feedback writes to Notion as expected.
-6. `Ate This`, `Loved It`, and `Would Make Again` semantics appear correctly in saved feedback summaries.
-7. Dashboard household takeaways update after feedback/data changes.
-8. Meal Detail shows household summary first and hides raw notes/external links under Advanced details.
-9. Mobile deployment has no horizontal overflow on Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail.
-10. Today `Suggest Another` works on phone-sized viewports for categories with alternatives.
-11. No user-facing copy implies feedback can be persistently undone unless that feature is actually implemented.
-12. `/planner` loads on the Vercel URL; with `NOTION_MEAL_PLAN_SOURCE_ID` configured, assign, clear, and status updates work for Breakfast, Lunch, Dinner, and Snack against the Meal Plan data source.
+2. Save success shows `View saved meal` as the primary continuation and `Add to Planner` as secondary; Notion links are not the primary next step.
+3. Newly saved meals with JSON-LD nutrition persist imported nutrition when compatible properties exist.
+4. Newly saved meals without structured nutrition but with recognizable recipe ingredients persist estimated Calories, Protein, Fiber, Nutrition Source, Nutrition Provenance, and Nutrition Confidence when compatible properties exist.
+5. `/api/notion/meals` retrieves those values and `/api/dashboard` aggregates them.
+6. Saved meals appear in Meals with Meal OS wording, not Notion wording.
+7. Meal Detail shows `Meal OS Summary` near the top with available Analyze-derived intelligence and omits unavailable rows gracefully.
+8. Today feedback writes to Notion as expected.
+9. `Ate This`, `Loved It`, and `Would Make Again` semantics appear correctly in saved feedback summaries.
+10. Dashboard household takeaways update after feedback/data changes.
+11. Mobile deployment has no horizontal overflow on Analyze, Today, Dashboard, Meals, Feedback, and Meal Detail.
+12. Today `Suggest Another` works on phone-sized viewports for categories with alternatives.
+13. No user-facing copy implies feedback can be persistently undone unless that feature is actually implemented.
+14. `/planner` loads on the Vercel URL; with `NOTION_MEAL_PLAN_SOURCE_ID` configured, assign, clear, and status updates work for Breakfast, Lunch, Dinner, and Snack against the Meal Plan data source.
 
 ## Current Architecture
 
@@ -202,8 +207,9 @@ Pages:
   - Blocks local/private/reserved URL hosts using hostname checks plus DNS resolution before fetches and after redirects. Redirects are followed manually through the same checks.
   - Returns `analysisVersion` and `analysisModel`.
   - Carries recipe-page JSON-LD nutrition facts through to `nutritionEstimate` when present.
-  - For manual/free-text meals without structured nutrition, runs the deterministic free-text estimator only when the description has enough recognizable food detail. Current coverage includes paratha/parantha, gobi/cauliflower, butter, eggs, chicken, paneer, dal/lentils, rice, yogurt/curd, roti/chapati, oats, salad/vegetables, toast, wraps/rolls, and leftover curry/sabzi.
-  - Free-text estimates fill calories/protein/fiber only, leave sodium/sugar/fat/carbs null, and include provenance naming matched components, serving assumptions, quantity multipliers, confidence, and review guidance. It still does not ask OpenAI to calculate exact calories or macros.
+  - For manual/free-text meals without structured nutrition, runs the deterministic free-text estimator only when the description has enough recognizable food detail. Current coverage includes paratha/parantha, gobi/cauliflower, butter, eggs, chicken, paneer, dal/lentils, chickpeas/chana, rice, quinoa, pasta/noodles, potatoes/aloo, yogurt/curd, milk, roti/chapati, bread, oats, tofu, fish/salmon, shrimp, cheese, fruit, nuts, salad/vegetables, toast, wraps/rolls, and leftover curry/sabzi.
+  - For parsed recipe URLs and social-normalized recipes without structured nutrition, runs the same deterministic estimator against recovered ingredient lines. This fills many formerly blank saved meals while keeping provenance as `estimated`.
+  - Estimates fill calories/protein/fiber only, leave sodium/sugar/fat/carbs null, and include provenance naming matched components, serving assumptions, quantity multipliers, confidence, and review guidance. It still does not ask OpenAI to calculate exact calories or macros.
   - Serving-size parsing currently supports simple numeric/word quantities for eggs, rotis/chapatis, parathas/paranthas, `half bowl`, `one bowl`, `large`, `small`, `extra butter`, `with butter`, and `without butter`. It is conservative and does not infer full macros or micronutrients.
 
 - `POST /api/optimize-meal`
@@ -649,21 +655,19 @@ Current Ingredients behavior:
 
 # Mandatory Start-of-Session Procedure
 
-## Current State - 2026-06-12 Beta 6 Shipped Slices
+## Current State - 2026-06-13 Beta 6.3-6.5 Family Feedback Cycle
 
-Three feature commits are on `main` ahead of `origin/main`, ready to deploy after this docs commit:
+The latest family-feedback cycle is complete on `main`:
 
-- `b278938` Beta 6.1: Add optimization prompts to Analyze
-- `1cb267f` Beta 6.2: Cook Again Loop v1
-- `46afa65` Add social intake normalization — landed outside the approved Beta 6 PR sequence (PRs 2-5 are Suggestions, Insights, and Cleanup); recorded honestly here as parallel share-intake hardening, not a planned Beta 6 slice.
+- `f49d023` Beta 6.3: Add app-native save continuity links
+- `8be7817` Beta 6.4: Surface saved meal intelligence summary
+- `9a04047` Beta 6.5: Estimate nutrition from recipe ingredients
 
-Verification completed on this HEAD:
-- `npm run typecheck` passed.
-- `npm run lint` passed.
-- `npm test` passed, 249/249 tests.
-- `npm run build` passed.
+Verification completed during implementation:
+- Beta 6.4: `npm run typecheck`, `npm test` (352/352), `npm run lint`, and `npm run build` passed.
+- Beta 6.5: `npm run typecheck`, `npm test` (356/356), `npm run lint`, and `npm run build` passed.
 
-None of the three commits change Notion schema. The branch is safe to deploy after the docs commit. Next step after deploying: observe Beta 6.1 Analyze optimization and Beta 6.2 Cook Again usage before starting the next planned slice (Suggestions core domain).
+None of these slices change Notion schema or add a new persistence architecture. Next step after deploying: observe whether users follow the Save -> View saved meal/Add to Planner path, whether Meal Detail's Meal OS Summary closes the Analyze-to-Meals expectation gap, and whether ingredient-based estimates materially reduce missing Dashboard nutrition.
 
 ## Current State - 2026-06-11 Beta 4 Mobile-First Redesign
 

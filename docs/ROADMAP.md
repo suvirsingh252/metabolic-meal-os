@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-12 (Beta 6.1 Analyze Optimization, Beta 6.2 Cook Again Loop v1)
+Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -113,12 +113,15 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Complete Beta 5.1 Cookbook Data Capture Hardening: carry parser-extracted ingredients/instructions through analysis, add AI verbatim extraction fallback for pasted text, persist canonical `Ingredients:`/`Instructions:` Notes sections plus optional dedicated properties, chunk Notes past the 2000-character block limit, and fix the household `Original Source` URL alias so source links persist.
 - [x] Complete Beta 6.1 Analyze Optimization: add `POST /api/optimize-meal` with its own rate limit, More Protein / Healthier / Kid-Friendly / Budget optimization buttons after analysis, lazy per-click calls cached per analysis and cleared on new analysis, all with no Notion schema changes.
 - [x] Complete Beta 6.2 Cook Again Loop v1: Meal Detail Add to Planner deep-links to `/planner?meal=<id>`, the planner preselects the meal into the matching slot, the existing assign flow saves it, Meal Detail shows a planned-state badge for the current week, and status updates remain Planned / Cooked / Skipped — no Notion schema changes.
+- [x] Complete Beta 6.3 Save Continuity (`f49d023`): after Save, the primary action is `View saved meal`, the secondary action is `Add to Planner`, and Notion links are secondary/advanced so Save continues inside Meal OS.
+- [x] Complete Beta 6.4 Saved Intelligence Summary (`8be7817`): Meal Detail shows Quick Verdict, Why It Works, Minimal Change / Optimization, Nutrition Confidence, and Family Consideration by reusing already persisted Notes, optimized version, nutrition metadata, and feedback/recommendation context.
+- [x] Complete Beta 6.5 Nutrition Reliability v1 (`9a04047`): structured nutrition still wins, ingredient-based estimates fill many gaps, social intake paths benefit when ingredients are recovered, and manual nutrition entry remains optional.
 - [x] Add social intake normalization (landed outside the approved Beta 6 PR sequence; parallel share-intake hardening): source classifier for social/recipe/plain-text input, versioned social-recipe-normalization AI module, and Analyze social fallback UX that preserves source metadata.
 - [x] Harden Notion schema handling: household filtering reads the active Meals data source, new saves write `Meal Date` when a compatible property exists, schema diagnostics cover Feedback/Ingredients Meal relations, nutrient basis fields, and optional Meal Intake storage, and `docs/NOTION_SCHEMA_CHECKLIST.md` documents the full optional schema. No automatic Notion schema mutation; all manual Notion additions remain optional.
 
 ## Current Sprint
 
-- [ ] Deploy the three Beta 6 commits (`b278938`, `1cb267f`, `46afa65`) plus this docs commit, then observe Beta 6.1 Analyze optimization and Beta 6.2 Cook Again usage before starting the next planned Beta 6 slice (Suggestions core domain).
+- [ ] Deploy the completed family-feedback cycle commits (`f49d023`, `8be7817`, `9a04047`) plus this docs closeout, then observe Save Continuity, Meal OS Summary, and Nutrition Reliability on real family meals.
 - [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
 - [x] Review evidence-aware guidance quality on representative real household meals and tune the first household answer.
@@ -135,6 +138,11 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Run an on-device iPhone Safari Beta 4 pass for `/today`, `/analyze`, `/meals`, `/planner`, `/dashboard`, `/feedback`, `/settings`, and representative `/meals/[id]`.
 
 ## Next Up
+
+- [ ] URL Recovery / Guided Intake Fallbacks: improve blocked or script-rendered URL recovery with clearer guided paste/caption fallback, domain-specific learning, and possibly a richer parser dependency if the tradeoff is worth it.
+- [ ] Persistent Intelligence Snapshot v2: preserve more exact Analyze fields with a deliberate schema/storage plan once the compact Meal OS Summary proves useful.
+- [ ] Schema Independence: reduce dependence on manually configured Notion properties and active data-source quirks before broader use.
+- [ ] Planner Recommendation Layer: recommend saved meals into planner slots using existing feedback, nutrition reliability, and household context without inventing meals.
 
 - [ ] Add structured ingredient persistence behind the current ingredient suggestion flow. (Beta 5.1 persists verbatim recipe ingredient lines per meal; this item now covers quantity/unit-normalized persistence for aggregation.)
 - [ ] Optionally add dedicated `Ingredients` and `Instructions` rich_text properties to the Notion Meals database so saves upgrade from Notes sections to dedicated fields automatically.
@@ -172,6 +180,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Canadian grocery price/flyer intelligence through adapters.
 - [ ] Weather/context-aware planning for Halifax/NS seasons.
 - [ ] Expand nutrition estimation coverage only where rules stay testable, serving assumptions stay reviewable, and provenance remains clear.
+- [ ] Parse visible nutrition tables on recipe pages when they are available and can be extracted safely.
 - [ ] Nutrition enrichment with estimates kept separate from canonical recipe data.
 - [ ] Source-attributed analysis explanations with source IDs, confidence, and reviewed guidance language.
 - [ ] Personalized planning using household feedback signals.

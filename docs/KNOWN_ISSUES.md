@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-11 (Beta 5.1 Cookbook Data Capture Hardening)
+Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
@@ -18,6 +18,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 
 - [ ] Intake URL classification is heuristic: recipe-URL detection is path-based (`/recipe`, `/recipes`, etc.) and may misclassify uncommon recipe sites with non-standard paths as `unknown-url`.
 - [ ] Social URL parsing (Instagram, TikTok, YouTube) does not extract caption/ingredients from server-side fetches. Users must paste the caption or recipe text manually for complete analysis.
+- [ ] Publisher-blocked, login-gated, bot-protected, or script-rendered URLs still occur. The app should guide users toward pasted captions, ingredient lists, or recipe text when server-side fetch cannot recover enough detail.
 - [ ] The intake bridge panel pre-fills the analyze textarea but does not automatically trigger analysis. The user must tap Analyze Recipe.
 - [ ] iPhone Shortcut setup is manual: no automated provisioning or QR code. See README for step-by-step instructions.
 - [ ] `NOTION_MEAL_INTAKE_DATABASE_ID` must be set manually; there is no in-app database creation or migration flow.
@@ -33,8 +34,16 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 - [ ] Family adjustments are persisted as marked Meal Feedback notes, not a dedicated Family Adjustments table. This is schema-neutral but append-only and should be migrated if richer editing/history is needed.
 - [ ] Older meals without recognizable Ingredients or Instructions sections show cookbook empty states and rely on Original Recipe access.
 - [ ] Cookbook ingredient parsing is read-time and conservative. It preserves `name`, `quantity`, `unit`, and `rawText` where available, but it is not ready for grocery aggregation.
-- [ ] `Add to Planner` links to `/planner?meal=<id>` for context, but Planner does not yet preselect that meal from the query string.
+- [x] `Add to Planner` now deep-links to `/planner?meal=<id>` and Planner preselects the matching saved meal for assignment.
 - [ ] Original recipe access uses `Source URL` when present and the saved Notion record as fallback.
+
+## Beta 6.3-6.5 Family Feedback Known Limitations
+
+- [ ] Visible nutrition tables on recipe pages remain unsupported unless the same data is exposed as schema.org JSON-LD nutrition.
+- [ ] Ingredient-based nutrition estimates are intentionally approximate and cover calories, protein, and fiber only. Carbs, fat, sodium, and sugar remain blank unless imported or manually reviewed.
+- [ ] Full Analyze parity is not yet preserved on saved meals. Meal Detail surfaces a compact summary from existing persisted fields, but fields that are not saved today cannot be reconstructed exactly.
+- [ ] Notion schema dependence still exists. Optional nutrition/source/quality/cookbook fields only persist when compatible Notion properties already exist; the app does not create or migrate schema.
+- [ ] Persistent Intelligence Snapshot v2 is still a future candidate if saved meals need exact Analyze-state preservation.
 
 ## Beta 5.1 Capture Known Limitations
 
