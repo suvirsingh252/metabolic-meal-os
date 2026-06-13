@@ -61,6 +61,8 @@ test("analyzeReducer updates array fields and clears save state", () => {
     }),
     savedMeal: {
       success: true as const,
+      mealId: "page",
+      mealDetailPath: "/meals/page",
       notionPageId: "page",
       notionUrl: "https://notion.so/page"
     }

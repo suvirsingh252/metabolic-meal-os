@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getConfiguredHouseholdMetadata } from "@/src/lib/domain/household/metadata";
+import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import { validateMealAnalysisResult } from "@/src/lib/domain/meal/validation";
 import { getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
@@ -145,6 +146,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
+      mealId: page.id,
+      mealDetailPath: getMealDetailPath(page.id),
       notionPageId: page.id,
       notionUrl: getNotionPageUrl(page)
     });

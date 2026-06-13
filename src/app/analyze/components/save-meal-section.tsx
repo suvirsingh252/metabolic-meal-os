@@ -1,6 +1,7 @@
 "use client";
 
-import { ExternalLink, Loader2, Save } from "lucide-react";
+import Link from "next/link";
+import { CalendarPlus, ExternalLink, Loader2, Save } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type {
@@ -38,6 +39,17 @@ export function SaveMealSection({
       {savedMeal ? (
         <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
           <p className="font-medium text-primary">Saved to Meal OS.</p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Button asChild>
+              <Link href={savedMeal.mealDetailPath}>View saved meal</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href={`/planner?meal=${encodeURIComponent(savedMeal.mealId)}`}>
+                <CalendarPlus className="h-4 w-4" />
+                Add to Planner
+              </Link>
+            </Button>
+          </div>
           <details className="mt-3 text-muted-foreground">
             <summary className="cursor-pointer font-medium text-foreground">
               Advanced details
@@ -48,7 +60,7 @@ export function SaveMealSection({
               rel="noreferrer"
               target="_blank"
             >
-              Open saved record
+              Open in Notion
               <ExternalLink className="h-4 w-4" />
             </a>
           </details>

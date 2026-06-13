@@ -25,3 +25,19 @@ test("Meal detail only uses a safe original recipe href", () => {
   );
   assert.match(source, /href=\{safeOriginalRecipeUrl \?\? meal\.url\}/);
 });
+
+test("Analyze save confirmation prioritizes app-native next actions", () => {
+  const source = readFileSync(
+    "src/app/analyze/components/save-meal-section.tsx",
+    "utf8"
+  );
+
+  assert.match(source, /View saved meal/);
+  assert.match(source, /href=\{savedMeal\.mealDetailPath\}/);
+  assert.match(
+    source,
+    /href=\{`\/planner\?meal=\$\{encodeURIComponent\(savedMeal\.mealId\)\}`\}/
+  );
+  assert.match(source, /Open in Notion/);
+  assert.doesNotMatch(source, /Open saved record/);
+});

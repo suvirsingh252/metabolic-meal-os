@@ -43,6 +43,8 @@ export type EditableArrayField =
 
 export interface SaveMealResponse {
   success: true;
+  mealId: string;
+  mealDetailPath: string;
   notionPageId: string;
   notionUrl: string;
 }
