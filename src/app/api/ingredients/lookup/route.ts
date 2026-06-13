@@ -5,20 +5,13 @@ import {
   mapFoodDataCentralSearchResult,
   searchFoodDataCentral
 } from "@/src/lib/integrations/food-data-central";
+import { isRecord, validationError } from "@/src/lib/notion/route-helpers";
 import {
   guardApiRequest,
   readJsonWithLimit
 } from "@/src/lib/server/request-guards";
 
 export const runtime = "nodejs";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validationError(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 });
-}
 
 function validateRequest(body: unknown): string | NextResponse {
   if (!isRecord(body)) {

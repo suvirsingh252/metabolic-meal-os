@@ -17,6 +17,7 @@ import {
 import { getNotionClient } from "@/src/lib/notion/client";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 import { queryMealSummaries } from "@/src/lib/notion/meals-query";
+import { getPrimaryDataSourceId, isRecord } from "@/src/lib/notion/route-helpers";
 
 const requiredPlannerProperties = [
   { name: "Name", type: "title" },
@@ -37,22 +38,8 @@ interface PlannerSchema {
   issues: PlannerSetupIssue[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    isRecord(database) &&
-    Array.isArray(database.data_sources) &&
-    isRecord(database.data_sources[0]) &&
-    typeof database.data_sources[0].id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Meal Plan database did not return a queryable data source.");
-}
+const MEAL_PLAN_DATA_SOURCE_ERROR =
+  "Meal Plan database did not return a queryable data source.";
 
 function getProperties(source: unknown) {
   if (isRecord(source) && isRecord(source.properties)) {
@@ -161,7 +148,7 @@ async function getPlannerDataSourceId(
     database_id: env.NOTION_MEAL_PLAN_DATABASE_ID
   });
 
-  return getPrimaryDataSourceId(database);
+  return getPrimaryDataSourceId(database, MEAL_PLAN_DATA_SOURCE_ERROR);
 }
 
 async function readPlannerSchema(

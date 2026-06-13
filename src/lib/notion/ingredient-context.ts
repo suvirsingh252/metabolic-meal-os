@@ -2,6 +2,7 @@ import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoint
 import { getNotionIngredientsEnv } from "@/src/lib/env";
 import { normalizeIngredientKey } from "@/src/lib/ingredients";
 import { getNotionClient } from "@/src/lib/notion/client";
+import { getPrimaryDataSourceId, isRecord } from "@/src/lib/notion/route-helpers";
 import type { MealKnownIngredientContext } from "@/src/lib/types/meal";
 
 interface IngredientContextOptions {
@@ -19,23 +20,8 @@ type NotionProperty = PageObjectResponse["properties"][string];
 
 const defaultMaxResults = 8;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    isRecord(database) &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    isRecord(database.data_sources[0]) &&
-    typeof database.data_sources[0].id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Ingredients database did not return a queryable data source.");
-}
+const INGREDIENTS_DATA_SOURCE_ERROR =
+  "Ingredients database did not return a queryable data source.";
 
 function getProperties(dataSource: unknown) {
   if (isRecord(dataSource) && isRecord(dataSource.properties)) {
@@ -252,7 +238,7 @@ export async function getKnownIngredientContext(
   const database = await notion.databases.retrieve({
     database_id: NOTION_INGREDIENTS_DATABASE_ID
   });
-  const dataSourceId = getPrimaryDataSourceId(database);
+  const dataSourceId = getPrimaryDataSourceId(database, INGREDIENTS_DATA_SOURCE_ERROR);
   const dataSource = await notion.dataSources.retrieve({
     data_source_id: dataSourceId
   });

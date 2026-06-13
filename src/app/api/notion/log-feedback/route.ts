@@ -3,6 +3,12 @@ import { getNotionFeedbackEnv, getNotionMealsEnv } from "@/src/lib/env";
 import { getNotionClient } from "@/src/lib/notion/client";
 import { mapMealFeedbackToNotionProperties } from "@/src/lib/notion/mappers";
 import {
+  getNotionPageUrl,
+  getPrimaryDataSourceId,
+  isRecord,
+  validationError
+} from "@/src/lib/notion/route-helpers";
+import {
   guardApiRequest,
   readJsonWithLimit
 } from "@/src/lib/server/request-guards";
@@ -16,10 +22,6 @@ import {
 
 export const runtime = "nodejs";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function isString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -29,18 +31,6 @@ function isEnumValue<TValue extends string>(
   options: readonly TValue[]
 ): value is TValue {
   return typeof value === "string" && options.includes(value as TValue);
-}
-
-function validationError(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 });
-}
-
-function getNotionPageUrl(page: { id: string; url?: string }) {
-  if (!page.url) {
-    throw new Error(`Notion did not return a page URL for page ${page.id}.`);
-  }
-
-  return page.url;
 }
 
 function hasMealRelationProperty(dataSource: unknown) {
@@ -124,19 +114,8 @@ function summarizeProperties(dataSource: unknown) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    isRecord(database) &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    isRecord(database.data_sources[0]) &&
-    typeof database.data_sources[0].id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Meal Feedback database did not return a queryable data source.");
-}
+const FEEDBACK_DATA_SOURCE_ERROR =
+  "Meal Feedback database did not return a queryable data source.";
 
 function validateFeedback(body: unknown): MealFeedbackRequest | NextResponse {
   if (!isRecord(body)) {
@@ -229,9 +208,12 @@ export async function POST(request: Request) {
       const mealsDatabase = await notion.databases.retrieve({
         database_id: NOTION_MEALS_DATABASE_ID
       });
-      const mealDataSourceId = getPrimaryDataSourceId(mealsDatabase);
+      const mealDataSourceId = getPrimaryDataSourceId(
+        mealsDatabase,
+        FEEDBACK_DATA_SOURCE_ERROR
+      );
       const dataSource = await notion.dataSources.retrieve({
-        data_source_id: getPrimaryDataSourceId(database)
+        data_source_id: getPrimaryDataSourceId(database, FEEDBACK_DATA_SOURCE_ERROR)
       });
       mealRelationPropertyName = findMealRelationProperty(
         dataSource,

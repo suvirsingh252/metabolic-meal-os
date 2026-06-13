@@ -6,13 +6,13 @@ import {
   type MealFeedbackSummaryByMealId
 } from "@/src/lib/domain/feedback";
 import { getNotionClient } from "@/src/lib/notion/client";
+import { getPrimaryDataSourceId, isRecord } from "@/src/lib/notion/route-helpers";
 import type { EnergyAfter, HungerLater } from "@/src/lib/types/feedback";
 
 type NotionProperty = PageObjectResponse["properties"][string];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+const FEEDBACK_DATA_SOURCE_ERROR =
+  "Feedback database did not return a queryable data source.";
 
 function isFullPage(page: unknown): page is PageObjectResponse {
   return (
@@ -21,20 +21,6 @@ function isFullPage(page: unknown): page is PageObjectResponse {
     "properties" in page &&
     "created_time" in page
   );
-}
-
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    isRecord(database) &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    isRecord(database.data_sources[0]) &&
-    typeof database.data_sources[0].id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Feedback database did not return a queryable data source.");
 }
 
 function getRelationTarget(property: unknown) {
@@ -175,8 +161,14 @@ export async function queryMealFeedbackSummaries(
   const mealsDatabase = await notion.databases.retrieve({
     database_id: NOTION_MEALS_DATABASE_ID
   });
-  const feedbackDataSourceId = getPrimaryDataSourceId(feedbackDatabase);
-  const mealDataSourceId = getPrimaryDataSourceId(mealsDatabase);
+  const feedbackDataSourceId = getPrimaryDataSourceId(
+    feedbackDatabase,
+    FEEDBACK_DATA_SOURCE_ERROR
+  );
+  const mealDataSourceId = getPrimaryDataSourceId(
+    mealsDatabase,
+    FEEDBACK_DATA_SOURCE_ERROR
+  );
   const dataSource = await notion.dataSources.retrieve({
     data_source_id: feedbackDataSourceId
   });

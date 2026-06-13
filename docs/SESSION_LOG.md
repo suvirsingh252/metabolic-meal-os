@@ -1,5 +1,34 @@
 # Session Log
 
+## 2026-06-13 B5 Notion Helper Consolidation (close-out)
+
+Goal:
+- Close security audit finding B5 fully by consolidating the remaining duplicated Notion route/lib helper logic into the shared `src/lib/notion/route-helpers.ts`. Narrow code-hygiene slice; preserve behavior.
+
+Repo state at start:
+- Branch `main`, clean working tree, `main` ahead of `origin/main` by 1 (`3c3e5f4`).
+
+What changed:
+- Removed local `isRecord`, `validationError`, `getNotionPageUrl`, and `getPrimaryDataSourceId` copies from `src/app/api/notion/log-feedback/route.ts`, `src/app/api/notion/save-ingredients/route.ts`, `src/app/api/notion/ingredients/route.ts`, `src/app/api/ingredients/enrich/route.ts`, `src/app/api/ingredients/lookup/route.ts`, `src/app/api/intake/share/route.ts`, and the `src/lib/notion/meals-query.ts`, `meal-plan.ts`, `ingredient-context.ts`, and `feedback-summary.ts` modules. All now import from `route-helpers`.
+- Behavior preserved: the shared `getPrimaryDataSourceId(database, message?)` is called with each site's original error string (e.g. "Meals database…", "Ingredients database…", "Meal Plan database…", "Meal Feedback database…", "Feedback database…"), so thrown messages are unchanged.
+- Added `tests/notion-route-helpers.test.ts` with direct unit coverage for the shared helpers (`isRecord`, `getPrimaryDataSourceId` success/default/custom-message/reject paths, `getNotionPageUrl`, `getDatabaseTitle`, `validationError` with and without details).
+- Scope boundary: generic `isRecord` copies in `recipe-parser`, `meal-analysis`, `social-recipe-normalization`, and `domain/meal/validation` were intentionally left in place — `route-helpers.ts` imports `next/server`, and coupling pure domain/parser modules to it would be a regression. These are not B5 Notion-helper duplication.
+
+Docs changed:
+- `docs/AUDIT-2026-06-11.md`: B5 moved from PARTIALLY FIXED to **FIXED** in all three places (reconciliation table, residual-risk list, re-audit table) and the B5 detail section updated.
+- `docs/KNOWN_ISSUES.md`: B5 and the `getNotionPageUrl` duplication items checked off; QA status updated to 366/366.
+- `docs/HANDOFF.md`: security/audit paragraph updated to record B5 closure.
+- `docs/SESSION_LOG.md`: this entry.
+
+Validation:
+- `npm run typecheck`: passed (clean).
+- `npm test`: passed, 366/366 (8 new tests).
+- `npm run lint`: passed (clean).
+- `npm run build`: passed.
+- `git diff --check`: clean.
+
+B5 status: **FIXED**. No residual B5 risk. The only remaining `isRecord` duplication is the out-of-scope non-Notion generic guards noted above.
+
 ## 2026-06-13 Security Audit Status Reconciliation
 
 Goal:

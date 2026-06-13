@@ -5,25 +5,10 @@ import {
   mapNotionPageToMealSummary,
   type MealSummary
 } from "@/src/lib/notion/meal-summary";
+import { getPrimaryDataSourceId, isRecord } from "@/src/lib/notion/route-helpers";
 
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    typeof database === "object" &&
-    database !== null &&
-    "data_sources" in database &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    typeof database.data_sources[0]?.id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Meals database did not return a queryable data source.");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+const MEALS_DATA_SOURCE_ERROR =
+  "Meals database did not return a queryable data source.";
 
 function getProperties(database: unknown) {
   if (isRecord(database) && isRecord(database.properties)) {
@@ -83,7 +68,7 @@ export async function queryMealSummaries(
   const database = await notion.databases.retrieve({
     database_id: NOTION_MEALS_DATABASE_ID
   });
-  const dataSourceId = getPrimaryDataSourceId(database);
+  const dataSourceId = getPrimaryDataSourceId(database, MEALS_DATA_SOURCE_ERROR);
   const dataSource = await notion.dataSources.retrieve({
     data_source_id: dataSourceId
   });

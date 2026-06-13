@@ -6,7 +6,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file
 
 ## Current QA Status (2026-06-13)
 
-Validation gate is green on `main`: `npm run typecheck`, `npm run lint`, `npm test` (358/358), and `npm run build` all pass. The 2026-06-13 QA pass was documentation-only and changed no runtime behavior. The B-series security audit has since been reconciled against code in `docs/AUDIT-2026-06-11.md`: B1, B2, B3, B4, and B6 are fixed; B7 is reworked; B5 is partially fixed with residual helper duplication. A first step toward Beta 6.6 URL Recovery exists, committed locally as `ce7dc0d` (`getUrlRecoveryCopy` + `tests/analyze-guided-recovery.test.ts`) but not yet pushed.
+Validation gate is green on `main`: `npm run typecheck`, `npm run lint`, `npm test` (366/366), and `npm run build` all pass. The B-series security audit has been reconciled against code in `docs/AUDIT-2026-06-11.md`: B1, B2, B3, B4, B5, and B6 are fixed; B7 is reworked. B5 was closed by the 2026-06-13 consolidation pass, which routed all remaining Notion-context helper duplicates through `src/lib/notion/route-helpers.ts` (behavior preserved; `tests/notion-route-helpers.test.ts` added). A first step toward Beta 6.6 URL Recovery exists, committed locally as `ce7dc0d` (`getUrlRecoveryCopy` + `tests/analyze-guided-recovery.test.ts`) but not yet pushed.
 
 ## Critical
 
@@ -59,10 +59,9 @@ Validation gate is green on `main`: `npm run typecheck`, `npm run lint`, `npm te
 
 ## Technical Debt
 
-- [ ] API validators duplicate helpers such as `isRecord`, `isEnumValue`, and `validationError`.
-- [ ] Security audit B5 is partially fixed, not closed: `src/lib/notion/route-helpers.ts` reduced duplication in diagnostics, `save-meal`, and intake Notion code, but local helper copies remain in several API/lib paths. See `docs/AUDIT-2026-06-11.md`.
+- [x] Security audit B5 is closed (2026-06-13): `validationError`, `getPrimaryDataSourceId`, `getNotionPageUrl`, and the Notion-context `isRecord` copies are consolidated into `src/lib/notion/route-helpers.ts`. See `docs/AUDIT-2026-06-11.md`. Remaining `isRecord` copies live only in non-Notion domain/AI/parser modules and are intentionally not coupled to the Next-server helper module.
+- [x] Notion `getNotionPageUrl` helper is no longer duplicated across API routes (consolidated into `route-helpers.ts`).
 - [ ] Client pages duplicate local `EnumSelect` and `BooleanInput` helpers.
-- [ ] Notion `getNotionPageUrl` helper is duplicated across API routes.
 - [ ] Test coverage is still focused unit coverage, not full route/integration coverage.
 - [ ] `buildMealNotesSummary` now chunks Notes across 2000-character rich_text blocks up to a 20,000-character total with an explicit marker beyond that. Structured evidence fields should still be added to Notion where practical.
 - [ ] `save-meal` performs a Meals database schema read before page creation so optional source fields can be detected. If Notion permissions are ever narrowed, this route needs a smoke test.

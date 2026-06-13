@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { classifyInput, normalizeUrl, parseUrl } from "@/src/lib/intake/classify";
 import { saveIntakeToNotion, getIntakeDbId } from "@/src/lib/intake/notion";
+import { isRecord } from "@/src/lib/notion/route-helpers";
 import {
   isAuthorizedRequest
 } from "@/src/lib/server/auth";
@@ -15,10 +16,6 @@ export const runtime = "nodejs";
 
 const PROD_BASE_URL = "https://metabolic-meal-os.vercel.app";
 const MAX_TEXT_BYTES = 20_000;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function validateToken(request: Request): NextResponse | null {
   const decision = isAuthorizedRequest(request, {

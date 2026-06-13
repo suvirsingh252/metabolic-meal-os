@@ -10,6 +10,11 @@ import {
 } from "@/src/lib/ingredients";
 import { getNotionClient } from "@/src/lib/notion/client";
 import {
+  getPrimaryDataSourceId,
+  isRecord,
+  validationError
+} from "@/src/lib/notion/route-helpers";
+import {
   guardApiRequest,
   readJsonWithLimit
 } from "@/src/lib/server/request-guards";
@@ -37,14 +42,6 @@ interface ExistingIngredientRecord {
 interface RelationTarget {
   databaseId: string | null;
   dataSourceId: string | null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validationError(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 });
 }
 
 function title(content: string) {
@@ -93,19 +90,8 @@ function relation(pageIds: string[]) {
   };
 }
 
-function getPrimaryDataSourceId(database: unknown) {
-  if (
-    isRecord(database) &&
-    Array.isArray(database.data_sources) &&
-    database.data_sources.length > 0 &&
-    isRecord(database.data_sources[0]) &&
-    typeof database.data_sources[0].id === "string"
-  ) {
-    return database.data_sources[0].id;
-  }
-
-  throw new Error("Ingredients database did not return a queryable data source.");
-}
+const INGREDIENTS_DATA_SOURCE_ERROR =
+  "Ingredients database did not return a queryable data source.";
 
 function getProperties(database: unknown) {
   if (isRecord(database) && isRecord(database.properties)) {
@@ -426,7 +412,7 @@ export async function POST(request: Request) {
     const database = await notion.databases.retrieve({
       database_id: NOTION_INGREDIENTS_DATABASE_ID
     });
-    const dataSourceId = getPrimaryDataSourceId(database);
+    const dataSourceId = getPrimaryDataSourceId(database, INGREDIENTS_DATA_SOURCE_ERROR);
     const dataSource = await notion.dataSources.retrieve({
       data_source_id: dataSourceId
     });
@@ -439,7 +425,10 @@ export async function POST(request: Request) {
         database_id: NOTION_MEALS_DATABASE_ID
       });
       mealsDatabaseId = NOTION_MEALS_DATABASE_ID;
-      mealDataSourceId = getPrimaryDataSourceId(mealsDatabase);
+      mealDataSourceId = getPrimaryDataSourceId(
+        mealsDatabase,
+        INGREDIENTS_DATA_SOURCE_ERROR
+      );
     }
 
     const schema = getIngredientDatabaseSchema(
