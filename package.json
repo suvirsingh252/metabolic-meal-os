@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit",
     "smoke:prod": "tsx scripts/smoke-test.ts",
     "smoke:prod:writes": "tsx scripts/smoke-test-writes.ts",
-    "db:check": "tsx scripts/check-db.ts",
+    "db:check": "node --env-file-if-exists=.env.local --import tsx scripts/check-db.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/.bin/drizzle-kit migrate"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
