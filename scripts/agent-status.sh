@@ -85,5 +85,20 @@ else
 fi
 hr
 
+say "tmux (mobile / SSH sessions):"
+if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+  # Inside a tmux session: report the current session name and window count.
+  tmux_session="$(tmux display-message -p '#S' 2>/dev/null)"
+  tmux_windows="$(tmux list-windows 2>/dev/null | wc -l | tr -d '[:space:]')"
+  say "  [inside tmux] session: ${tmux_session:-unknown}, windows: ${tmux_windows:-?}"
+  say "                detach with Ctrl-b d to keep work running. See ai/MOBILE_WORKFLOW.md"
+elif command -v tmux >/dev/null 2>&1; then
+  say "  [not in tmux] tmux is installed — start one before long jobs:"
+  say "                tmux attach -t tablewise || tmux new -s tablewise"
+else
+  say "  [no tmux]     tmux not installed — long jobs are not connection-safe on mobile."
+fi
+hr
+
 say "Reminder: read ai/AGENT_RULES.md and ai/CLI_ROLES.md before editing."
 exit 0

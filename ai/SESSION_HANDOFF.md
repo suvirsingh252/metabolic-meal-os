@@ -24,6 +24,23 @@ and who has it now.
 ---
 
 ### 2026-06-13 — Claude Code → user
+- Task: 2026-06-13-agentops-v1.1 (Mobile Operations) + AgentOps v2 proposal
+- State: Done (pending user review)
+- Changed: added `ai/MOBILE_WORKFLOW.md` (Termius + tmux mobile guide); added
+  tmux session/window detection to `scripts/agent-status.sh`; added a "Phone
+  Operations" section to `README.md`. Separately, authored
+  `ai/AGENTOPS_V2_PROPOSAL.md` (design only — no code) and a note in
+  `ai/CLI_ROLES.md` that v2 is proposed, not active.
+- Verified: v1.1 validation gate run via `scripts/agent-closeout.sh` — lint,
+  typecheck, test (369/369), build all pass; route inventory unchanged. No
+  runtime code changed. The v2 proposal is documentation only and was not gated.
+- Open / next: AgentOps v2 is **proposed, not implemented**. Not started: the
+  `tablewise` CLI, Codex CLI / Gemini CLI adoption, any CLI_ROLES role changes.
+  Suggested first implementation step (when approved): Phase 2 `tablewise
+  status`/`gate` thin wrappers over existing scripts.
+- Tree owner now: user
+
+### 2026-06-13 — Claude Code → user
 - Task: 2026-06-13-agentops-v1 (Stand up Tablewise AgentOps v1)
 - State: Done (pending user review)
 - Changed: added `ai/` (AGENT_RULES, CLI_ROLES, CURRENT_TASK,

@@ -6,6 +6,10 @@ lane is what keeps tools from cross-wiring. Read this with `ai/AGENT_RULES.md`.
 > **Important (2026-06-13):** No extra CLIs are installed in this project yet.
 > Everything below except Claude Code and npm is a **candidate tool**. Document
 > and plan around them; do not assume they exist; do not install them.
+>
+> **Note:** AgentOps v2 (terminal-first agents, a `tablewise` orchestration CLI,
+> reduced prompt copy-paste) is **proposed, not active** — see
+> `ai/AGENTOPS_V2_PROPOSAL.md`. The roles below are unchanged until v2 is approved.
 
 ---
 

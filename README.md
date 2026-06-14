@@ -56,6 +56,29 @@ bash scripts/agent-closeout.sh    # run lint/typecheck/test/build gate
 Agents must not install CLIs or add dependencies, must not change app behavior
 for tooling tasks, and must not commit unless asked. See `ai/AGENT_RULES.md`.
 
+## Phone Operations
+
+You can drive this repo over SSH from an iPhone (Termius + tmux). Full guide:
+`ai/MOBILE_WORKFLOW.md`. The golden rule is **always work inside tmux** so a
+dropped connection detaches instead of killing your work.
+
+```bash
+# Reconnect (attach if a session exists, else create one)
+tmux attach -t tablewise || tmux new -s tablewise
+
+# Detach (safe — keeps everything running):  Ctrl-b d
+```
+
+Safe from a phone: `bash scripts/agent-status.sh` (now reports the current tmux
+session and window count), the validation gate via
+`bash scripts/agent-closeout.sh` (start it, detach, reattach for the summary),
+and git inspection (`git status`, `git diff`, `git log`).
+
+Avoid from a phone: commits/pushes, destructive git, `drizzle-kit migrate` or any
+production migration/deploy, dependency installs, and editing `.env*` secrets —
+do those from a desktop where you can review the full diff. See
+`ai/MOBILE_WORKFLOW.md` for the complete do / do-not list.
+
 ## Routes
 
 - `/`

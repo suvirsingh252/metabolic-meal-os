@@ -10,10 +10,11 @@ with the next packet (or the "no active task" state).
 ## Task: Stand up Tablewise AgentOps v1
 
 - **Packet ID:** 2026-06-13-agentops-v1
-- **Owner (CLI):** Claude Code
+- **Owner (CLI):** Unassigned
 - **Created by:** User (via PM)
 - **Date:** 2026-06-13
-- **Status:** In progress
+- **Status:** Complete
+- **Next Action:** Await PM prioritization
 
 ### Goal
 Create a repo-local AI development workflow under `/ai` plus helper scripts so
