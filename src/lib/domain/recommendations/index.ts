@@ -1,3 +1,4 @@
+export * from "@/src/lib/domain/recommendations/dinner-concierge";
 export * from "@/src/lib/domain/recommendations/ranking";
 export * from "@/src/lib/domain/recommendations/reasons";
 export * from "@/src/lib/domain/recommendations/scoring";
