@@ -61,7 +61,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           const Icon = item.icon;
           const active =
             pathname === item.href ||
-            (item.href === "/" && pathname === "/today");
+            (item.href === "/" &&
+              (pathname === "/today" || pathname === "/concierge"));
 
           return (
             <Link

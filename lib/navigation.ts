@@ -18,7 +18,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   {
     href: "/",
-    label: "Today",
+    label: "Tonight",
     icon: Home
   },
   {
