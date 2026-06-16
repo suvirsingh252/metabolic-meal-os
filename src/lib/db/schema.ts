@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  index,
   numeric,
   pgTable,
   text,
@@ -89,3 +90,29 @@ export const meals = pgTable("meals", {
 
 export type Meal = typeof meals.$inferSelect;
 export type NewMeal = typeof meals.$inferInsert;
+
+export const dinnerFeedback = pgTable(
+  "dinner_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: text("household_id").notNull(),
+    mealId: uuid("meal_id")
+      .notNull()
+      .references(() => meals.id),
+    chipType: text("chip_type").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+  },
+  (table) => ({
+    householdMealIdx: index("dinner_feedback_household_meal_idx").on(
+      table.householdId,
+      table.mealId
+    ),
+    createdAtIdx: index("dinner_feedback_created_at_idx").on(table.createdAt)
+  })
+);
+
+export type DinnerFeedback = typeof dinnerFeedback.$inferSelect;
+export type NewDinnerFeedback = typeof dinnerFeedback.$inferInsert;
