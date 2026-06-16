@@ -37,7 +37,7 @@ export interface MealChipFeedbackSummary extends MealFeedbackSummary {
   betterForWeekendsCount: number;
 }
 
-const feedbackChips: FeedbackChip[] = [
+export const feedbackChipTypes: FeedbackChip[] = [
   "loved_it",
   "family_loved_it",
   "would_make_again",
@@ -47,6 +47,14 @@ const feedbackChips: FeedbackChip[] = [
   "better_for_weekends",
   "not_worth_it"
 ];
+
+const feedbackChips = feedbackChipTypes;
+
+export function isFeedbackChip(value: unknown): value is FeedbackChip {
+  return (
+    typeof value === "string" && feedbackChips.includes(value as FeedbackChip)
+  );
+}
 
 function emptyChipCounts(): FeedbackChipCounts {
   return Object.fromEntries(
