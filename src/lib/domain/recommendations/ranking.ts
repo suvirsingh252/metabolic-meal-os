@@ -7,9 +7,12 @@ import {
   normalizeMealName,
   normalizeMealType
 } from "@/src/lib/domain/recommendations/variety";
-import type {
-  MealFeedbackSummary,
-  MealFeedbackSummaryByMealId
+import {
+  deriveRecommendationContext,
+  getFeedbackExplanationReasons,
+  type MealFeedbackSummary,
+  type MealFeedbackSummaryByMealId,
+  type RecommendationContext
 } from "@/src/lib/domain/feedback";
 import type {
   MealRecommendation,
@@ -22,6 +25,7 @@ export interface RankRecommendationOptions {
   excludedMealIds?: string[];
   excludedMealNames?: string[];
   feedbackByMealId?: MealFeedbackSummaryByMealId;
+  context?: Partial<RecommendationContext>;
 }
 
 function getConfidence(
@@ -66,6 +70,10 @@ export function rankRecommendationsForCategory(
       !excludedNames.has(normalizeMealName(meal.mealName))
     );
   });
+  const context = deriveRecommendationContext(
+    options.generatedAt,
+    options.context
+  );
 
   return candidates
     .map((meal) => {
@@ -75,15 +83,19 @@ export function rankRecommendationsForCategory(
         meals,
         category,
         generatedAt: options.generatedAt,
-        feedbackSummary
+        feedbackSummary,
+        context
       });
-      const reasons = generateRecommendationReasons(
-        meal,
-        meals,
-        category,
-        options.generatedAt,
-        feedbackSummary
-      );
+      const reasons = [
+        ...generateRecommendationReasons(
+          meal,
+          meals,
+          category,
+          options.generatedAt,
+          feedbackSummary
+        ),
+        ...getFeedbackExplanationReasons(feedbackSummary, context)
+      ];
       const explanation = generateRecommendationExplanation(
         {
           meal,

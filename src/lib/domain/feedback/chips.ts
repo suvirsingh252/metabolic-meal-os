@@ -152,6 +152,22 @@ export function summarizeMealChipFeedback(
   return summaries;
 }
 
+export function isMealChipFeedbackSummary(
+  summary: MealFeedbackSummary | MealChipFeedbackSummary | null
+): summary is MealChipFeedbackSummary {
+  return Boolean(summary) && "chipCounts" in (summary as object);
+}
+
+export function deriveRecommendationContext(
+  generatedAt: string,
+  overrides: Partial<RecommendationContext> = {}
+): RecommendationContext {
+  return {
+    dayOfWeek: new Date(generatedAt).getUTCDay(),
+    ...overrides
+  };
+}
+
 function normalizedContextTokens(context: RecommendationContext) {
   return [
     ...(context.selectedMoodChips ?? []),

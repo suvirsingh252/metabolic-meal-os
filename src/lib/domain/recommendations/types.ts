@@ -32,6 +32,7 @@ export interface RecommendationScoreBreakdown {
   recencyScore: number;
   varietyPenalty: number;
   schedulingScore: number;
+  feedbackAdjustment: number;
   totalScore: number;
 }
 

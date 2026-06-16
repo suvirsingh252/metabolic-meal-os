@@ -1,4 +1,10 @@
 import type { MealFeedbackSummary } from "@/src/lib/domain/feedback";
+import {
+  deriveRecommendationContext,
+  getFeedbackScoreAdjustment,
+  isMealChipFeedbackSummary,
+  type RecommendationContext
+} from "@/src/lib/domain/feedback";
 import type {
   RecommendationExplanation,
   RecommendationMeal,
@@ -18,6 +24,7 @@ export interface ScoreRecommendationInput {
   category: TodayMealCategory;
   generatedAt: string;
   feedbackSummary: MealFeedbackSummary | null;
+  context?: RecommendationContext;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -158,8 +165,21 @@ export function computeVarietyPenalty(
 export function scoreRecommendation(
   input: ScoreRecommendationInput
 ): RecommendationScoreBreakdown {
+  const isChipSummary = isMealChipFeedbackSummary(input.feedbackSummary);
+  const context =
+    input.context ?? deriveRecommendationContext(input.generatedAt);
   const schedulingScore = computeSchedulingScore(input.meal);
-  const preferenceScore = computePreferenceScore(input.feedbackSummary);
+  // Chip feedback already feeds the base preference fields, so it owns the
+  // feedback term via getFeedbackScoreAdjustment; running computePreferenceScore
+  // as well would double-count loved/disliked signals. Legacy summaries keep
+  // the original preference path.
+  const preferenceScore = isChipSummary
+    ? 0
+    : computePreferenceScore(input.feedbackSummary);
+  const feedbackAdjustment = getFeedbackScoreAdjustment(
+    input.feedbackSummary,
+    context
+  );
   const recencyScore = computeRecencyScore(
     input.meal,
     input.generatedAt,
@@ -172,13 +192,18 @@ export function scoreRecommendation(
     input.feedbackSummary
   );
   const totalScore =
-    schedulingScore + preferenceScore + recencyScore + varietyPenalty;
+    schedulingScore +
+    preferenceScore +
+    recencyScore +
+    varietyPenalty +
+    feedbackAdjustment;
 
   return {
     preferenceScore,
     recencyScore,
     varietyPenalty,
     schedulingScore,
+    feedbackAdjustment,
     totalScore
   };
 }
