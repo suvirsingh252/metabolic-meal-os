@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  resolveMirrorMealId,
-  saveDinnerFeedbackChip
-} from "@/src/lib/db/dinner-feedback";
-import { getConfiguredHouseholdMetadata } from "@/src/lib/domain/household/metadata";
-import { validateDinnerFeedbackRequest } from "@/src/lib/server/dinner-concierge";
+import { submitDinnerFeedback } from "@/src/lib/server/dinner-feedback";
 import {
   guardApiRequest,
   readJsonWithLimit
@@ -28,45 +23,10 @@ export async function POST(request: Request) {
     return body;
   }
 
-  const validation = validateDinnerFeedbackRequest(body);
-
-  if (!validation.ok) {
-    return NextResponse.json({ error: validation.message }, { status: 400 });
-  }
-
-  const { mealId, chips, createdBy } = validation.value;
-
   try {
-    const { householdId, createdBy: defaultCreatedBy } =
-      getConfiguredHouseholdMetadata();
+    const result = await submitDinnerFeedback(body);
 
-    // Resolve the Notion meal id to its Postgres mirror uuid. A missing mirror
-    // row means the meal has not been synced into Postgres yet (see the meals
-    // mirror backfill follow-up), so we surface a clear 422 rather than letting
-    // the foreign-key insert blow up.
-    const mirrorMealId = await resolveMirrorMealId(mealId);
-
-    if (!mirrorMealId) {
-      return NextResponse.json(
-        {
-          error: "meal not in store",
-          detail:
-            "This meal has not been synced to the meal store yet, so feedback cannot be saved."
-        },
-        { status: 422 }
-      );
-    }
-
-    for (const chipType of chips) {
-      await saveDinnerFeedbackChip({
-        householdId,
-        mealId: mirrorMealId,
-        chipType,
-        createdBy: createdBy ?? defaultCreatedBy
-      });
-    }
-
-    return NextResponse.json({ success: true, savedCount: chips.length });
+    return NextResponse.json(result.body, { status: result.status });
   } catch (error) {
     console.error("Dinner feedback API failure", error);
 

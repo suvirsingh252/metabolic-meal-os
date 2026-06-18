@@ -36,6 +36,8 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
+    ".agentops",
+    "agentops-console",
     "node_modules"
   ]
 }

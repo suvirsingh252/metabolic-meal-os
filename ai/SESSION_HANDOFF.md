@@ -23,6 +23,23 @@ and who has it now.
 
 ---
 
+### 2026-06-18 00:34 — Codex → user
+- Task: Phase 5B — Dinner Loop Hardening
+- State: Done (pending commit at closeout)
+- Changed: isolated local AgentOps state from the root Tablewise app by
+  excluding `.agentops/` and `agentops-console/` from root TypeScript checks and
+  git status; added a Dinner feedback submission helper that resolves existing
+  Postgres mirror rows and upserts a missing mirror row from the current
+  Notion-backed meal summary before saving chip feedback; covered existing
+  mirror, missing mirror, and unknown meal feedback paths in deterministic
+  tests.
+- Verified: `npm run lint` passed; `npm run typecheck` passed; `npm test`
+  passed (422/422); `npm run build` passed.
+- Open / next: deploy and smoke-test feedback from the homepage against a real
+  Notion-backed meal whose Postgres mirror row is absent. No auth, billing,
+  native wrapper, grocery, or Postgres-primary migration work was started.
+- Tree owner now: user
+
 ### 2026-06-13 — Claude Code → user
 - Task: 2026-06-13-agentops-v1.1 (Mobile Operations) + AgentOps v2 proposal
 - State: Done (pending user review)

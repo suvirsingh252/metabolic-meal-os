@@ -7,6 +7,7 @@ import {
   parseRefinementParams,
   validateDinnerFeedbackRequest
 } from "@/src/lib/server/dinner-concierge";
+import { submitDinnerFeedback } from "@/src/lib/server/dinner-feedback";
 import type { FeedbackChipEvent } from "@/src/lib/domain/feedback";
 
 const generatedAt = "2026-06-16T12:00:00.000Z";
@@ -178,4 +179,120 @@ test("feedback validation: rejects an unsupported chip", () => {
 test("feedback validation: rejects a non-object body", () => {
   assert.equal(validateDinnerFeedbackRequest("nope").ok, false);
   assert.equal(validateDinnerFeedbackRequest(null).ok, false);
+});
+
+function feedbackDeps(options: {
+  existingMirrorId?: string | null;
+  meals?: MealSummary[];
+}) {
+  const calls = {
+    queriedMeals: 0,
+    upsertedMealIds: [] as string[],
+    savedMealIds: [] as string[]
+  };
+
+  return {
+    calls,
+    deps: {
+      getHouseholdMetadata: () => ({
+        householdId: "household-1",
+        createdBy: "default-user",
+        visibility: "private" as const,
+        schemaVersion: "meal-record-v1"
+      }),
+      queryAllMealSummaries: async () => {
+        calls.queriedMeals += 1;
+        return { meals: options.meals ?? [] };
+      },
+      resolveMirrorMealId: async () => options.existingMirrorId ?? null,
+      upsertMirrorMealFromSummary: async (input: {
+        householdId: string;
+        createdBy?: string | null;
+        meal: MealSummary;
+      }) => {
+        assert.equal(input.householdId, "household-1");
+        calls.upsertedMealIds.push(input.meal.id);
+        return `mirror-${input.meal.id}`;
+      },
+      saveDinnerFeedbackChip: async (input: {
+        householdId: string;
+        mealId: string;
+        chipType: string;
+        createdBy?: string | null;
+      }) => {
+        assert.equal(input.householdId, "household-1");
+        calls.savedMealIds.push(input.mealId);
+        return {
+          id: `feedback-${calls.savedMealIds.length}`,
+          householdId: input.householdId,
+          mealId: input.mealId,
+          chipType: input.chipType,
+          createdBy: input.createdBy ?? null,
+          createdAt: new Date("2026-06-16T12:00:00.000Z")
+        };
+      }
+    }
+  };
+}
+
+test("feedback submission: saves against an existing Postgres mirror row", async () => {
+  const { deps, calls } = feedbackDeps({ existingMirrorId: "mirror-existing" });
+
+  const result = await submitDinnerFeedback(
+    { mealId: "notion-page-123", chips: ["loved_it"] },
+    deps
+  );
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { success: true, savedCount: 1 });
+  assert.equal(calls.queriedMeals, 0);
+  assert.deepEqual(calls.upsertedMealIds, []);
+  assert.deepEqual(calls.savedMealIds, ["mirror-existing"]);
+});
+
+test("feedback submission: upserts a missing mirror row for a Notion-backed meal", async () => {
+  const { deps, calls } = feedbackDeps({
+    meals: [
+      mealSummary({
+        id: "notion-page-456",
+        mealName: "Chana masala",
+        qualityScore: 88
+      })
+    ]
+  });
+
+  const result = await submitDinnerFeedback(
+    {
+      mealId: "notion-page-456",
+      chips: ["loved_it", "would_make_again"],
+      createdBy: "parent"
+    },
+    deps
+  );
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { success: true, savedCount: 2 });
+  assert.equal(calls.queriedMeals, 1);
+  assert.deepEqual(calls.upsertedMealIds, ["notion-page-456"]);
+  assert.deepEqual(calls.savedMealIds, [
+    "mirror-notion-page-456",
+    "mirror-notion-page-456"
+  ]);
+});
+
+test("feedback submission: rejects an unknown meal without saving feedback", async () => {
+  const { deps, calls } = feedbackDeps({
+    meals: [mealSummary({ id: "known-meal" })]
+  });
+
+  const result = await submitDinnerFeedback(
+    { mealId: "missing-meal", chips: ["loved_it"] },
+    deps
+  );
+
+  assert.equal(result.status, 422);
+  assert.equal(result.body.error, "unknown meal");
+  assert.equal(calls.queriedMeals, 1);
+  assert.deepEqual(calls.upsertedMealIds, []);
+  assert.deepEqual(calls.savedMealIds, []);
 });
