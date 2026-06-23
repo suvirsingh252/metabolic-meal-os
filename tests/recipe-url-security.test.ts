@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  basicRecipeParserAdapter,
   getSafeRedirectUrl,
   isPrivateOrReservedIp,
+  RecipeParserError,
   validateRecipeUrl
 } from "@/src/lib/integrations/recipe-parser";
 
@@ -26,4 +28,26 @@ test("getSafeRedirectUrl rejects redirects to blocked hosts", () => {
   assert.throws(() =>
     getSafeRedirectUrl("https://127.0.0.1/private", new URL("https://example.com"))
   );
+});
+
+test("HTTP 402 recipe responses are classified as blocked_url", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () =>
+    new Response("payment required", {
+      status: 402,
+      headers: { "content-type": "text/html" }
+    });
+
+  try {
+    await assert.rejects(
+      () => basicRecipeParserAdapter.parseFromUrl("https://example.com/recipe"),
+      (error: unknown) =>
+        error instanceof RecipeParserError &&
+        error.reason === "blocked_url" &&
+        /returned 402/i.test(error.message)
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

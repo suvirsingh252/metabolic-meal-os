@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getClassifiedUrlRecoveryCopy,
+  isDotdashRecipeDomain,
   getUrlRecoveryCopy
 } from "@/src/app/analyze/components/status-banner";
 import { prepareRecipeForMealAnalysis } from "@/src/lib/ai/meal-analysis/v1/recipe-prep";
@@ -39,6 +40,31 @@ test("blocked URL failures produce classified recoverable copy", () => {
   assert.match(copy.title, /needs recipe details/i);
   assert.match(copy.body, /blocked automated reading/i);
   assert.match(copy.nextStep, /original link will stay attached/i);
+});
+
+test("Dotdash recipe domains get domain-aware recovery copy", () => {
+  const copy = getClassifiedUrlRecoveryCopy(
+    {
+      sourceUrl: "https://www.allrecipes.com/recipe/9038/anniversary-chicken-i/",
+      failureReason: "blocked_url"
+    },
+    "That link returned 402."
+  );
+
+  assert.ok(copy);
+  assert.match(copy.body, /publisher family commonly blocks/i);
+  assert.match(copy.body, /paste the visible ingredients/i);
+  assert.match(copy.nextStep, /original link will stay attached/i);
+});
+
+test("Dotdash recovery domain detection covers supported recipe publishers", () => {
+  assert.equal(isDotdashRecipeDomain("https://www.allrecipes.com/recipe/1"), true);
+  assert.equal(
+    isDotdashRecipeDomain("https://www.simplyrecipes.com/recipes/lemon_chicken/"),
+    true
+  );
+  assert.equal(isDotdashRecipeDomain("https://www.seriouseats.com/fresh-egg-pasta"), true);
+  assert.equal(isDotdashRecipeDomain("https://www.foodnetwork.com/recipes/test"), false);
 });
 
 test("URL recovery text bypasses refetch and preserves original source URL", async () => {

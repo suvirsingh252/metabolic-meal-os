@@ -454,7 +454,10 @@ async function fetchRecipeHtml(url: URL) {
   if (!response.ok) {
     throw new RecipeParserError(
       `That link returned ${response.status}. Paste the caption, transcript, ingredient list, or recipe text instead.`,
-      response.status === 401 || response.status === 403 || response.status === 429
+      response.status === 401 ||
+        response.status === 402 ||
+        response.status === 403 ||
+        response.status === 429
         ? "blocked_url"
         : "fetch_failed"
     );

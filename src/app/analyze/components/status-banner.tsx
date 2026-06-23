@@ -3,6 +3,26 @@
 import { Alert } from "@/components/ui/alert";
 import type { AnalyzeState } from "@/src/app/analyze/types";
 
+const dotdashRecipeDomains = new Set([
+  "allrecipes.com",
+  "simplyrecipes.com",
+  "seriouseats.com"
+]);
+
+function readHostname(value: string) {
+  try {
+    return new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+export function isDotdashRecipeDomain(value: string) {
+  const hostname = readHostname(value);
+
+  return hostname ? dotdashRecipeDomains.has(hostname) : false;
+}
+
 export function getUrlRecoveryCopy(inputLooksLikeUrl: boolean, error: string) {
   if (!inputLooksLikeUrl) {
     return null;
@@ -51,11 +71,18 @@ export function getClassifiedUrlRecoveryCopy(
       "Paste the recipe details directly and Tablewise can continue from there."
   };
 
+  const isDotdashBlocked =
+    urlRecovery.failureReason === "blocked_url" &&
+    isDotdashRecipeDomain(urlRecovery.sourceUrl);
+
   return {
     title: "Tablewise needs recipe details another way.",
-    body: reasonCopy[urlRecovery.failureReason],
-    nextStep:
-      "Paste ingredients, instructions, caption, transcript, or a rough description into the box and run Analyze again. The original link will stay attached.",
+    body: isDotdashBlocked
+      ? "This publisher family commonly blocks automated recipe reads. Tablewise can still analyze the recipe if you paste the visible ingredients, instructions, or a rough summary."
+      : reasonCopy[urlRecovery.failureReason],
+    nextStep: isDotdashBlocked
+      ? "Paste the recipe details from the page into the box and run Analyze again. The original link will stay attached."
+      : "Paste ingredients, instructions, caption, transcript, or a rough description into the box and run Analyze again. The original link will stay attached.",
     technicalDetail: error
   };
 }
