@@ -1,4 +1,9 @@
-import type { RecipeIngredient } from "@/src/lib/types/recipe";
+import type {
+  CanonicalRecipe,
+  RecipeExtractionConfidence,
+  RecipeExtractionMethod,
+  RecipeIngredient
+} from "@/src/lib/types/recipe";
 import type { SocialRecipeCandidate } from "@/src/lib/ai/social-recipe-normalization/v1/types";
 
 export const cuisines = [
@@ -114,6 +119,14 @@ export interface MealAnalysisRequest {
   sourceClassification?: MealSourceClassification | null;
 }
 
+export type AnalyzeFailureReason =
+  | "blocked_url"
+  | "fetch_failed"
+  | "no_recipe_found"
+  | "partial_recipe_found"
+  | "social_url"
+  | "manual_input_needed";
+
 export interface MealAnalysisResult {
   mealName: string;
   cuisine: Cuisine;
@@ -170,6 +183,9 @@ export interface MealAnalysisResult {
   lastParsedAt?: string | null;
   parserVersion?: string | null;
   socialRecipeCandidate?: SocialRecipeCandidate | null;
+  canonicalRecipe?: CanonicalRecipe | null;
+  extractionMethod?: RecipeExtractionMethod | null;
+  extractionConfidence?: RecipeExtractionConfidence | null;
 
   // Runtime analysis metadata. Optional and not required for Notion persistence.
   knownIngredientContextUsed?: boolean;

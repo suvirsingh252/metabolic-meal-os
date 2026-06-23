@@ -3,7 +3,14 @@ import { RecipeParserError } from "@/src/lib/integrations/recipe-parser";
 
 export function mealAnalysisErrorResponse(error: unknown) {
   if (error instanceof RecipeParserError) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: error.message,
+        failureReason: error.reason,
+        recoverable: true
+      },
+      { status: 400 }
+    );
   }
 
   console.error("Meal analysis API failure", error);

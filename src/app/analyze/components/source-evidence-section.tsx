@@ -20,6 +20,19 @@ export function SourceSummary({ analysis }: { analysis: MealAnalysisResult }) {
         {analysis.parserVersion ? (
           <p>Parser: {analysis.parserVersion}</p>
         ) : null}
+        {analysis.extractionMethod ? (
+          <p>Extraction: {analysis.extractionMethod}</p>
+        ) : null}
+        {analysis.extractionConfidence ? (
+          <p>
+            Confidence:{" "}
+            {analysis.extractionConfidence === "full_recipe"
+              ? "full recipe"
+              : analysis.extractionConfidence === "partial_recipe"
+                ? "partial recipe"
+                : "estimated from description"}
+          </p>
+        ) : null}
         {analysis.analysisVersion ? (
           <p>Analysis: {analysis.analysisVersion}</p>
         ) : null}

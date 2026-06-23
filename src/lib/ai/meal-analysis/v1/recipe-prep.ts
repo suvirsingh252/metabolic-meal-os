@@ -5,14 +5,18 @@ import {
   type ParsedRecipeDraft,
   RecipeParserError
 } from "@/src/lib/integrations/recipe-parser";
-import type { MealAnalysisRequest, MealSourceClassification } from "@/src/lib/types/meal";
+import type {
+  MealAnalysisRequest,
+  MealSourceClassification
+} from "@/src/lib/types/meal";
 import {
   estimateFreeTextNutrition,
   estimateNutritionFromIngredients
 } from "@/src/lib/domain/nutrition";
 import {
   defaultManualRecipeSource,
-  manualParserVersion
+  manualParserVersion,
+  type CanonicalRecipe
 } from "@/src/lib/types/recipe";
 import {
   classifySourceInput,
@@ -30,6 +34,7 @@ import {
 import type { fetchStaticSocialMetadata } from "@/src/lib/intake-v2/metadata";
 
 const socialParserVersion = "social-normalizer-v1";
+const recoveredUrlParserVersion = "url-recovery-manual-v1";
 
 interface PrepareRecipeOptions {
   instagramMetadataLoader?: typeof fetchStaticSocialMetadata;
@@ -58,6 +63,58 @@ function mapRecipeNutritionEstimate(parsedRecipe: ParsedRecipeDraft) {
     ingredients: parsedRecipe.ingredients,
     notes: parsedRecipe.notes ?? null
   });
+}
+
+function sourceNameFromUrl(value: string) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+function buildManualCanonicalRecipe(input: {
+  text: string;
+  sourceUrl?: string | null;
+  extractionMethod?: CanonicalRecipe["extractionMethod"];
+  confidence?: CanonicalRecipe["confidence"];
+}): CanonicalRecipe {
+  return {
+    title: null,
+    servings: null,
+    ingredients: [],
+    instructions: [],
+    prepTime: null,
+    cookTime: null,
+    sourceUrl: input.sourceUrl ?? null,
+    extractionMethod: input.extractionMethod ?? "manual",
+    confidence: input.confidence ?? "estimated_description",
+    description: input.text,
+    nutrition: null
+  };
+}
+
+function buildSocialCanonicalRecipe(input: {
+  candidate: SocialRecipeCandidate;
+  sourceUrl?: string | null;
+  description?: string | null;
+}): CanonicalRecipe {
+  return {
+    title: input.candidate.title,
+    servings: input.candidate.servings ?? null,
+    ingredients: input.candidate.ingredients.map((rawText) => ({ rawText })),
+    instructions: input.candidate.steps,
+    prepTime: null,
+    cookTime: null,
+    sourceUrl: input.sourceUrl ?? null,
+    extractionMethod: "social_caption",
+    confidence:
+      input.candidate.confidence === "high"
+        ? "partial_recipe"
+        : "estimated_description",
+    description: input.description ?? null,
+    nutrition: null
+  };
 }
 
 const sourceClassificationMap: Record<
@@ -147,6 +204,96 @@ export async function prepareRecipeForMealAnalysis(
   const leadingUrlInput = splitLeadingUrlAndTrailingText(request.recipeText);
   const routingText = leadingUrlInput?.urlLine ?? request.recipeText;
 
+  if (
+    leadingUrlInput?.trailingText &&
+    leadingUrlInput.trailingText.length >= 10 &&
+    !(
+      classifySourceInput(leadingUrlInput.urlLine) === "instagram" &&
+      supportsIntakeV2Instagram(leadingUrlInput.urlLine)
+    )
+  ) {
+    const inputSource = classifySourceInput(leadingUrlInput.urlLine);
+    const socialSource = isSocialSource(inputSource) ? inputSource : null;
+
+    if (socialSource) {
+      const candidate = await normalizeSocialRecipeText({
+        sourceUrl: leadingUrlInput.urlLine,
+        sourceType: socialSource,
+        title: request.sourceName,
+        text: leadingUrlInput.trailingText
+      });
+      const now = new Date().toISOString();
+
+      return {
+        analysisText: formatSocialCandidateForAnalysis({
+          sourceUrl: leadingUrlInput.urlLine,
+          sourceType: socialSource,
+          candidate
+        }),
+        ingredients: candidate.ingredients.map((rawText) => ({ rawText })),
+        instructions: candidate.steps,
+        sourceType: "url" as const,
+        sourceUrl: leadingUrlInput.urlLine,
+        sourceName: request.sourceName ?? socialSource,
+        sourceClassification: mapSourceClassification(socialSource),
+        sourceNotes: [
+          "Original URL was preserved, but analysis used pasted recovery text because the link did not provide enough recipe detail.",
+          `Normalization confidence: ${candidate.confidence}`,
+          ...candidate.assumptions.map((item) => `Assumption: ${item}`),
+          ...candidate.missingDetails.map((item) => `Missing detail: ${item}`)
+        ],
+        importedAt: now,
+        lastParsedAt: now,
+        parserVersion: socialParserVersion,
+        socialRecipeCandidate: candidate,
+        canonicalRecipe: buildSocialCanonicalRecipe({
+          candidate,
+          sourceUrl: leadingUrlInput.urlLine,
+          description: leadingUrlInput.trailingText
+        }),
+        nutritionEstimate: estimateNutritionFromIngredients({
+          recipeName: candidate.title,
+          ingredients: candidate.ingredients.map((rawText) => ({ rawText })),
+          notes: candidate.assumptions.join("\n")
+        })
+      };
+    }
+
+    const sourceClassification = mapSourceClassification(inputSource);
+    const canonicalRecipe = buildManualCanonicalRecipe({
+      text: leadingUrlInput.trailingText,
+      sourceUrl: leadingUrlInput.urlLine,
+      extractionMethod: "manual",
+      confidence: "estimated_description"
+    });
+
+    return {
+      analysisText: [
+        "Recipe recovery text supplied after URL extraction failed.",
+        `Source URL: ${leadingUrlInput.urlLine}`,
+        `Source type: ${sourceClassification}`,
+        `Confidence: ${canonicalRecipe.confidence}`,
+        `Pasted details:\n${leadingUrlInput.trailingText}`
+      ].join("\n\n"),
+      ingredients: [],
+      instructions: [],
+      sourceType: "url" as const,
+      sourceUrl: leadingUrlInput.urlLine,
+      sourceName: sourceNameFromUrl(leadingUrlInput.urlLine),
+      sourceClassification,
+      sourceNotes: [
+        "Original URL was preserved, but analysis used pasted recovery text because the link did not provide enough recipe detail.",
+        "Nutrition and recipe review may be less precise when ingredients or instructions are incomplete."
+      ],
+      importedAt: new Date().toISOString(),
+      lastParsedAt: null,
+      parserVersion: recoveredUrlParserVersion,
+      socialRecipeCandidate: null,
+      canonicalRecipe,
+      nutritionEstimate: estimateFreeTextNutrition(leadingUrlInput.trailingText)
+    };
+  }
+
   if (isProbablyUrl(routingText)) {
     const inputSource = classifySourceInput(routingText);
 
@@ -179,6 +326,7 @@ export async function prepareRecipeForMealAnalysis(
             parsedRecipe.source.lastParsedAt ?? new Date().toISOString(),
           parserVersion: parsedRecipe.source.parserVersion ?? null,
           socialRecipeCandidate: null,
+          canonicalRecipe: parsedRecipe.canonicalRecipe ?? null,
           nutritionEstimate: mapRecipeNutritionEstimate(parsedRecipe)
         };
       }
@@ -219,6 +367,11 @@ export async function prepareRecipeForMealAnalysis(
           lastParsedAt: now,
           parserVersion: intakeV2ParserVersion,
           socialRecipeCandidate: candidate,
+          canonicalRecipe: buildSocialCanonicalRecipe({
+            candidate,
+            sourceUrl: enrichment.canonicalUrl,
+            description: leadingUrlInput?.trailingText ?? null
+          }),
           nutritionEstimate: estimateNutritionFromIngredients({
             recipeName: candidate.title,
             ingredients: candidate.ingredients.map((rawText) => ({ rawText })),
@@ -228,7 +381,8 @@ export async function prepareRecipeForMealAnalysis(
       }
 
       throw new RecipeParserError(
-        "Social recipe detected. Paste the caption, ingredient list, rough notes, or spoken recipe summary below and I can normalize it for analysis."
+        "Social recipe detected. Paste the caption, ingredient list, rough notes, or spoken recipe summary below and I can normalize it for analysis.",
+        "social_url"
       );
     }
 
@@ -249,6 +403,7 @@ export async function prepareRecipeForMealAnalysis(
       lastParsedAt: parsedRecipe.source.lastParsedAt ?? new Date().toISOString(),
       parserVersion: parsedRecipe.source.parserVersion ?? null,
       socialRecipeCandidate: null,
+      canonicalRecipe: parsedRecipe.canonicalRecipe ?? null,
       nutritionEstimate: mapRecipeNutritionEstimate(parsedRecipe)
     };
   }
@@ -292,6 +447,11 @@ export async function prepareRecipeForMealAnalysis(
       lastParsedAt: now,
       parserVersion: socialParserVersion,
       socialRecipeCandidate: candidate,
+      canonicalRecipe: buildSocialCanonicalRecipe({
+        candidate,
+        sourceUrl: request.sourceUrl,
+        description: request.recipeText
+      }),
       nutritionEstimate: estimateNutritionFromIngredients({
         recipeName: candidate.title,
         ingredients: candidate.ingredients.map((rawText) => ({ rawText })),
@@ -313,6 +473,13 @@ export async function prepareRecipeForMealAnalysis(
     lastParsedAt: null,
     parserVersion: request.sourceType === "url" ? null : manualParserVersion,
     socialRecipeCandidate: null,
+    canonicalRecipe: buildManualCanonicalRecipe({
+      text: request.recipeText,
+      sourceUrl: request.sourceUrl,
+      extractionMethod: request.sourceType === "url" ? "ai_reconstructed" : "manual",
+      confidence:
+        request.sourceType === "url" ? "estimated_description" : "partial_recipe"
+    }),
     nutritionEstimate: estimateFreeTextNutrition(request.recipeText)
   };
 }

@@ -25,17 +25,54 @@ export function getUrlRecoveryCopy(inputLooksLikeUrl: boolean, error: string) {
   };
 }
 
+export function getClassifiedUrlRecoveryCopy(
+  urlRecovery: AnalyzeState["urlRecovery"],
+  error: string
+) {
+  if (!urlRecovery) {
+    return null;
+  }
+
+  const reasonCopy: Record<
+    NonNullable<AnalyzeState["urlRecovery"]>["failureReason"],
+    string
+  > = {
+    blocked_url:
+      "The publisher or platform blocked automated reading, but you can still analyze pasted recipe details.",
+    fetch_failed:
+      "Tablewise could not fetch the page reliably, but pasted recipe details will still work.",
+    no_recipe_found:
+      "The page did not expose enough recipe detail, but pasted ingredients or instructions will still work.",
+    partial_recipe_found:
+      "Only part of the recipe was available, so pasted details can improve the analysis.",
+    social_url:
+      "Social platforms often hide captions or transcripts, so paste the caption or what you remember.",
+    manual_input_needed:
+      "Paste the recipe details directly and Tablewise can continue from there."
+  };
+
+  return {
+    title: "Tablewise needs recipe details another way.",
+    body: reasonCopy[urlRecovery.failureReason],
+    nextStep:
+      "Paste ingredients, instructions, caption, transcript, or a rough description into the box and run Analyze again. The original link will stay attached.",
+    technicalDetail: error
+  };
+}
+
 export function StatusBanner({
   error,
   inputLooksLikeUrl,
   recipeText,
   socialFallback,
+  urlRecovery,
   usesBestEffortSocialIntake
 }: {
   error: string | null;
   inputLooksLikeUrl: boolean;
   recipeText: string;
   socialFallback: AnalyzeState["socialFallback"];
+  urlRecovery: AnalyzeState["urlRecovery"];
   usesBestEffortSocialIntake: boolean;
 }) {
   if (!error) {
@@ -62,15 +99,21 @@ export function StatusBanner({
   }
 
   const urlRecoveryCopy = getUrlRecoveryCopy(inputLooksLikeUrl, error);
+  const classifiedUrlRecoveryCopy = getClassifiedUrlRecoveryCopy(
+    urlRecovery,
+    error
+  );
+  const activeUrlRecoveryCopy = classifiedUrlRecoveryCopy ?? urlRecoveryCopy;
+  const sourceTried = urlRecovery?.sourceUrl ?? recipeText.trim();
 
   return (
     <Alert>
       <div className="space-y-2">
-        {urlRecoveryCopy ? (
+        {activeUrlRecoveryCopy ? (
           <>
-            <p className="font-medium">{urlRecoveryCopy.title}</p>
-            <p>{urlRecoveryCopy.body}</p>
-            <p>{urlRecoveryCopy.nextStep}</p>
+            <p className="font-medium">{activeUrlRecoveryCopy.title}</p>
+            <p>{activeUrlRecoveryCopy.body}</p>
+            <p>{activeUrlRecoveryCopy.nextStep}</p>
             <details className="text-xs opacity-80">
               <summary className="cursor-pointer">Technical detail</summary>
               <p className="mt-1 break-words">{error}</p>
@@ -90,10 +133,10 @@ export function StatusBanner({
               Source tried: {recipeText.trim()}
             </p>
           </>
-        ) : inputLooksLikeUrl ? (
+        ) : inputLooksLikeUrl || urlRecovery ? (
           <>
             <p className="break-all text-xs opacity-80">
-              Source tried: {recipeText.trim()}
+              Source tried: {sourceTried}
             </p>
           </>
         ) : null}

@@ -17,6 +17,7 @@ import type {
 } from "@/src/app/analyze/types";
 import type { MealOptimizationResult } from "@/src/lib/ai/meal-optimization/v1/types";
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
+import type { AnalyzeFailureReason } from "@/src/lib/types/meal";
 import {
   classifySourceInput,
   isSocialSource,
@@ -92,6 +93,30 @@ export function getErrorMessage(value: unknown) {
   return "Unable to analyze meal right now.";
 }
 
+function getAnalyzeFailureReason(value: unknown): AnalyzeFailureReason | null {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "failureReason" in value &&
+    typeof value.failureReason === "string"
+  ) {
+    const failureReason = value.failureReason;
+
+    if (
+      failureReason === "blocked_url" ||
+      failureReason === "fetch_failed" ||
+      failureReason === "no_recipe_found" ||
+      failureReason === "partial_recipe_found" ||
+      failureReason === "social_url" ||
+      failureReason === "manual_input_needed"
+    ) {
+      return failureReason;
+    }
+  }
+
+  return null;
+}
+
 export function looksLikeSharedUrl(value: string) {
   const trimmed = value.trim();
 
@@ -129,6 +154,10 @@ export function useAnalyzeController(initialRecipeText?: string) {
     const socialFallback = state.socialFallback;
     const useSocialFallback =
       socialFallback && !inputLooksLikeUrl && trimmedRecipeText.length >= 10;
+    const useUrlRecovery =
+      state.urlRecovery &&
+      !inputLooksLikeUrl &&
+      trimmedRecipeText.length >= 10;
     const requestBody = useSocialFallback && socialFallback
       ? {
           recipeText: trimmedRecipeText,
@@ -137,6 +166,13 @@ export function useAnalyzeController(initialRecipeText?: string) {
           sourceName: socialSourceLabels[socialFallback.sourceType],
           sourceClassification:
             requestSourceClassifications[socialFallback.sourceType]
+        }
+      : useUrlRecovery && state.urlRecovery
+      ? {
+          recipeText: `${state.urlRecovery.sourceUrl}\n\n${trimmedRecipeText}`,
+          sourceType: "url",
+          sourceUrl: state.urlRecovery.sourceUrl,
+          sourceName: "Recovered recipe URL"
         }
       : {
           recipeText: trimmedRecipeText
@@ -165,6 +201,7 @@ export function useAnalyzeController(initialRecipeText?: string) {
 
       if (!response.ok) {
         const message = getErrorMessage(data);
+        const failureReason = getAnalyzeFailureReason(data);
 
         if (currentInputIsSocialUrl && currentSource !== "instagram") {
           dispatch({
@@ -176,7 +213,12 @@ export function useAnalyzeController(initialRecipeText?: string) {
           return;
         }
 
-        dispatch({ type: "analysisFailed", message });
+        dispatch({
+          type: "analysisFailed",
+          message,
+          failureReason: failureReason ?? undefined,
+          sourceUrl: inputLooksLikeUrl ? trimmedRecipeText : state.urlRecovery?.sourceUrl
+        });
         return;
       }
 
@@ -198,7 +240,9 @@ export function useAnalyzeController(initialRecipeText?: string) {
     } catch {
       dispatch({
         type: "analysisFailed",
-        message: "Unable to reach the analysis service. Try again."
+        message: "Unable to reach the analysis service. Try again.",
+        failureReason: inputLooksLikeUrl ? "fetch_failed" : undefined,
+        sourceUrl: inputLooksLikeUrl ? trimmedRecipeText : state.urlRecovery?.sourceUrl
       });
     }
   }

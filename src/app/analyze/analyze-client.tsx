@@ -35,6 +35,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
         inputLooksLikeUrl={controller.inputLooksLikeUrl}
         recipeText={state.recipeText}
         socialFallback={state.socialFallback}
+        urlRecovery={state.urlRecovery}
         usesBestEffortSocialIntake={controller.usesBestEffortSocialIntake}
       />
 
@@ -48,6 +49,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
           showInstagramCaptionPrompt={showInstagramCaptionPrompt}
           socialFallback={state.socialFallback}
           trimmedRecipeTextLength={controller.trimmedRecipeTextLength}
+          urlRecovery={state.urlRecovery}
           usesBestEffortSocialIntake={controller.usesBestEffortSocialIntake}
         />
 

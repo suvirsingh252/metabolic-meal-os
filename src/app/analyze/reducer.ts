@@ -14,6 +14,7 @@ import type { SourceClassification } from "@/src/lib/intake/source-classifier";
 
 export const initialAnalyzeState: AnalyzeState = {
   recipeText: "",
+  urlRecovery: null,
   socialFallback: null,
   analysis: null,
   ingredientText: "",
@@ -37,7 +38,12 @@ export const initialAnalyzeState: AnalyzeState = {
 type AnalyzeAction =
   | { type: "recipeTextChanged"; value: string }
   | { type: "analysisStarted" }
-  | { type: "analysisFailed"; message: string }
+  | {
+      type: "analysisFailed";
+      message: string;
+      failureReason?: NonNullable<AnalyzeState["urlRecovery"]>["failureReason"];
+      sourceUrl?: string;
+    }
   | {
       type: "socialFallbackDetected";
       message: string;
@@ -102,7 +108,18 @@ export function analyzeReducer(
         optimizations: {}
       };
     case "analysisFailed":
-      return { ...state, isLoading: false, error: action.message };
+      return {
+        ...state,
+        isLoading: false,
+        error: action.message,
+        urlRecovery:
+          action.failureReason && action.sourceUrl
+            ? {
+                sourceUrl: action.sourceUrl,
+                failureReason: action.failureReason
+              }
+            : state.urlRecovery
+      };
     case "socialFallbackDetected":
       return {
         ...state,
@@ -119,6 +136,7 @@ export function analyzeReducer(
         isLoading: false,
         socialFallback: null,
         analysis: action.analysis,
+        urlRecovery: null,
         ingredientText: action.analysis.ingredientSuggestions.join("\n"),
         mainConcernsText: action.analysis.mainConcerns.join("\n"),
         shoppingAdditionsText: action.analysis.shoppingAdditions.join("\n"),

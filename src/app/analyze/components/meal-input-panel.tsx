@@ -23,11 +23,13 @@ const socialIntakeLoadingMessages = [
 export function getAnalyzePrimaryCtaLabel({
   isLoading,
   socialFallback,
+  urlRecovery,
   usesBestEffortSocialIntake,
   loadingMessage
 }: {
   isLoading: boolean;
   socialFallback: AnalyzeState["socialFallback"];
+  urlRecovery: AnalyzeState["urlRecovery"];
   usesBestEffortSocialIntake: boolean;
   loadingMessage: string;
 }) {
@@ -37,6 +39,10 @@ export function getAnalyzePrimaryCtaLabel({
 
   if (socialFallback) {
     return "Analyze pasted social recipe";
+  }
+
+  if (urlRecovery) {
+    return "Analyze pasted recipe details";
   }
 
   if (usesBestEffortSocialIntake) {
@@ -52,6 +58,7 @@ export function MealInputPanel({
   isAnalyzeDisabled,
   isLoading,
   socialFallback,
+  urlRecovery,
   usesBestEffortSocialIntake,
   showInstagramCaptionPrompt = false,
   onSubmit,
@@ -62,6 +69,7 @@ export function MealInputPanel({
   isAnalyzeDisabled: boolean;
   isLoading: boolean;
   socialFallback: AnalyzeState["socialFallback"];
+  urlRecovery: AnalyzeState["urlRecovery"];
   usesBestEffortSocialIntake: boolean;
   showInstagramCaptionPrompt?: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -129,7 +137,9 @@ export function MealInputPanel({
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-2">
             <Label htmlFor="recipeText">
-              {socialFallback ? "Caption, ingredients, or notes" : "Recipe or meal idea"}
+              {socialFallback || urlRecovery
+                ? "Ingredients, instructions, caption, or notes"
+                : "Recipe or meal idea"}
             </Label>
             <textarea
               className="min-h-32 w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-72"
@@ -144,6 +154,8 @@ export function MealInputPanel({
               placeholder={
                 socialFallback
                   ? "Paste the caption, ingredient list, rough notes, method, servings, or what you remember from the video."
+                  : urlRecovery
+                    ? "Paste ingredients, instructions, servings, the caption or transcript, or a rough description. The original URL is preserved."
                   : "Paste a recipe URL, TikTok/Reel/Shorts link, caption, transcript, ingredients, instructions, servings, constraints, or a rough meal idea here."
               }
               rows={8}
@@ -210,6 +222,7 @@ export function MealInputPanel({
               {getAnalyzePrimaryCtaLabel({
                 isLoading,
                 socialFallback,
+                urlRecovery,
                 usesBestEffortSocialIntake,
                 loadingMessage
               })}

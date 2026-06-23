@@ -71,9 +71,19 @@ export async function analyzeMeal(request: MealAnalysisRequest) {
   const instructions = preparedRecipe.instructions.length
     ? preparedRecipe.instructions
     : result.instructions ?? null;
+  const recoveryConfidenceNote =
+    preparedRecipe.canonicalRecipe?.confidence === "estimated_description"
+      ? "This analysis used partial pasted details or page metadata, so nutrition and recipe conclusions are estimates to review."
+      : preparedRecipe.canonicalRecipe?.confidence === "partial_recipe"
+        ? "The extracted recipe was partial, so review ingredients, servings, and nutrition before saving."
+        : null;
+  const confidenceNotes = recoveryConfidenceNote
+    ? Array.from(new Set([recoveryConfidenceNote, ...result.confidenceNotes]))
+    : result.confidenceNotes;
 
   return {
     ...result,
+    confidenceNotes,
     ingredients,
     instructions,
     sourceType: preparedRecipe.sourceType,
@@ -85,6 +95,9 @@ export async function analyzeMeal(request: MealAnalysisRequest) {
     lastParsedAt: preparedRecipe.lastParsedAt,
     parserVersion: preparedRecipe.parserVersion,
     socialRecipeCandidate: preparedRecipe.socialRecipeCandidate,
+    canonicalRecipe: preparedRecipe.canonicalRecipe,
+    extractionMethod: preparedRecipe.canonicalRecipe?.extractionMethod ?? null,
+    extractionConfidence: preparedRecipe.canonicalRecipe?.confidence ?? null,
     knownIngredientContextUsed: ingredientContext.ingredients.length > 0,
     knownIngredientContextNames: ingredientContext.ingredients.map(
       (ingredient) => ingredient.ingredientName

@@ -1,4 +1,5 @@
 import type { MealAnalysisResult } from "@/src/lib/types/meal";
+import type { AnalyzeFailureReason } from "@/src/lib/types/meal";
 import type {
   MealOptimizationResult,
   OptimizationType
@@ -82,6 +83,12 @@ export type OptimizationState =
 
 export interface AnalyzeState {
   recipeText: string;
+  urlRecovery:
+    | {
+        sourceUrl: string;
+        failureReason: AnalyzeFailureReason;
+      }
+    | null;
   socialFallback:
     | {
         sourceUrl: string;

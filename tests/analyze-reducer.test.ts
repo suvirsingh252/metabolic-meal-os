@@ -94,6 +94,38 @@ test("analyzeReducer stores social fallback state after social detection", () =>
   });
 });
 
+test("analyzeReducer stores recoverable URL failure state", () => {
+  const state = analyzeReducer(initialAnalyzeState, {
+    type: "analysisFailed",
+    message: "That link returned 403.",
+    failureReason: "blocked_url",
+    sourceUrl: "https://example.com/blocked-recipe"
+  });
+
+  assert.equal(state.isLoading, false);
+  assert.equal(state.error, "That link returned 403.");
+  assert.deepEqual(state.urlRecovery, {
+    sourceUrl: "https://example.com/blocked-recipe",
+    failureReason: "blocked_url"
+  });
+});
+
+test("analyzeReducer clears recoverable URL failure state after analysis success", () => {
+  const recoveryState = analyzeReducer(initialAnalyzeState, {
+    type: "analysisFailed",
+    message: "That link returned 403.",
+    failureReason: "blocked_url",
+    sourceUrl: "https://example.com/blocked-recipe"
+  });
+  const state = analyzeReducer(recoveryState, {
+    type: "analysisSucceeded",
+    analysis: meal
+  });
+
+  assert.equal(state.urlRecovery, null);
+  assert.equal(state.analysis?.mealName, "Dal and rice");
+});
+
 test("analyzeReducer clears social fallback after analysis success", () => {
   const fallbackState = analyzeReducer(initialAnalyzeState, {
     type: "socialFallbackDetected",

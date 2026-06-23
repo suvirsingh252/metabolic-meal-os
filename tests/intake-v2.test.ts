@@ -302,6 +302,7 @@ test("Analyze view model never dead-ends for Instagram URL-only", () => {
     getAnalyzePrimaryCtaLabel({
       isLoading: false,
       socialFallback: null,
+      urlRecovery: null,
       usesBestEffortSocialIntake: true,
       loadingMessage: "Looking for recipe details..."
     }),
@@ -311,6 +312,7 @@ test("Analyze view model never dead-ends for Instagram URL-only", () => {
     getAnalyzePrimaryCtaLabel({
       isLoading: true,
       socialFallback: null,
+      urlRecovery: null,
       usesBestEffortSocialIntake: true,
       loadingMessage: "Looking for recipe details..."
     }),

@@ -17,6 +17,20 @@ export const recipeSourceClassifications = [
 export const manualParserVersion = "manual-v1";
 export const urlParserVersion = "recipe-parser-shared-url-v2";
 
+export const recipeExtractionMethods = [
+  "jsonld",
+  "html",
+  "manual",
+  "social_caption",
+  "ai_reconstructed"
+] as const;
+
+export const recipeExtractionConfidences = [
+  "full_recipe",
+  "partial_recipe",
+  "estimated_description"
+] as const;
+
 export const operationalRecipeTags = [
   "weeknight",
   "cheap",
@@ -36,6 +50,9 @@ export type RecipeSourceType = (typeof recipeSourceTypes)[number];
 export type RecipeSourceClassification =
   (typeof recipeSourceClassifications)[number];
 export type OperationalRecipeTag = (typeof operationalRecipeTags)[number];
+export type RecipeExtractionMethod = (typeof recipeExtractionMethods)[number];
+export type RecipeExtractionConfidence =
+  (typeof recipeExtractionConfidences)[number];
 
 export interface RecipeSourceMetadata {
   sourceType: RecipeSourceType;
@@ -76,6 +93,20 @@ export interface RecipeNutritionFacts {
   sugar: number | null;
   confidence: "high" | "medium" | "low";
   provenance: string;
+}
+
+export interface CanonicalRecipe {
+  title: string | null;
+  servings: string | null;
+  ingredients: RecipeIngredient[];
+  instructions: string[];
+  prepTime: string | null;
+  cookTime: string | null;
+  sourceUrl: string | null;
+  extractionMethod: RecipeExtractionMethod;
+  confidence: RecipeExtractionConfidence;
+  nutrition?: RecipeNutritionFacts | null;
+  description?: string | null;
 }
 
 export const defaultManualRecipeSource: RecipeSourceMetadata = {

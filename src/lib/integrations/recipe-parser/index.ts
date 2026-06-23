@@ -2,7 +2,9 @@ import type {
   RecipeIngredient,
   RecipeNutritionFacts,
   RecipeSourceClassification,
-  RecipeSourceMetadata
+  RecipeSourceMetadata,
+  CanonicalRecipe,
+  RecipeExtractionConfidence
 } from "@/src/lib/types/recipe";
 import dns from "node:dns/promises";
 import type { LookupAddress } from "node:dns";
@@ -19,6 +21,7 @@ export interface ParsedRecipeDraft {
   nutrition?: RecipeNutritionFacts | null;
   extractionConfidence?: "high" | "medium" | "low";
   extractionNotes?: string[];
+  canonicalRecipe?: CanonicalRecipe | null;
 }
 
 export interface RecipeParserAdapter {
@@ -112,9 +115,21 @@ const htmlEntityMap: Record<string, string> = {
 };
 
 export class RecipeParserError extends Error {
-  constructor(message: string) {
+  reason:
+    | "blocked_url"
+    | "fetch_failed"
+    | "no_recipe_found"
+    | "partial_recipe_found"
+    | "social_url"
+    | "manual_input_needed";
+
+  constructor(
+    message: string,
+    reason: RecipeParserError["reason"] = "manual_input_needed"
+  ) {
     super(message);
     this.name = "RecipeParserError";
+    this.reason = reason;
   }
 }
 
@@ -179,15 +194,21 @@ export function validateRecipeUrl(value: string) {
   try {
     url = new URL(normalizedValue);
   } catch {
-    throw new RecipeParserError("Recipe URL must be a valid http or https URL.");
+    throw new RecipeParserError(
+      "Recipe URL must be a valid http or https URL.",
+      "manual_input_needed"
+    );
   }
 
   if (url.protocol !== "https:") {
-    throw new RecipeParserError("Recipe URL must use https.");
+    throw new RecipeParserError("Recipe URL must use https.", "blocked_url");
   }
 
   if (isBlockedHostname(url.hostname)) {
-    throw new RecipeParserError("Recipe URL host is not allowed.");
+    throw new RecipeParserError(
+      "Recipe URL host is not allowed.",
+      "blocked_url"
+    );
   }
 
   return stripTrackingParams(url);
@@ -291,7 +312,10 @@ export const basicRecipeParserAdapter: RecipeParserAdapter = {
     const cleaned = normalizeWhitespace(text);
 
     if (cleaned.length < minParsedTextLength) {
-      throw new RecipeParserError("Recipe text was too short to parse.");
+      throw new RecipeParserError(
+        "Recipe text was too short to parse.",
+        "manual_input_needed"
+      );
     }
 
     return {
@@ -301,7 +325,20 @@ export const basicRecipeParserAdapter: RecipeParserAdapter = {
         parserVersion: "text-parser-basic-v1"
       },
       ingredients: [],
-      notes: cleaned
+      notes: cleaned,
+      canonicalRecipe: {
+        title: null,
+        servings: null,
+        ingredients: [],
+        instructions: [],
+        prepTime: null,
+        cookTime: null,
+        sourceUrl: null,
+        extractionMethod: "manual",
+        confidence: "estimated_description",
+        description: cleaned,
+        nutrition: null
+      }
     };
   }
 };
@@ -327,15 +364,21 @@ function isBlockedHostname(hostname: string) {
 
 export async function assertSafeRecipeUrl(url: URL) {
   if (url.protocol !== "https:") {
-    throw new RecipeParserError("Recipe URL must use https.");
+    throw new RecipeParserError("Recipe URL must use https.", "blocked_url");
   }
 
   if (url.username || url.password) {
-    throw new RecipeParserError("Recipe URL must not include credentials.");
+    throw new RecipeParserError(
+      "Recipe URL must not include credentials.",
+      "blocked_url"
+    );
   }
 
   if (isBlockedHostname(url.hostname)) {
-    throw new RecipeParserError("Recipe URL host is not allowed.");
+    throw new RecipeParserError(
+      "Recipe URL host is not allowed.",
+      "blocked_url"
+    );
   }
 
   let addresses: LookupAddress[];
@@ -344,7 +387,8 @@ export async function assertSafeRecipeUrl(url: URL) {
     addresses = await dns.lookup(url.hostname, { all: true, verbatim: true });
   } catch {
     throw new RecipeParserError(
-      "I could not resolve that link. Paste the recipe text instead."
+      "I could not resolve that link. Paste the recipe text instead.",
+      "fetch_failed"
     );
   }
 
@@ -352,7 +396,10 @@ export async function assertSafeRecipeUrl(url: URL) {
     addresses.length === 0 ||
     addresses.some((address) => isPrivateOrReservedIp(address.address))
   ) {
-    throw new RecipeParserError("Recipe URL host is not allowed.");
+    throw new RecipeParserError(
+      "Recipe URL host is not allowed.",
+      "blocked_url"
+    );
   }
 }
 
@@ -377,7 +424,8 @@ async function fetchRecipeHtml(url: URL) {
       });
     } catch {
       throw new RecipeParserError(
-        "I could not reach that link. Paste the caption, transcript, ingredient list, or recipe text instead."
+        "I could not reach that link. Paste the caption, transcript, ingredient list, or recipe text instead.",
+        "fetch_failed"
       );
     }
 
@@ -396,7 +444,8 @@ async function fetchRecipeHtml(url: URL) {
 
   if (!response) {
     throw new RecipeParserError(
-      "I could not reach that link. Paste the recipe text instead."
+      "I could not reach that link. Paste the recipe text instead.",
+      "fetch_failed"
     );
   }
 
@@ -404,7 +453,10 @@ async function fetchRecipeHtml(url: URL) {
 
   if (!response.ok) {
     throw new RecipeParserError(
-      `That link returned ${response.status}. Paste the caption, transcript, ingredient list, or recipe text instead.`
+      `That link returned ${response.status}. Paste the caption, transcript, ingredient list, or recipe text instead.`,
+      response.status === 401 || response.status === 403 || response.status === 429
+        ? "blocked_url"
+        : "fetch_failed"
     );
   }
 
@@ -412,20 +464,27 @@ async function fetchRecipeHtml(url: URL) {
 
   if (!contentType.includes("text/html")) {
     throw new RecipeParserError(
-      "That link did not return a readable web page. Paste the caption, transcript, ingredient list, or recipe text instead."
+      "That link did not return a readable web page. Paste the caption, transcript, ingredient list, or recipe text instead.",
+      "no_recipe_found"
     );
   }
 
   const contentLength = Number(response.headers.get("content-length"));
 
   if (Number.isFinite(contentLength) && contentLength > maxHtmlBytes) {
-    throw new RecipeParserError("That page is too large to import safely.");
+    throw new RecipeParserError(
+      "That page is too large to import safely.",
+      "blocked_url"
+    );
   }
 
   const html = await response.text();
 
   if (html.length > maxHtmlBytes) {
-    throw new RecipeParserError("That page is too large to import safely.");
+    throw new RecipeParserError(
+      "That page is too large to import safely.",
+      "blocked_url"
+    );
   }
 
   return { html, finalUrl };
@@ -443,11 +502,14 @@ function validateFinalResponseUrl(responseUrl: string, fallbackUrl: URL) {
   }
 
   if (finalUrl.protocol !== "https:") {
-    throw new RecipeParserError("Recipe URL must use https.");
+    throw new RecipeParserError("Recipe URL must use https.", "blocked_url");
   }
 
   if (isBlockedHostname(finalUrl.hostname)) {
-    throw new RecipeParserError("Recipe URL host is not allowed.");
+    throw new RecipeParserError(
+      "Recipe URL host is not allowed.",
+      "blocked_url"
+    );
   }
 
   return finalUrl;
@@ -546,6 +608,24 @@ export function parseRecipeJsonLd(
   url: URL,
   sourceClassification: RecipeSourceClassification
 ): ParsedRecipeDraft | null {
+  const canonicalRecipe = parseCanonicalRecipeJsonLd(html, url);
+
+  if (!canonicalRecipe) {
+    return null;
+  }
+
+  return canonicalRecipeToParsedDraft(
+    canonicalRecipe,
+    html,
+    url,
+    sourceClassification
+  );
+}
+
+export function parseCanonicalRecipeJsonLd(
+  html: string,
+  url: URL
+): CanonicalRecipe | null {
   const scriptPattern =
     /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null;
@@ -563,29 +643,59 @@ export function parseRecipeJsonLd(
       (rawText) => ({ rawText })
     );
     const instructions = readInstructions(recipeNode.recipeInstructions);
-    const name = readString(recipeNode.name) ?? readTitle(html);
 
     if (ingredients.length === 0 && instructions.length === 0) {
       continue;
     }
 
     return {
-      name,
-      source: buildUrlSource(url, {
-        sourceName: readSiteName(html) ?? name,
-        sourceClassification: "recipe-page",
-        sourceNotes: buildExtractionNotes("high", sourceClassification)
-      }),
+      title: readString(recipeNode.name) ?? readTitle(html),
+      servings: readServings(recipeNode.recipeYield),
       ingredients,
       instructions,
-      notes: readString(recipeNode.description) ?? undefined,
+      prepTime: readString(recipeNode.prepTime),
+      cookTime: readString(recipeNode.cookTime),
+      sourceUrl: url.toString(),
+      extractionMethod: "jsonld",
+      confidence: getCanonicalRecipeConfidence(ingredients, instructions),
       nutrition: readRecipeNutrition(recipeNode.nutrition),
-      extractionConfidence: "high",
-      extractionNotes: buildExtractionNotes("high", sourceClassification)
+      description: readString(recipeNode.description)
     };
   }
 
   return null;
+}
+
+function canonicalRecipeToParsedDraft(
+  recipe: CanonicalRecipe,
+  html: string,
+  url: URL,
+  sourceClassification: RecipeSourceClassification
+): ParsedRecipeDraft {
+  const extractionNotes = buildExtractionNotes("high", sourceClassification);
+  const sourceNotes = [
+    ...extractionNotes,
+    recipe.confidence !== "full_recipe"
+      ? "Structured recipe data was partial; analyze results should be reviewed."
+      : null
+  ].filter((note): note is string => Boolean(note));
+
+  return {
+    name: recipe.title,
+    source: buildUrlSource(url, {
+      sourceName: readSiteName(html) ?? recipe.title,
+      sourceClassification: "recipe-page",
+      sourceNotes
+    }),
+    ingredients: recipe.ingredients,
+    instructions: recipe.instructions,
+    notes: recipe.description ?? undefined,
+    nutrition: recipe.nutrition,
+    extractionConfidence:
+      recipe.confidence === "full_recipe" ? "high" : "medium",
+    extractionNotes: sourceNotes,
+    canonicalRecipe: recipe
+  };
 }
 
 function parseFallbackHtml(
@@ -626,7 +736,8 @@ function parseFallbackHtml(
 
     if (!hasEnoughRecipeSignal(socialMetadataOnly)) {
       throw new RecipeParserError(
-        "I could not read enough recipe detail from this link. Paste the caption, transcript, ingredient list, or spoken recipe summary below and I can analyze it."
+        "I could not read enough recipe detail from this link. Paste the caption, transcript, ingredient list, or spoken recipe summary below and I can analyze it.",
+        "social_url"
       );
     }
 
@@ -647,7 +758,20 @@ function parseFallbackHtml(
       ingredients: [],
       notes: socialText.slice(0, 4_000),
       extractionConfidence: "low",
-      extractionNotes: sourceNotes
+      extractionNotes: sourceNotes,
+      canonicalRecipe: {
+        title: ogTitle ?? title ?? siteName,
+        servings: null,
+        ingredients: [],
+        instructions: [],
+        prepTime: null,
+        cookTime: null,
+        sourceUrl: url.toString(),
+        extractionMethod: "html",
+        confidence: "estimated_description",
+        description: socialText.slice(0, 4_000),
+        nutrition: null
+      }
     };
   }
 
@@ -661,7 +785,8 @@ function parseFallbackHtml(
 
   if (fallbackText.length < minParsedTextLength) {
     throw new RecipeParserError(
-      "I could not read enough recipe detail from this link. Paste the caption, transcript, ingredient list, or recipe text below and I can analyze it."
+      "I could not read enough recipe detail from this link. Paste the caption, transcript, ingredient list, or recipe text below and I can analyze it.",
+      "no_recipe_found"
     );
   }
 
@@ -678,7 +803,20 @@ function parseFallbackHtml(
     ingredients: [],
     notes: fallbackText.slice(0, maxAnalysisTextCharacters),
     extractionConfidence: usefulSections ? "medium" : "low",
-    extractionNotes: sourceNotes
+    extractionNotes: sourceNotes,
+    canonicalRecipe: {
+      title,
+      servings: null,
+      ingredients: [],
+      instructions: [],
+      prepTime: null,
+      cookTime: null,
+      sourceUrl: url.toString(),
+      extractionMethod: "html",
+      confidence: usefulSections ? "partial_recipe" : "estimated_description",
+      description: fallbackText.slice(0, maxAnalysisTextCharacters),
+      nutrition: null
+    }
   };
 }
 
@@ -890,6 +1028,34 @@ function readString(value: unknown): string | null {
   return cleaned || null;
 }
 
+function readServings(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    return (
+      value
+        .map(readString)
+        .filter(Boolean)
+        .join(", ") || null
+    );
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return readString(value);
+}
+
+function getCanonicalRecipeConfidence(
+  ingredients: RecipeIngredient[],
+  instructions: string[]
+): RecipeExtractionConfidence {
+  if (ingredients.length > 0 && instructions.length > 0) {
+    return "full_recipe";
+  }
+
+  return "partial_recipe";
+}
+
 function readRecipeNutrition(value: unknown): RecipeNutritionFacts | null {
   if (!isRecord(value)) {
     return null;
@@ -944,6 +1110,22 @@ function readStringArray(value: unknown): string[] {
 function readInstructions(value: unknown): string[] {
   if (typeof value === "string") {
     return [normalizeWhitespace(value)].filter(Boolean);
+  }
+
+  if (isRecord(value)) {
+    if (typeof value.text === "string") {
+      return [normalizeWhitespace(value.text)].filter(Boolean);
+    }
+
+    if (typeof value.name === "string") {
+      return [normalizeWhitespace(value.name)].filter(Boolean);
+    }
+
+    if (Array.isArray(value.itemListElement)) {
+      return readInstructions(value.itemListElement);
+    }
+
+    return [];
   }
 
   if (!Array.isArray(value)) {
