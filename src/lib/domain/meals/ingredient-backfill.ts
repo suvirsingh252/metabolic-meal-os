@@ -68,9 +68,16 @@ export interface IngredientBackfillReviewItem {
 }
 
 export interface IngredientBackfillReplacementPayload {
+  approved: boolean;
   mealId: string;
   mealName: string;
   sourceUrl: string | null;
+  expectedCurrentIngredients: Array<{
+    rawText: string;
+    name: string;
+    quantity: string | null;
+    unit: string | null;
+  }>;
   replaceIngredientsWith: Array<{
     rawText: string;
     name: string;
@@ -381,9 +388,16 @@ export function buildIngredientReplacementPayload(
   item: IngredientBackfillReviewItem
 ): IngredientBackfillReplacementPayload {
   return {
+    approved: false,
     mealId: item.meal.id,
     mealName: item.meal.mealName,
     sourceUrl: item.meal.sourceUrl,
+    expectedCurrentIngredients: item.comparison.currentRows.map((row) => ({
+      rawText: row.rawText,
+      name: row.name,
+      quantity: row.quantity,
+      unit: row.unit
+    })),
     replaceIngredientsWith: item.comparison.reparsedRows.map((row) => ({
       rawText: row.rawText,
       name: row.name,
