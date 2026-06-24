@@ -11,6 +11,7 @@ import type { LookupAddress } from "node:dns";
 import net from "node:net";
 import type { IntegrationAdapterStatus } from "@/src/lib/integrations/shared";
 import { urlParserVersion } from "@/src/lib/types/recipe";
+import { parseRecipeIngredientText } from "@/src/lib/ingredients";
 
 export interface ParsedRecipeDraft {
   name?: string | null;
@@ -642,9 +643,30 @@ export function parseCanonicalRecipeJsonLd(
       continue;
     }
 
-    const ingredients = readStringArray(recipeNode.recipeIngredient).map(
-      (rawText) => ({ rawText })
-    );
+    const jsonLdIngredientLines = readStringArray(recipeNode.recipeIngredient);
+    const ingredientLines = selectBestIngredientLines(html, jsonLdIngredientLines);
+    const ingredients = ingredientLines.map((rawText) => {
+      const parsedIngredient = parseRecipeIngredientText(rawText);
+
+      return parsedIngredient
+        ? {
+            rawText: parsedIngredient.rawText,
+            name: parsedIngredient.name,
+            quantity: parsedIngredient.quantity,
+            unit: parsedIngredient.unit
+          }
+        : { rawText };
+    });
+
+    if (process.env.TABLEWISE_INGREDIENT_DIAGNOSTICS === "1") {
+      console.info("Ingredient pipeline diagnostics: URL parser", {
+        sourceUrl: url.toString(),
+        jsonLdIngredientLines,
+        selectedIngredientLines: ingredientLines,
+        normalized: ingredients
+      });
+    }
+
     const instructions = readInstructions(recipeNode.recipeInstructions);
 
     if (ingredients.length === 0 && instructions.length === 0) {
@@ -667,6 +689,68 @@ export function parseCanonicalRecipeJsonLd(
   }
 
   return null;
+}
+
+function selectBestIngredientLines(html: string, jsonLdLines: string[]) {
+  const visibleLines = extractVisibleIngredientLines(html);
+
+  if (visibleLines.length === 0) {
+    return jsonLdLines;
+  }
+
+  const jsonLdQuantityCount = countIngredientQuantities(jsonLdLines);
+  const visibleQuantityCount = countIngredientQuantities(visibleLines);
+
+  if (
+    visibleLines.length >= jsonLdLines.length &&
+    visibleQuantityCount >= Math.max(3, jsonLdQuantityCount + 2)
+  ) {
+    return visibleLines;
+  }
+
+  return jsonLdLines;
+}
+
+function countIngredientQuantities(lines: string[]) {
+  return lines.filter((line) => parseRecipeIngredientText(line)?.quantity).length;
+}
+
+function extractVisibleIngredientLines(html: string) {
+  const containers = extractIngredientContainers(html);
+  const lines = containers.flatMap(extractIngredientLinesFromContainer);
+
+  return Array.from(new Set(lines));
+}
+
+function extractIngredientContainers(html: string) {
+  const containers: string[] = [];
+  const classPattern =
+    /<div[^>]+class=(["'])[^"']*ingredients?[^"']*\1[^>]*>([\s\S]*?)<\/div>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = classPattern.exec(html)) !== null) {
+    containers.push(match[2]);
+  }
+
+  return containers;
+}
+
+function extractIngredientLinesFromContainer(html: string) {
+  const lines: string[] = [];
+  const itemPattern = /<(?:p|li)[^>]*>([\s\S]*?)<\/(?:p|li)>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = itemPattern.exec(html)) !== null) {
+    const line = normalizeWhitespace(decodeHtmlEntities(stripTags(match[1])));
+
+    if (!line || /^for\s+/i.test(line)) {
+      continue;
+    }
+
+    lines.push(line);
+  }
+
+  return lines;
 }
 
 function canonicalRecipeToParsedDraft(

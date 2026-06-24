@@ -10,7 +10,10 @@ import {
   mealAnalysisRequiredFields
 } from "@/src/lib/ai/meal-analysis/v1/schema";
 import { validateMealAnalysisResult } from "@/src/lib/domain/meal/validation";
-import { buildMealCookbook } from "@/src/lib/domain/meals/cookbook";
+import {
+  buildMealCookbook,
+  formatCookbookIngredientAmount
+} from "@/src/lib/domain/meals/cookbook";
 import { emptyMealFeedbackSummary } from "@/src/lib/domain/feedback";
 import { buildMealNotesSummary } from "@/src/lib/notion/meal-notes";
 import {
@@ -487,6 +490,74 @@ test("saved Notes round-trip into structured cookbook ingredients and steps", ()
   );
   assert.equal(cookbook.hasOriginalRecipe, true);
   assert.equal(cookbook.originalRecipeUrl, "https://example.com/recipes/chana");
+});
+
+test("saved Ranveer Brar ingredient lines keep quantities, units, and English names", () => {
+  const cookbook = buildMealCookbook(
+    makeMealSummary({
+      sourceUrl: "https://ranveerbrar.com/recipes/chettinad-chicken-curry/",
+      ingredientsText: [
+        "1 tbsp Black peppercorns, काली मिर्च के दाने",
+        "6-7 no. Cloves, लौंग",
+        "4-5 no. Cashew Nuts, काजू",
+        "¾ cup fresh Coconut, scraped, ताजा कसा हुआ नारियल",
+        "1 kg Chicken legs, चिकन",
+        "Salt to taste, नमक स्वादअनुसार",
+        "2-3 sprig Curry leaves, कडी पत्ते",
+        "½ cup Shallots (peeled & roughly chopped) सांबर अनियन"
+      ].join("\n")
+    }),
+    emptyMealFeedbackSummary("meal-1")
+  );
+
+  assert.deepEqual(cookbook.ingredients.slice(0, 5), [
+    {
+      id: "ingredient-1",
+      rawText: "1 tbsp Black peppercorns, काली मिर्च के दाने",
+      name: "Black peppercorns",
+      quantity: "1",
+      unit: "tbsp"
+    },
+    {
+      id: "ingredient-2",
+      rawText: "6-7 no. Cloves, लौंग",
+      name: "Cloves",
+      quantity: "6-7",
+      unit: "no."
+    },
+    {
+      id: "ingredient-3",
+      rawText: "4-5 no. Cashew Nuts, काजू",
+      name: "Cashew Nuts",
+      quantity: "4-5",
+      unit: "no."
+    },
+    {
+      id: "ingredient-4",
+      rawText: "¾ cup fresh Coconut, scraped, ताजा कसा हुआ नारियल",
+      name: "fresh Coconut, scraped",
+      quantity: "¾",
+      unit: "cup"
+    },
+    {
+      id: "ingredient-5",
+      rawText: "1 kg Chicken legs, चिकन",
+      name: "Chicken legs",
+      quantity: "1",
+      unit: "kg"
+    }
+  ]);
+  assert.equal(cookbook.ingredients[5]?.quantity, "to taste");
+  assert.equal(cookbook.ingredients[5]?.name, "Salt");
+  assert.equal(cookbook.ingredients[6]?.quantity, "2-3");
+  assert.equal(cookbook.ingredients[6]?.unit, "sprig");
+  assert.equal(cookbook.ingredients[6]?.name, "Curry leaves");
+  assert.equal(cookbook.ingredients[7]?.quantity, "½");
+  assert.equal(cookbook.ingredients[7]?.unit, "cup");
+  assert.equal(cookbook.ingredients[7]?.name, "Shallots (peeled & roughly chopped)");
+  assert.equal(formatCookbookIngredientAmount(cookbook.ingredients[2]), "4-5 no.");
+  assert.equal(formatCookbookIngredientAmount(cookbook.ingredients[3]), "¾ cup");
+  assert.equal(formatCookbookIngredientAmount(cookbook.ingredients[5]), "to taste");
 });
 
 test("cookbook prefers dedicated properties over Notes sections", () => {

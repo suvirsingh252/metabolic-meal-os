@@ -42,6 +42,14 @@ test("primary mobile routes use progressive disclosure for secondary content", (
   assert.match(mealDetail, /grid-cols-\[2\.75rem_minmax\(0,1fr\)\]/);
 });
 
+test("meal detail ingredient rows use parsed amount before As needed fallback", () => {
+  const mealDetail = source("src/app/meals/[id]/page.tsx");
+
+  assert.match(mealDetail, /formatCookbookIngredientAmount\(ingredient\)/);
+  assert.match(mealDetail, /hasOnlyBareName \? "As needed" : ""/);
+  assert.match(mealDetail, /title=\{ingredient\.rawText\}/);
+});
+
 test("mobile rendering keeps navigation usable and prevents horizontal overflow", () => {
   const shell = source("components/layout/app-shell.tsx");
   const globals = source("src/app/globals.css");

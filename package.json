@@ -13,6 +13,9 @@
     "smoke:analyze-reliability": "tsx scripts/analyze-reliability-smoke.ts",
     "db:check": "node --env-file-if-exists=.env.local --import tsx scripts/check-db.ts",
     "audit:backfill": "node --env-file-if-exists=.env.local --import tsx scripts/audit-backfill.ts",
+    "audit:as-needed-ingredients": "tsx scripts/audit-as-needed-ingredients.ts",
+    "backfill:ingredients:dry-run": "tsx scripts/dry-run-ingredient-backfill.ts",
+    "backfill:ingredients:review": "tsx scripts/export-ingredient-backfill-review.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/.bin/drizzle-kit migrate"
   },

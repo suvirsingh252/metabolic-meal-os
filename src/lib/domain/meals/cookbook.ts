@@ -1,5 +1,9 @@
 import type { MealFeedbackSummary } from "@/src/lib/domain/feedback";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
+import {
+  normalizeIngredientLine,
+  parseRecipeIngredientText
+} from "@/src/lib/ingredients";
 
 export const familyAdjustmentMarker = "[Family cookbook adjustment]";
 
@@ -31,6 +35,12 @@ export interface MealCookbook {
   hasOriginalRecipe: boolean;
 }
 
+export function formatCookbookIngredientAmount(
+  ingredient: Pick<CookbookIngredient, "quantity" | "unit">
+) {
+  return [ingredient.quantity, ingredient.unit].filter(Boolean).join(" ").trim();
+}
+
 const sectionAliases = new Map([
   ["ingredients", "ingredients"],
   ["ingredient suggestions", "ingredients"],
@@ -47,38 +57,6 @@ const sectionAliases = new Map([
   ["plate strategy", "analysis"],
   ["cautions", "analysis"]
 ]);
-
-const units = [
-  "cup",
-  "cups",
-  "tbsp",
-  "tablespoon",
-  "tablespoons",
-  "tsp",
-  "teaspoon",
-  "teaspoons",
-  "g",
-  "gram",
-  "grams",
-  "kg",
-  "ml",
-  "l",
-  "oz",
-  "lb",
-  "lbs",
-  "can",
-  "cans",
-  "clove",
-  "cloves",
-  "pinch"
-];
-
-function normalizeLine(value: string) {
-  return value
-    .replace(/^\s*[-*]\s+/, "")
-    .replace(/^\s*\d+[.)]\s+/, "")
-    .trim();
-}
 
 function getSectionKey(line: string) {
   const normalized = line.replace(/:$/, "").trim().toLowerCase();
@@ -112,29 +90,18 @@ function extractSectionLines(notes: string | null, wantedSection: string) {
     }
   }
 
-  return collected.map(normalizeLine).filter(Boolean);
+  return collected.map(normalizeIngredientLine).filter(Boolean);
 }
 
 function parseIngredient(line: string, index: number): CookbookIngredient {
-  const match = line.match(
-    /^((?:\d+(?:\.\d+)?|\d+\/\d+|\d+\s+\d+\/\d+)\s*)?(?:(\w+)\s+)?(.+)$/
-  );
-  const possibleUnit = match?.[2]?.toLowerCase() ?? null;
-  const hasUnit = possibleUnit ? units.includes(possibleUnit) : false;
-  const quantity = match?.[1]?.trim() || null;
-  const unit = hasUnit ? match?.[2] ?? null : null;
-  const ingredientName = match?.[3] ?? "";
-  const unstructuredName = `${match?.[2] ?? ""} ${ingredientName}`;
-  const name = (hasUnit ? ingredientName : unstructuredName)
-    .replace(/^of\s+/i, "")
-    .trim();
+  const parsed = parseRecipeIngredientText(line);
 
   return {
     id: `ingredient-${index + 1}`,
-    name: name || line,
-    quantity,
-    unit,
-    rawText: line
+    name: parsed?.name || line,
+    quantity: parsed?.quantity ?? null,
+    unit: parsed?.unit ?? null,
+    rawText: parsed?.rawText ?? line
   };
 }
 
@@ -192,7 +159,7 @@ function splitDedicatedFieldLines(value: string | null) {
 
   return value
     .split(/\r?\n/)
-    .map(normalizeLine)
+    .map(normalizeIngredientLine)
     .filter(Boolean);
 }
 
@@ -210,6 +177,22 @@ export function buildMealCookbook(
       ? ingredientLines
       : extractSectionLines(meal.notes, "ingredients")
   ).map(parseIngredient);
+
+  if (process.env.TABLEWISE_INGREDIENT_DIAGNOSTICS === "1") {
+    console.info("Ingredient pipeline diagnostics: meal detail cookbook", {
+      mealId: meal.id,
+      mealName: meal.mealName,
+      sourceUrl: meal.sourceUrl,
+      persistedIngredientPayload: meal.ingredientsText,
+      normalized: ingredients.map((ingredient) => ({
+        rawText: ingredient.rawText,
+        name: ingredient.name,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit
+      }))
+    });
+  }
+
   const instructions = (
     instructionLines.length > 0
       ? instructionLines

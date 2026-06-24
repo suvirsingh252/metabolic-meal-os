@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FamilyAdjustmentsEditor } from "@/src/app/meals/[id]/family-adjustments-editor";
 import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
+import { formatCookbookIngredientAmount } from "@/src/lib/domain/meals/cookbook";
 import { formatPlannerContextLabel } from "@/src/lib/domain/planner";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
 import { getWeeklyDinnerPlanner } from "@/src/lib/notion/meal-plan";
@@ -247,18 +248,24 @@ export default async function MealDetailPage({
         <SectionTitle icon={<Soup className="h-5 w-5" />}>INGREDIENTS</SectionTitle>
         {cookbook.ingredients.length > 0 ? (
           <div className="grid gap-2">
-            {cookbook.ingredients.map((ingredient) => (
-              <div
-                className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-md border bg-card p-4 text-base leading-6 sm:grid-cols-[7rem_minmax(0,1fr)]"
-                key={ingredient.id}
-              >
-                <p className="font-semibold">
-                  {[ingredient.quantity, ingredient.unit].filter(Boolean).join(" ") ||
-                    "As needed"}
-                </p>
-                <p>{ingredient.name}</p>
-              </div>
-            ))}
+            {cookbook.ingredients.map((ingredient) => {
+              const amount = formatCookbookIngredientAmount(ingredient);
+              const hasOnlyBareName =
+                ingredient.rawText.trim().toLowerCase() ===
+                ingredient.name.trim().toLowerCase();
+
+              return (
+                <div
+                  className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-md border bg-card p-4 text-base leading-6 sm:grid-cols-[7rem_minmax(0,1fr)]"
+                  key={ingredient.id}
+                >
+                  <p className="font-semibold">
+                    {amount || (hasOnlyBareName ? "As needed" : "")}
+                  </p>
+                  <p title={ingredient.rawText}>{ingredient.name}</p>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-md border bg-card p-4">

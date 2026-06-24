@@ -191,6 +191,19 @@ function applyMealSourceProperties(
   }
 
   if (schema.ingredients && meal.ingredients?.length) {
+    if (process.env.TABLEWISE_INGREDIENT_DIAGNOSTICS === "1") {
+      console.info("Ingredient pipeline diagnostics: Notion persistence", {
+        mealName: meal.mealName,
+        sourceUrl: meal.sourceUrl,
+        persistedIngredientPayload: meal.ingredients.map((ingredient) => ({
+          rawText: ingredient.rawText,
+          name: ingredient.name ?? null,
+          quantity: ingredient.quantity ?? null,
+          unit: ingredient.unit ?? null
+        }))
+      });
+    }
+
     properties[schema.ingredients.name] = richTextChunks(
       meal.ingredients
         .map((ingredient) => ingredient.rawText.trim())

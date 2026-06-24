@@ -64,6 +64,44 @@ test("validateMealAnalysisResult accepts complete meal payload", () => {
   assert.equal(result.data?.mealName, "Dal and rice");
 });
 
+test("validateMealAnalysisResult derives missing ingredient structure from raw text", () => {
+  const result = validateMealAnalysisResult({
+    ...validMeal,
+    ingredients: [
+      "4-5 no. Cashew Nuts",
+      {
+        rawText: "¾ cup fresh Coconut",
+        name: null,
+        quantity: null,
+        unit: null
+      },
+      "Salt to taste"
+    ]
+  });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.data?.ingredients, [
+    {
+      rawText: "4-5 no. Cashew Nuts",
+      name: "Cashew Nuts",
+      quantity: "4-5",
+      unit: "no."
+    },
+    {
+      rawText: "¾ cup fresh Coconut",
+      name: "fresh Coconut",
+      quantity: "¾",
+      unit: "cup"
+    },
+    {
+      rawText: "Salt to taste",
+      name: "Salt",
+      quantity: "to taste",
+      unit: null
+    }
+  ]);
+});
+
 test("validateMealAnalysisResult normalizes unsafe source URLs to null", () => {
   const result = validateMealAnalysisResult({
     ...validMeal,

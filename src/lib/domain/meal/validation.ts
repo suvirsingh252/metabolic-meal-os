@@ -12,6 +12,7 @@ import {
   recipeSourceClassifications,
   recipeSourceTypes
 } from "@/src/lib/types/recipe";
+import { mergeIngredientWithParsedRawText } from "@/src/lib/ingredients";
 import { getSafeHttpUrl } from "@/src/lib/security/source-url";
 
 export interface ValidationResult<T> {
@@ -197,7 +198,11 @@ function readCookbookIngredients(
     .map((item) => {
       if (typeof item === "string") {
         const rawText = item.trim();
-        return rawText ? { rawText: rawText.slice(0, maxIngredientTextLength) } : null;
+        return rawText
+          ? mergeIngredientWithParsedRawText({
+              rawText: rawText.slice(0, maxIngredientTextLength)
+            })
+          : null;
       }
 
       if (!isRecord(item) || typeof item.rawText !== "string") {
@@ -210,15 +215,27 @@ function readCookbookIngredients(
         return null;
       }
 
-      return {
+      return mergeIngredientWithParsedRawText({
         rawText: rawText.slice(0, maxIngredientTextLength),
         name: readOptionalIngredientText(item.name, maxIngredientTextLength),
         quantity: readOptionalIngredientText(item.quantity, 40),
         unit: readOptionalIngredientText(item.unit, 40)
-      };
+      });
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
     .slice(0, maxCookbookIngredients);
+
+  if (process.env.TABLEWISE_INGREDIENT_DIAGNOSTICS === "1") {
+    console.info("Ingredient pipeline diagnostics: analysis validation", {
+      sourceCount: value.length,
+      normalized: ingredients.map((ingredient) => ({
+        rawText: ingredient.rawText,
+        name: ingredient.name ?? null,
+        quantity: ingredient.quantity ?? null,
+        unit: ingredient.unit ?? null
+      }))
+    });
+  }
 
   return ingredients.length > 0 ? ingredients : null;
 }

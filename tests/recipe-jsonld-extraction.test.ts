@@ -121,3 +121,100 @@ test("parsed JSON-LD draft carries canonical metadata for successful analyze pre
   assert.equal(draft.canonicalRecipe?.confidence, "full_recipe");
   assert.equal(draft.source.sourceClassification, "recipe-page");
 });
+
+test("JSON-LD extraction prefers visible ingredient quantities over bare tag lists", () => {
+  const html = `
+    <html>
+      <head>
+        <title>Chettinad Chicken Curry - Ranveer Brar</title>
+        <meta property="og:site_name" content="Ranveer Brar">
+        <script type="application/ld+json">
+          {
+            "@type": "Recipe",
+            "name": "Chettinad Chicken Curry",
+            "recipeIngredient": [
+              "cashew nuts",
+              "Chicken legs",
+              "curry leaves",
+              "Dry kashmiri red chilies",
+              "fresh coconut",
+              "shallots"
+            ],
+            "recipeInstructions": ["Cook the curry."]
+          }
+        </script>
+      </head>
+      <body>
+        <div class="ingredients_wrap">
+          <h3>Ingredients</h3>
+          <div class="ingredients_cont_wrap">
+            <p><strong>For Paste</strong></p>
+            <p>1 tbsp Black peppercorns, काली मिर्च के दाने</p>
+            <p>6-7 no. Cloves, लौंग</p>
+            <p>1 tbsp Coriander seeds, धनिये के बीज</p>
+            <p>1 tsp Cumin seeds, जीरा</p>
+            <p>4-5 no. Cashew Nuts, काजू</p>
+            <p>¾ cup fresh Coconut, scraped, ताजा कसा हुआ नारियल</p>
+            <p>1 kg Chicken legs, चिकन</p>
+            <p>Salt to taste, नमक स्वादअनुसार</p>
+            <p>2-3 sprig Curry leaves, कडी पत्ते</p>
+            <p>½ cup Shallots (peeled &amp; roughly chopped) सांबर अनियन</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const parsed = parseRecipeJsonLd(
+    html,
+    new URL("https://ranveerbrar.com/recipes/chettinad-chicken-curry/"),
+    "recipe-page"
+  );
+
+  assert.ok(parsed);
+  assert.equal(parsed.source.sourceName, "Ranveer Brar");
+  assert.deepEqual(parsed.ingredients.slice(0, 6), [
+    {
+      rawText: "1 tbsp Black peppercorns, काली मिर्च के दाने",
+      name: "Black peppercorns",
+      quantity: "1",
+      unit: "tbsp"
+    },
+    {
+      rawText: "6-7 no. Cloves, लौंग",
+      name: "Cloves",
+      quantity: "6-7",
+      unit: "no."
+    },
+    {
+      rawText: "1 tbsp Coriander seeds, धनिये के बीज",
+      name: "Coriander seeds",
+      quantity: "1",
+      unit: "tbsp"
+    },
+    {
+      rawText: "1 tsp Cumin seeds, जीरा",
+      name: "Cumin seeds",
+      quantity: "1",
+      unit: "tsp"
+    },
+    {
+      rawText: "4-5 no. Cashew Nuts, काजू",
+      name: "Cashew Nuts",
+      quantity: "4-5",
+      unit: "no."
+    },
+    {
+      rawText: "¾ cup fresh Coconut, scraped, ताजा कसा हुआ नारियल",
+      name: "fresh Coconut, scraped",
+      quantity: "¾",
+      unit: "cup"
+    }
+  ]);
+  assert.deepEqual(parsed.ingredients[7], {
+    rawText: "Salt to taste, नमक स्वादअनुसार",
+    name: "Salt",
+    quantity: "to taste",
+    unit: null
+  });
+});
