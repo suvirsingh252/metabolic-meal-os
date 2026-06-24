@@ -6,16 +6,16 @@ export function HouseholdSummary({ analysis }: { analysis: MealAnalysisResult })
   const answer = getHouseholdAnswer(analysis);
 
   return (
-    <div className="rounded-md border border-primary/20 bg-primary/5 p-3 sm:p-4">
+    <div className="rounded-2xl bg-primary/5 p-4 sm:p-5">
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Household answer
+          <p className="text-sm font-semibold text-accent">
+            Dinner answer
           </p>
           <h3 className="text-lg font-semibold leading-snug text-foreground sm:text-xl">
             {answer.headline}
           </h3>
-          <p className="text-sm leading-5 text-muted-foreground">
+            <p className="text-sm leading-6 text-muted-foreground">
             {analysis.quickVerdict}
           </p>
         </div>
@@ -35,8 +35,8 @@ export function HouseholdSummary({ analysis }: { analysis: MealAnalysisResult })
         </div>
 
         {analysis.culturalNotes.trim().length > 0 ? (
-          <div className="rounded-md border bg-background p-2.5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-2xl bg-background/70 p-3">
+            <p className="text-sm font-semibold text-muted-foreground">
               Keep the dish itself
             </p>
             <p className="mt-1.5 text-sm leading-5 text-foreground">
@@ -68,7 +68,7 @@ function getHouseholdAnswer(analysis: MealAnalysisResult) {
 
 function SummaryBadge({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-md border bg-background px-2 py-2 sm:px-3">
+    <div className="min-w-0 rounded-xl bg-background/70 px-3 py-2">
       <p className="text-[11px] font-medium leading-4 text-muted-foreground sm:text-xs">
         {label}
       </p>
@@ -79,8 +79,8 @@ function SummaryBadge({ label, value }: { label: string; value: string }) {
 
 function SummaryBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-background p-2.5 sm:p-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-2xl bg-background/70 p-3">
+      <p className="text-sm font-semibold text-muted-foreground">
         {label}
       </p>
       <p className="mt-1.5 text-sm leading-5 text-foreground">{value}</p>

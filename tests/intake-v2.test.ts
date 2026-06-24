@@ -306,7 +306,7 @@ test("Analyze view model never dead-ends for Instagram URL-only", () => {
       usesBestEffortSocialIntake: true,
       loadingMessage: "Looking for recipe details..."
     }),
-    "Analyze best guess"
+    "Handle the best guess"
   );
   assert.equal(
     getAnalyzePrimaryCtaLabel({

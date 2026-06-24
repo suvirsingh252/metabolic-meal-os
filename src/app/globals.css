@@ -5,36 +5,35 @@
 @layer base {
   :root {
     /*
-     * Tablewise brand palette (rebranded from Metabolic Meal OS).
+     * Tablewise premium concierge palette.
      * Source hex -> HSL token mapping:
-     *   Warm cream   #FFF8EC -> background / surface
-     *   Charcoal     #26322D -> foreground (primary text)
-     *   Deep green   #1F5E46 -> primary, ring, strong headings, logo
-     *   Soft sage    #DDEBDD -> secondary / muted surfaces, calm panels
-     *   Accent apricot #F4A261 -> accent (sparing warmth / new moments)
+     *   Warm background #F5F1E8
+     *   Deep green      #173A34
+     *   Apricot accent  #D88B3D
+     *   Soft success    #8BAA8B
      */
-    --background: 38 100% 96%;
+    --background: 42 39% 94%;
     --foreground: 155 14% 17%;
-    --card: 0 0% 100%;
+    --card: 40 45% 98%;
     --card-foreground: 155 14% 17%;
-    --primary: 157 50% 25%;
+    --primary: 169 44% 16%;
     --primary-foreground: 40 100% 97%;
-    --secondary: 120 26% 89%;
-    --secondary-foreground: 157 38% 22%;
-    --muted: 110 22% 91%;
-    --muted-foreground: 150 10% 36%;
-    --accent: 27 87% 67%;
-    --accent-foreground: 155 30% 18%;
-    --success: 150 48% 32%;
+    --secondary: 44 32% 88%;
+    --secondary-foreground: 169 34% 18%;
+    --muted: 43 27% 88%;
+    --muted-foreground: 153 9% 35%;
+    --accent: 30 67% 54%;
+    --accent-foreground: 169 40% 14%;
+    --success: 120 16% 61%;
     --success-foreground: 40 100% 97%;
     --warning: 30 85% 55%;
-    --warning-foreground: 155 30% 18%;
+    --warning-foreground: 169 40% 14%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 135 14% 84%;
-    --input: 135 14% 84%;
-    --ring: 157 50% 25%;
-    --radius: 0.5rem;
+    --border: 42 20% 82%;
+    --input: 42 20% 82%;
+    --ring: 30 67% 54%;
+    --radius: 1rem;
   }
 
   * {
@@ -50,5 +49,9 @@
     min-height: 100dvh;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  ::selection {
+    @apply bg-accent text-accent-foreground;
   }
 }

@@ -296,9 +296,9 @@ export function AnalysisResultPanel({
   const { analysis } = state;
 
   return (
-    <Card>
+    <Card className="bg-card/80">
       <CardHeader>
-        <CardTitle>Review result</CardTitle>
+        <CardTitle>Dinner plan</CardTitle>
       </CardHeader>
       <CardContent>
         {analysis ? (
@@ -364,8 +364,8 @@ export function AnalysisResultPanel({
             />
           </div>
         ) : (
-          <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
-            No analysis has been generated yet.
+          <div className="rounded-2xl bg-background/70 p-5 text-sm leading-6 text-muted-foreground">
+            Paste a meal above and Tablewise will prepare the household answer.
           </div>
         )}
       </CardContent>

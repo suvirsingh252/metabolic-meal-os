@@ -36,7 +36,7 @@ test("primary mobile routes use progressive disclosure for secondary content", (
   assert.match(today, /Learning and secondary insights/);
   assert.match(dashboard, /CollapsibleDashboardSection/);
   assert.match(feedback, /Optional after-meal details/);
-  assert.match(mealDetail, /HOW WE MAKE IT/);
+  assert.match(mealDetail, /How we make it/);
   assert.match(mealDetail, /Nutrition/);
   assert.match(mealDetail, /Advanced details/);
   assert.match(mealDetail, /grid-cols-\[2\.75rem_minmax\(0,1fr\)\]/);

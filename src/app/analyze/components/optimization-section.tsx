@@ -36,8 +36,8 @@ export function OptimizationSection({ optimizations, onOptimize }: Props) {
   const activeState = activeType ? optimizations[activeType] : null;
 
   return (
-    <div className="space-y-3 rounded-md border p-3 sm:p-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="space-y-3 rounded-2xl bg-background/70 p-4">
+      <p className="text-sm font-semibold text-muted-foreground">
         Improve this meal
       </p>
 
@@ -51,13 +51,13 @@ export function OptimizationSection({ optimizations, onOptimize }: Props) {
           return (
             <button
               className={cn(
-                "min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                "min-h-12 rounded-full px-3 py-2 text-sm font-semibold transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive && hasResult
-                  ? "border-primary bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground"
                   : isActive
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground",
+                    ? "bg-primary/10 text-primary"
+                    : "bg-card text-foreground hover:bg-accent hover:text-accent-foreground",
                 isLoading && "cursor-wait opacity-70"
               )}
               disabled={isLoading}
@@ -86,7 +86,7 @@ export function OptimizationSection({ optimizations, onOptimize }: Props) {
 
 function OptimizationResultCard({ result }: { result: MealOptimizationResult }) {
   return (
-    <div className="space-y-3 rounded-md border bg-muted/30 p-3 sm:p-4">
+    <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
       <h4 className="text-sm font-semibold leading-snug">{result.headline}</h4>
 
       <ul className="space-y-1.5">
@@ -103,7 +103,7 @@ function OptimizationResultCard({ result }: { result: MealOptimizationResult }) 
       <p className="text-sm leading-5 text-muted-foreground">{result.whyItHelps}</p>
 
       {result.note.trim().length > 0 && (
-        <p className="border-t pt-2 text-xs leading-5 text-muted-foreground">
+        <p className="pt-1 text-xs leading-5 text-muted-foreground">
           {result.note}
         </p>
       )}

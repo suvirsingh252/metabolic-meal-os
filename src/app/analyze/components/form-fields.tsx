@@ -100,7 +100,7 @@ export function BooleanInput({
 }: BooleanInputProps) {
   return (
     <label
-      className="flex items-center gap-3 rounded-md border bg-background p-3 text-sm font-medium"
+      className="flex items-center gap-3 rounded-xl bg-background/70 p-3 text-sm font-medium"
       htmlFor={id}
     >
       <Checkbox
@@ -158,21 +158,21 @@ export function CollapsibleSection({
 }: CollapsibleSectionProps) {
   return (
     <details
-      className="group rounded-md border bg-background p-4"
+      className="group rounded-2xl bg-background/70 p-4"
       open={defaultOpen}
     >
       <summary className="cursor-pointer list-none">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="font-medium text-foreground">{title}</p>
-            <p className="text-sm leading-5 text-muted-foreground">
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
               {description}
             </p>
           </div>
           <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
         </div>
       </summary>
-      <div className="mt-4 space-y-4 border-t pt-4">{children}</div>
+      <div className="mt-5 space-y-4">{children}</div>
     </details>
   );
 }

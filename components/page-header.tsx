@@ -14,15 +14,15 @@ export function PageHeader({
   action
 }: PageHeaderProps) {
   return (
-    <section className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-end md:justify-between md:gap-4 md:pb-6">
+    <section className="flex flex-col gap-4 pb-2 md:flex-row md:items-end md:justify-between md:gap-6">
       <div className="max-w-3xl">
-        <p className="text-sm font-medium uppercase tracking-normal text-accent">
+        <p className="text-sm font-semibold tracking-normal text-accent">
           {eyebrow}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-normal md:mt-2 md:text-4xl">
+        <h1 className="mt-2 text-4xl font-semibold leading-tight tracking-normal text-primary md:text-5xl">
           {title}
         </h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground md:mt-3 md:text-base md:leading-7">
+        <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
           {description}
         </p>
       </div>

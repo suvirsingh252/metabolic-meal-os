@@ -189,15 +189,15 @@ export function ConciergeClient() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <section className="space-y-1.5">
-        <p className="text-sm font-medium text-primary">
+      <section className="space-y-3">
+        <p className="text-sm font-semibold text-accent">
           {viewModel ? formatTonightDate(viewModel.generatedAt) : "Tonight"}
         </p>
-        <h1 className="text-2xl font-semibold tracking-normal sm:text-4xl">
-          What should we cook tonight?
+        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-primary sm:text-5xl">
+          Dinner is handled.
         </h1>
-        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-          One confident pick from your saved dinners, plus a couple of backups.
+        <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+          One confident pick from your saved family meals.
         </p>
       </section>
 
@@ -209,7 +209,7 @@ export function ConciergeClient() {
       ) : null}
 
       {isLoading && !viewModel ? (
-        <div className="flex items-center gap-2 rounded-md border bg-card p-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 rounded-2xl bg-card p-5 text-sm text-muted-foreground shadow-sm">
           <Loader2 className="h-4 w-4 animate-spin" />
           Deciding what&apos;s for dinner.
         </div>
@@ -306,37 +306,29 @@ function LeadCard({
   const reasonLine = recommendation.reasons.slice(0, 2).join(" · ");
 
   return (
-    <Card className="border-primary/40">
+    <Card className="bg-primary text-primary-foreground">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-primary">Tonight&apos;s pick</p>
+          <p className="text-sm font-semibold text-accent">Tonight&apos;s pick</p>
           {isRefreshing ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : null}
         </div>
-        <CardTitle className="break-words text-2xl leading-tight sm:text-3xl">
+        <CardTitle className="break-words text-3xl leading-tight sm:text-4xl">
           {recommendation.name}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {reasonLine ? (
-          <p className="text-sm leading-6 text-muted-foreground">{reasonLine}</p>
+          <p className="text-base leading-7 text-primary-foreground/80">{reasonLine}</p>
         ) : null}
         <MetaBadges recommendation={recommendation} />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Button asChild>
-            <a href={getMealDetailPath(recommendation.mealId)}>
-              <ChefHat className="h-4 w-4" />
-              We&apos;ll make this
-            </a>
-          </Button>
-          <Button asChild variant="secondary">
-            <a href={getMealDetailPath(recommendation.mealId)}>
-              <Utensils className="h-4 w-4" />
-              View details
-            </a>
-          </Button>
-        </div>
+        <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+          <a href={getMealDetailPath(recommendation.mealId)}>
+            <ChefHat className="h-4 w-4" />
+            Cook this tonight
+          </a>
+        </Button>
       </CardContent>
     </Card>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { FileText, Loader2, Wand2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import type { AnalyzeState } from "@/src/app/analyze/types";
@@ -38,18 +39,18 @@ export function getAnalyzePrimaryCtaLabel({
   }
 
   if (socialFallback) {
-    return "Analyze pasted social recipe";
+    return "Handle this dinner";
   }
 
   if (urlRecovery) {
-    return "Analyze pasted recipe details";
+    return "Handle this dinner";
   }
 
   if (usesBestEffortSocialIntake) {
-    return "Analyze best guess";
+    return "Handle the best guess";
   }
 
-  return "Analyze recipe";
+  return "Handle this dinner";
 }
 
 export function MealInputPanel({
@@ -126,23 +127,23 @@ export function MealInputPanel({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Meal or recipe
+    <Card className="bg-card/80">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-2xl">
+          <FileText className="h-6 w-6 text-accent" />
+          What are we making?
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form className="space-y-4" onSubmit={onSubmit}>
+        <form className="space-y-5" onSubmit={onSubmit}>
           <div className="space-y-2">
             <Label htmlFor="recipeText">
               {socialFallback || urlRecovery
-                ? "Ingredients, instructions, caption, or notes"
-                : "Recipe or meal idea"}
+                ? "Paste what you have"
+                : "Recipe, caption, or dinner idea"}
             </Label>
             <textarea
-              className="min-h-32 w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-72"
+              className="min-h-44 w-full rounded-2xl border border-input/70 bg-background/80 px-5 py-4 text-base leading-7 shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-72"
               id="recipeText"
               ref={textareaRef}
               onInput={(event) => {
@@ -153,26 +154,23 @@ export function MealInputPanel({
               }}
               placeholder={
                 socialFallback
-                  ? "Paste the caption, ingredient list, rough notes, method, servings, or what you remember from the video."
+                  ? "Paste the caption, ingredients, method, servings, or what you remember."
                   : urlRecovery
-                    ? "Paste ingredients, instructions, servings, the caption or transcript, or a rough description. The original URL is preserved."
-                  : "Paste a recipe URL, TikTok/Reel/Shorts link, caption, transcript, ingredients, instructions, servings, constraints, or a rough meal idea here."
+                    ? "Paste ingredients, instructions, servings, or a rough description."
+                  : "Paste a recipe URL, caption, ingredients, instructions, or a rough meal idea."
               }
               rows={8}
               value={recipeText}
             />
-            <p className="text-sm text-muted-foreground">
-              Enter at least 10 characters. {trimmedRecipeTextLength} characters
-            </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm leading-6 text-muted-foreground">
               {usesBestEffortSocialIntake
-                ? "Instagram captions may not be visible, but Tablewise can still prepare a reviewable best guess."
-                : "This can take about 20-30 seconds for detailed meals."}
+                ? "A best guess is okay. Add any details you remember."
+                : `${trimmedRecipeTextLength} characters. Detailed meals can take 20-30 seconds.`}
             </p>
             {usesBestEffortSocialIntake ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 <button
-                  className="rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                  className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
                   type="button"
                   onClick={() => {
                     appendNotesPrompt();
@@ -181,7 +179,7 @@ export function MealInputPanel({
                   Add notes
                 </button>
                 <button
-                  className="rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                  className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
                   type="button"
                   onClick={() => {
                     focusRecipeText();
@@ -192,12 +190,12 @@ export function MealInputPanel({
               </div>
             ) : null}
             {showInstagramCaptionPrompt ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-secondary/60 px-4 py-3 text-sm">
                 <span className="text-muted-foreground">
-                  Have the caption? Paste it to improve this.
+                  Have the caption? Add it for a better dinner plan.
                 </span>
                 <button
-                  className="rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                  className="rounded-full bg-card px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-card/80"
                   type="button"
                   onClick={() => {
                     appendNotesPrompt();
@@ -209,8 +207,8 @@ export function MealInputPanel({
             ) : null}
           </div>
           <div className="space-y-2">
-            <button
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
+            <Button
+              className="w-full sm:w-auto"
               disabled={isAnalyzeDisabled}
               type="submit"
             >
@@ -226,10 +224,10 @@ export function MealInputPanel({
                 usesBestEffortSocialIntake,
                 loadingMessage
               })}
-            </button>
+            </Button>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
-                Tablewise is still working. Detailed reviews can take a short moment.
+                Tablewise is building the household answer.
               </p>
             ) : null}
           </div>

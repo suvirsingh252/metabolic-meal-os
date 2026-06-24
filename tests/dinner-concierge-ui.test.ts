@@ -21,7 +21,7 @@ test("concierge client renders a lead pick, alternates, and fresh ideas", () => 
   const client = source("src/app/concierge/concierge-client.tsx");
 
   assert.match(client, /Tonight&apos;s pick/);
-  assert.match(client, /We&apos;ll make this/);
+  assert.match(client, /Cook this tonight/);
   assert.match(client, /Other options tonight/);
   assert.match(client, /Show me more/);
   assert.match(client, /leadRecommendation/);

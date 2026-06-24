@@ -12,8 +12,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 border-b bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-20 bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <div className="mx-auto flex h-20 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
           <Link className="flex min-w-0 items-center" href="/">
             <BrandLogo variant="full" />
           </Link>
@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   asChild
                   className={cn(
                     "justify-start",
-                    active && "bg-secondary text-secondary-foreground"
+                    active && "bg-primary text-primary-foreground hover:bg-primary/90"
                   )}
                   key={item.href}
                   variant="ghost"
@@ -48,13 +48,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:py-6 md:pb-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 sm:py-8 md:pb-10 lg:px-8">
         {children}
       </main>
 
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-20 grid border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_30px_rgba(23,58,52,0.08)] backdrop-blur md:hidden"
         style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
       >
         {navItems.map((item) => {
@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[0.7rem] text-muted-foreground",
-                active && "bg-secondary text-secondary-foreground"
+                active && "text-primary"
               )}
               href={item.href}
               key={item.href}

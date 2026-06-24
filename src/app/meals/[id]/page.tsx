@@ -10,6 +10,7 @@ import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
 import { formatCookbookIngredientAmount } from "@/src/lib/domain/meals/cookbook";
 import { formatPlannerContextLabel } from "@/src/lib/domain/planner";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
+import type { MealSummary } from "@/src/lib/notion/meal-summary";
 import { getWeeklyDinnerPlanner } from "@/src/lib/notion/meal-plan";
 import { getSafeHttpUrl } from "@/src/lib/security/source-url";
 
@@ -60,7 +61,7 @@ function SummaryItem({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-sm font-semibold text-muted-foreground">
         {label}
       </p>
       <p className="text-sm leading-6 text-foreground">{value}</p>
@@ -78,8 +79,61 @@ function SectionTitle({
   return (
     <div className="flex items-center gap-2">
       {icon}
-      <h2 className="text-lg font-semibold tracking-normal">{children}</h2>
+      <h2 className="text-2xl font-semibold tracking-normal text-primary">
+        {children}
+      </h2>
     </div>
+  );
+}
+
+function MealDetailHero({
+  badges,
+  description,
+  imageUrl,
+  title
+}: {
+  badges: React.ReactNode;
+  description: string;
+  imageUrl: string | null;
+  title: string;
+}) {
+  return (
+    <section className="overflow-hidden rounded-[2rem] bg-primary text-primary-foreground shadow-sm">
+      <div className="grid min-h-[22rem] md:grid-cols-[minmax(0,1fr)_22rem] lg:grid-cols-[minmax(0,1fr)_28rem]">
+        <div className="flex flex-col justify-end gap-6 p-6 sm:p-8 lg:p-10">
+          <div className="space-y-4">
+            <p className="text-sm font-semibold text-accent">Family cookbook</p>
+            <h1 className="max-w-4xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl lg:text-6xl">
+              {title}
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-primary-foreground/80">
+              {description}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">{badges}</div>
+        </div>
+        <div className="relative min-h-56 bg-accent/90 md:min-h-full">
+          {imageUrl ? (
+            <div
+              aria-hidden
+              className="h-full min-h-56 w-full bg-cover bg-center"
+              style={{ backgroundImage: `url(${imageUrl})` }}
+            />
+          ) : (
+            <div className="flex h-full min-h-56 flex-col justify-end bg-[radial-gradient(circle_at_30%_20%,rgba(245,241,232,0.55),transparent_36%),linear-gradient(135deg,rgba(216,139,61,0.95),rgba(139,170,139,0.9))] p-6">
+              <div className="rounded-[1.5rem] bg-background/90 p-5 text-primary shadow-sm">
+                <p className="text-sm font-semibold text-accent">
+                  Ready for tonight
+                </p>
+                <p className="mt-2 text-2xl font-semibold leading-tight">
+                  Cook from the version your household actually repeats.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -141,33 +195,37 @@ export default async function MealDetailPage({
   const dateLabel = formatDate(detail.dateLabel);
   const { cookbook } = detail;
   const safeOriginalRecipeUrl = getSafeHttpUrl(cookbook.originalRecipeUrl);
+  const heroImageUrl =
+    (meal as MealSummary & { imageUrl?: string | null }).imageUrl ?? null;
+  const heroBadges = (
+    <>
+      {meal.cuisine ? <Badge>{meal.cuisine}</Badge> : null}
+      {meal.mealType ? <Badge>{meal.mealType}</Badge> : null}
+      {dateLabel ? (
+        <Badge className="bg-background/15 text-primary-foreground">
+          <CalendarDays className="h-3.5 w-3.5" />
+          {feedbackSummary.lastEatenAt ? "Last eaten" : "Saved"} {dateLabel}
+        </Badge>
+      ) : null}
+      {plannerViewModel ? (
+        <Badge className="bg-background/15 text-primary-foreground">
+          <CalendarDays className="h-3.5 w-3.5" />
+          {plannedSlot
+            ? formatPlannerContextLabel(plannedSlot, plannerViewModel.days)
+            : "Not planned this week"}
+        </Badge>
+      ) : null}
+    </>
+  );
 
   return (
     <div className="space-y-5 md:space-y-6">
-      <PageHeader
-        eyebrow="Family cookbook"
+      <MealDetailHero
+        badges={heroBadges}
+        description="Cook the family version, keep the original nearby, and remember what worked."
+        imageUrl={heroImageUrl}
         title={meal.mealName}
-        description="Cook the family version, keep the original recipe nearby, and remember what worked."
       />
-
-      <section className="flex flex-wrap gap-2">
-        {meal.cuisine ? <Badge>{meal.cuisine}</Badge> : null}
-        {meal.mealType ? <Badge>{meal.mealType}</Badge> : null}
-        {dateLabel ? (
-          <Badge className="bg-muted text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {feedbackSummary.lastEatenAt ? "Last eaten" : "Saved"} {dateLabel}
-          </Badge>
-        ) : null}
-        {plannerViewModel ? (
-          <Badge className="bg-muted text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {plannedSlot
-              ? formatPlannerContextLabel(plannedSlot, plannerViewModel.days)
-              : "Not planned this week"}
-          </Badge>
-        ) : null}
-      </section>
 
       <MealDetailActions
         initialFeedbackSummary={feedbackSummary}
@@ -180,33 +238,33 @@ export default async function MealDetailPage({
       />
 
       {detail.mealOsSummary.hasContent ? (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="bg-primary/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              TABLEWISE SUMMARY
+              <Brain className="h-4 w-4 text-accent" />
+              Tablewise summary
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <SummaryItem
-              label="Quick Verdict"
+              label="Quick verdict"
               value={detail.mealOsSummary.quickVerdict}
             />
             <SummaryItem
-              label="Why It Works"
+              label="Why it works"
               value={detail.mealOsSummary.whyItWorks}
             />
             <SummaryItem
-              label="Minimal Change / Optimization"
+              label="Smallest helpful change"
               value={detail.mealOsSummary.optimization}
             />
             <SummaryItem
-              label="Family Consideration"
+              label="Family consideration"
               value={detail.mealOsSummary.familyConsideration}
             />
             <div className="space-y-1.5">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Nutrition Confidence
+                Nutrition confidence
               </p>
               <Badge className="bg-background text-foreground">
                 {detail.mealOsSummary.nutritionConfidence}
@@ -219,7 +277,7 @@ export default async function MealDetailPage({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            HOW WE MAKE IT <Star className="h-4 w-4 fill-current" />
+              How we make it <Star className="h-4 w-4 fill-current text-accent" />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -227,7 +285,7 @@ export default async function MealDetailPage({
             <ul className="space-y-3">
               {cookbook.familyAdjustments.map((adjustment) => (
                 <li
-                  className="rounded-md border bg-background p-4 text-base leading-7"
+                  className="rounded-2xl bg-background/70 p-4 text-base leading-7"
                   key={adjustment.id}
                 >
                   {adjustment.text}
@@ -245,9 +303,9 @@ export default async function MealDetailPage({
       </Card>
 
       <section className="space-y-3">
-        <SectionTitle icon={<Soup className="h-5 w-5" />}>INGREDIENTS</SectionTitle>
+        <SectionTitle icon={<Soup className="h-6 w-6 text-accent" />}>Ingredients</SectionTitle>
         {cookbook.ingredients.length > 0 ? (
-          <div className="grid gap-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {cookbook.ingredients.map((ingredient) => {
               const amount = formatCookbookIngredientAmount(ingredient);
               const hasOnlyBareName =
@@ -256,19 +314,21 @@ export default async function MealDetailPage({
 
               return (
                 <div
-                  className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-md border bg-card p-4 text-base leading-6 sm:grid-cols-[7rem_minmax(0,1fr)]"
+                  className="min-h-28 rounded-2xl bg-card p-4 text-base leading-6 shadow-sm"
                   key={ingredient.id}
                 >
-                  <p className="font-semibold">
+                  <p className="text-sm font-semibold text-accent">
                     {amount || (hasOnlyBareName ? "As needed" : "")}
                   </p>
-                  <p title={ingredient.rawText}>{ingredient.name}</p>
+                  <p className="mt-2 text-lg font-semibold leading-snug" title={ingredient.rawText}>
+                    {ingredient.name}
+                  </p>
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="rounded-md border bg-card p-4">
+          <div className="rounded-2xl bg-card p-5">
             <EmptyText>
               Structured ingredients are not saved for this older meal yet.
               Keep using the original recipe link below; future saves preserve
@@ -279,12 +339,12 @@ export default async function MealDetailPage({
       </section>
 
       <section className="space-y-3">
-        <SectionTitle>INSTRUCTIONS</SectionTitle>
+        <SectionTitle>Instructions</SectionTitle>
         {cookbook.instructions.length > 0 ? (
           <ol className="space-y-3">
             {cookbook.instructions.map((step, index) => (
               <li
-                className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 rounded-md border bg-card p-4 text-lg leading-8"
+                className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-4 rounded-2xl bg-card p-5 text-lg leading-8 shadow-sm"
                 key={step.id}
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
@@ -295,7 +355,7 @@ export default async function MealDetailPage({
             ))}
           </ol>
         ) : (
-          <div className="rounded-md border bg-card p-4">
+          <div className="rounded-2xl bg-card p-5">
             <EmptyText>
               Cooking steps are not saved for this older meal yet. The original
               recipe remains available below.
@@ -304,12 +364,12 @@ export default async function MealDetailPage({
         )}
       </section>
 
-      <section className="rounded-md border bg-card p-4">
+      <section className="rounded-2xl bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <SectionTitle>ORIGINAL RECIPE</SectionTitle>
+            <SectionTitle>Original recipe</SectionTitle>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Source details stay separate from family adjustments.
+              Keep the source nearby while the family version stays clean.
             </p>
           </div>
           <Button asChild variant="secondary">

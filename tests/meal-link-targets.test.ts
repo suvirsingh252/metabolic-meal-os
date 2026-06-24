@@ -32,8 +32,9 @@ test("Analyze save confirmation prioritizes app-native next actions", () => {
     "utf8"
   );
 
-  assert.match(source, /View saved meal/);
+  assert.match(source, /See the family version/);
   assert.match(source, /href=\{savedMeal\.mealDetailPath\}/);
+  assert.match(source, /Put it on the plan/);
   assert.match(
     source,
     /href=\{`\/planner\?meal=\$\{encodeURIComponent\(savedMeal\.mealId\)\}`\}/

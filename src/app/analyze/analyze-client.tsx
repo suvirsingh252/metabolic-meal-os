@@ -23,9 +23,9 @@ export function AnalyzeClient({ intakeRecord }: Props) {
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader
-        eyebrow="Recipe intake"
-        title="Analyze a recipe"
-        description="Paste or share a meal, review the household answer, and save it."
+        eyebrow="Dinner intake"
+        title="Bring a meal into Tablewise"
+        description="Paste a recipe, caption, or rough dinner idea. Tablewise turns it into a family-ready plan."
       />
 
       {intakeRecord && <IntakeBridgePanel intake={intakeRecord} />}
@@ -39,7 +39,7 @@ export function AnalyzeClient({ intakeRecord }: Props) {
         usesBestEffortSocialIntake={controller.usesBestEffortSocialIntake}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-6">
+      <div className="mx-auto grid max-w-5xl gap-6">
         <MealInputPanel
           isAnalyzeDisabled={controller.isAnalyzeDisabled}
           isLoading={state.isLoading}

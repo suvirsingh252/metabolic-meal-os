@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarPlus, ExternalLink, Loader2, Save } from "lucide-react";
+import { CalendarPlus, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type {
@@ -26,28 +26,28 @@ export function SaveMealSection({
   onSave: () => void;
 }) {
   return (
-    <div className="rounded-md border bg-background p-4">
+    <div className="rounded-2xl bg-primary/10 p-4 sm:p-5">
       <Button disabled={!analysis || isSaving} onClick={onSave} type="button">
         {isSaving ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <Save className="h-4 w-4" />
+          <Sparkles className="h-4 w-4" />
         )}
-        {isSaving ? "Saving..." : "Save meal"}
+        {isSaving ? "Saving..." : "Make this repeatable"}
       </Button>
       {saveError ? <Alert className="mt-4">{saveError}</Alert> : null}
       {savedMeal ? (
-        <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
-          <p className="font-medium text-primary">Saved to Tablewise.</p>
+        <div className="mt-4 rounded-2xl bg-card p-4 text-sm shadow-sm">
+          <p className="font-medium text-primary">Dinner is handled.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button asChild>
-              <Link href={savedMeal.mealDetailPath}>View saved meal</Link>
-            </Button>
-            <Button asChild variant="secondary">
               <Link href={`/planner?meal=${encodeURIComponent(savedMeal.mealId)}`}>
                 <CalendarPlus className="h-4 w-4" />
-                Add to Planner
+                Put it on the plan
               </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href={savedMeal.mealDetailPath}>See the family version</Link>
             </Button>
           </div>
           <details className="mt-3 text-muted-foreground">
