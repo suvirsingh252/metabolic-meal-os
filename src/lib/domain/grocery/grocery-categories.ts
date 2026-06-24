@@ -25,18 +25,29 @@ const exactCategoryByIngredient = new Map<string, GroceryCategory>([
   ["chicken thigh", "Protein"],
   ["chicken thighs", "Protein"],
   ["coconut milk", "Pantry"],
+  ["corn tortilla", "Bakery"],
+  ["corn tortillas", "Bakery"],
+  ["cornstarch", "Pantry"],
   ["cream", "Dairy"],
   ["cream cheese", "Dairy"],
   ["egg", "Protein"],
   ["eggs", "Protein"],
   ["feta cheese", "Dairy"],
+  ["flour tortilla", "Bakery"],
+  ["flour tortillas", "Bakery"],
   ["flour", "Pantry"],
   ["greek yogurt", "Dairy"],
+  ["lamb", "Protein"],
+  ["lean beef or lamb", "Protein"],
   ["milk", "Dairy"],
   ["olive oil", "Pantry"],
+  ["oyster sauce", "Pantry"],
   ["pasta", "Pantry"],
   ["rice", "Pantry"],
+  ["sesame oil", "Pantry"],
+  ["soy sauce", "Pantry"],
   ["sour cream", "Dairy"],
+  ["tahini", "Pantry"],
   ["tortilla", "Bakery"],
   ["tortillas", "Bakery"],
   ["yogurt", "Dairy"]
@@ -54,7 +65,7 @@ const categoryRules: Array<{
   {
     category: "Protein",
     pattern:
-      /\b(bacon|beef|chicken|chickpea|cod|egg|fish|ham|lentil|pork|salmon|sausage|shrimp|steak|tempeh|tofu|tuna|turkey)\b/
+      /\b(bacon|beef|chicken|chickpea|cod|egg|fish|ham|lamb|lentil|pork|salmon|sausage|shrimp|steak|tempeh|tofu|tuna|turkey)\b/
   },
   {
     category: "Dairy",
@@ -76,7 +87,7 @@ const categoryRules: Array<{
   {
     category: "Condiments",
     pattern:
-      /\b(chutney|dijon|fish sauce|hot sauce|jam|ketchup|mayo|mayonnaise|mustard|pickle|relish|salsa|soy sauce|sriracha|tamari|vinegar|worcestershire)\b/
+      /\b(chutney|dijon|dressing|fish sauce|hot sauce|jam|ketchup|mayo|mayonnaise|mustard|pickle|relish|salsa|soy sauce|sriracha|tamari|vinegar|worcestershire)\b/
   },
   {
     category: "Beverages",

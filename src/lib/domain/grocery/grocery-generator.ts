@@ -6,7 +6,10 @@ import {
   resolveGroceryCategory,
   type GroceryCategory
 } from "@/src/lib/domain/grocery/grocery-categories";
-import { normalizeGroceryIngredient } from "@/src/lib/domain/grocery/ingredient-normalizer";
+import {
+  extractGroceryIngredientCandidates,
+  normalizeGroceryIngredient
+} from "@/src/lib/domain/grocery/ingredient-normalizer";
 
 export interface GroceryItem {
   id: string;
@@ -79,37 +82,41 @@ export function generateGroceryList(input: GroceryGenerationInput): GroceryList 
     }
 
     for (const ingredient of cookbook.ingredients) {
-      const normalized = normalizeGroceryIngredient(ingredient.name);
+      const candidates = extractGroceryIngredientCandidates(ingredient.rawText);
 
-      if (!normalized) {
-        continue;
-      }
+      for (const candidate of candidates) {
+        const normalized = normalizeGroceryIngredient(candidate.name);
 
-      const category = resolveGroceryCategory(normalized.canonicalName);
-      const mapKey = normalized.key;
-      const existing = itemByKey.get(mapKey);
-
-      if (existing) {
-        if (!existing.sourceMealIds.includes(meal.id)) {
-          existing.sourceMealIds.push(meal.id);
-          existing.sourceMealNames.push(meal.mealName);
+        if (!normalized) {
+          continue;
         }
 
-        if (!existing.rawIngredients.includes(ingredient.rawText)) {
-          existing.rawIngredients.push(ingredient.rawText);
+        const category = resolveGroceryCategory(normalized.canonicalName);
+        const mapKey = normalized.key;
+        const existing = itemByKey.get(mapKey);
+
+        if (existing) {
+          if (!existing.sourceMealIds.includes(meal.id)) {
+            existing.sourceMealIds.push(meal.id);
+            existing.sourceMealNames.push(meal.mealName);
+          }
+
+          if (!existing.rawIngredients.includes(candidate.rawName)) {
+            existing.rawIngredients.push(candidate.rawName);
+          }
+
+          continue;
         }
 
-        continue;
+        itemByKey.set(mapKey, {
+          id: stableItemId(category, mapKey),
+          name: normalized.canonicalName,
+          category,
+          sourceMealIds: [meal.id],
+          sourceMealNames: [meal.mealName],
+          rawIngredients: [candidate.rawName]
+        });
       }
-
-      itemByKey.set(mapKey, {
-        id: stableItemId(category, mapKey),
-        name: normalized.canonicalName,
-        category,
-        sourceMealIds: [meal.id],
-        sourceMealNames: [meal.mealName],
-        rawIngredients: [ingredient.rawText]
-      });
     }
   }
 

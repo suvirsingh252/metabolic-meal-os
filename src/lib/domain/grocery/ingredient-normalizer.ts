@@ -6,6 +6,11 @@ export interface GroceryIngredientNormalization {
   rawName: string;
 }
 
+export interface GroceryIngredientCandidate {
+  name: string;
+  rawName: string;
+}
+
 const aliasByName = new Map<string, string>([
   ["boneless chicken thighs", "chicken thighs"],
   ["boneless skinless chicken thigh", "chicken thighs"],
@@ -25,7 +30,18 @@ const aliasByName = new Map<string, string>([
   ["scallions", "green onions"],
   ["green onion", "green onions"],
   ["garbanzo beans", "chickpeas"],
-  ["garbanzo bean", "chickpeas"]
+  ["garbanzo bean", "chickpeas"],
+  ["fresh garlic", "garlic"],
+  ["garlic clove", "garlic"],
+  ["garlic cloves", "garlic"],
+  ["clove garlic", "garlic"],
+  ["cloves garlic", "garlic"],
+  ["fresh ginger", "ginger"],
+  ["ginger root", "ginger"],
+  ["ground beef or lamb", "lean beef or lamb"],
+  ["lean ground beef or lamb", "lean beef or lamb"],
+  ["corn tortillas", "corn tortilla"],
+  ["flour tortillas", "flour tortilla"]
 ]);
 
 const descriptors = new Set([
@@ -50,10 +66,74 @@ const descriptors = new Set([
   "optional"
 ]);
 
+const groceryIngredientPhrases = [
+  "buffalo chicken breast",
+  "lean beef or lamb",
+  "boneless skinless chicken thighs",
+  "boneless skinless chicken thigh",
+  "chicken thighs",
+  "chicken thigh",
+  "chicken breast",
+  "corn tortilla",
+  "flour tortilla",
+  "soy sauce",
+  "oyster sauce",
+  "sesame oil",
+  "olive oil",
+  "lean beef",
+  "ground beef",
+  "beef",
+  "lamb",
+  "broccoli",
+  "garlic cloves",
+  "garlic clove",
+  "garlic",
+  "ginger",
+  "cornstarch",
+  "rice",
+  "parsley",
+  "onion",
+  "allspice",
+  "cumin",
+  "cinnamon",
+  "tahini",
+  "lemon",
+  "cucumber",
+  "tomato",
+  "lettuce",
+  "cheese",
+  "feta cheese",
+  "feta"
+].sort((first, second) => second.split(" ").length - first.split(" ").length);
+
+const groceryIngredientPhraseTokens = groceryIngredientPhrases.map((phrase) => ({
+  phrase,
+  tokens: phrase.split(" ")
+}));
+
 const leadingQuantityPattern =
   /^(?:about\s+)?(?:\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞])\s+/i;
 const unitPattern =
   /^(?:cups?|tbsp|tablespoons?|tsp|teaspoons?|grams?|g|kg|ml|l|oz|lbs?|pounds?|cans?|cloves?|pinch|sprigs?)\s+/i;
+const separatorPattern = /(?:\r?\n|[;•]+|(?:\s[-*]\s)|,+)/g;
+const shoppingNotePatterns = [
+  /\boptional\b/gi,
+  /\bas needed\b/gi,
+  /\bto taste\b/gi,
+  /\bfor garnish\b/gi,
+  /\bfor serving\b/gi,
+  /\bdivided\b/gi,
+  /\broom temperature\b/gi,
+  /\bsoftened\b/gi,
+  /\bfrom costco\b/gi,
+  /\bfrom trader joe(?:'|\u2019)s\b/gi,
+  /\bfinely chopped\b/gi,
+  /\broughly chopped\b/gi,
+  /\bchopped\b/gi,
+  /\bdiced\b/gi,
+  /\bsliced\b/gi,
+  /\bminced\b/gi
+];
 
 function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -99,16 +179,101 @@ function baseIngredientName(value: string) {
   const parsed = parseRecipeIngredientText(value);
   const source = parsed?.name ?? value;
 
+  return cleanShoppingNotes(
+    normalizeWhitespace(
+      source
+        .toLowerCase()
+        .replace(/\([^)]*\)/g, " ")
+        .split(",")[0] ?? ""
+    )
+      .replace(/^of\s+/i, "")
+      .replace(leadingQuantityPattern, "")
+      .replace(unitPattern, "")
+      .replace(/[^a-z0-9\s-]/g, " ")
+  );
+}
+
+function cleanShoppingNotes(value: string) {
+  let cleaned = normalizeWhitespace(value);
+
+  for (const pattern of shoppingNotePatterns) {
+    cleaned = cleaned.replace(pattern, " ");
+  }
+
   return normalizeWhitespace(
-    source
-      .toLowerCase()
+    cleaned
       .replace(/\([^)]*\)/g, " ")
-      .split(",")[0] ?? ""
-  )
-    .replace(/^of\s+/i, "")
-    .replace(leadingQuantityPattern, "")
-    .replace(unitPattern, "")
-    .replace(/[^a-z0-9\s-]/g, " ");
+      .replace(/\s+(?:and|with)\s*$/i, " ")
+      .replace(/^[,\s-]+|[,\s-]+$/g, " ")
+  );
+}
+
+function cleanCandidate(value: string) {
+  return cleanShoppingNotes(value.toLowerCase().replace(/[^a-z0-9\s,;•*-]/g, " "));
+}
+
+function splitByExplicitSeparators(value: string) {
+  return value
+    .split(separatorPattern)
+    .map(cleanCandidate)
+    .filter(Boolean);
+}
+
+function tokenMatchesAt(
+  tokens: string[],
+  startIndex: number,
+  phraseTokens: string[]
+) {
+  return phraseTokens.every(
+    (token, offset) => tokens[startIndex + offset] === token
+  );
+}
+
+function scanIngredientBlob(value: string) {
+  const tokens = cleanCandidate(value).split(" ").filter(Boolean);
+  const matches: string[] = [];
+  let index = 0;
+
+  while (index < tokens.length) {
+    const match = groceryIngredientPhraseTokens.find((candidate) =>
+      tokenMatchesAt(tokens, index, candidate.tokens)
+    );
+
+    if (match) {
+      matches.push(match.phrase);
+      index += match.tokens.length;
+      continue;
+    }
+
+    index += 1;
+  }
+
+  return matches;
+}
+
+function splitBlobSegment(value: string) {
+  const matches = scanIngredientBlob(value);
+
+  if (/\bor\b/i.test(value) && matches.length <= 2) {
+    return [cleanCandidate(value)].filter(Boolean);
+  }
+
+  return matches.length >= 2 ? matches : [cleanCandidate(value)].filter(Boolean);
+}
+
+export function extractGroceryIngredientCandidates(
+  value: string
+): GroceryIngredientCandidate[] {
+  const rawName = normalizeWhitespace(value);
+  const explicitParts = splitByExplicitSeparators(rawName);
+  const parts = explicitParts.length > 0 ? explicitParts : [cleanCandidate(rawName)];
+
+  return parts.flatMap((part) =>
+    splitBlobSegment(part).map((name) => ({
+      name,
+      rawName
+    }))
+  );
 }
 
 function removeSoftDescriptors(value: string) {
