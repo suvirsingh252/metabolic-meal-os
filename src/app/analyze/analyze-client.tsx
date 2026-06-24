@@ -24,8 +24,8 @@ export function AnalyzeClient({ intakeRecord }: Props) {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         eyebrow="Dinner intake"
-        title="Bring a meal into Tablewise"
-        description="Paste a recipe, caption, or rough dinner idea. Tablewise turns it into a family-ready plan."
+        title="Bring a meal into Hearth"
+        description="Paste a recipe, caption, or rough dinner idea. Hearth turns it into a family-ready plan."
       />
 
       {intakeRecord && <IntakeBridgePanel intake={intakeRecord} />}

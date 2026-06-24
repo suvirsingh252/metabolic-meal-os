@@ -56,7 +56,7 @@ function meal(overrides: Partial<MealSummary>): MealSummary {
     nutritionProvenance: value(
       overrides,
       "nutritionProvenance",
-      "Estimated by Tablewise"
+      "Estimated by Hearth"
     ),
     qualityScore: value(overrides, "qualityScore", 84),
     metabolicScore: value(overrides, "metabolicScore", null),

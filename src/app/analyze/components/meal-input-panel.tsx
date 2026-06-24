@@ -227,7 +227,7 @@ export function MealInputPanel({
             </Button>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
-                Tablewise is building the household answer.
+                Hearth is building the household answer.
               </p>
             ) : null}
           </div>

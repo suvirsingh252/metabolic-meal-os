@@ -252,7 +252,7 @@ export function PlannerClient({
           ) : (
             <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
               <CheckCircle2 className="h-4 w-4" />
-              Planner is connected to Tablewise.
+              Planner is connected to Hearth.
             </div>
           )}
 

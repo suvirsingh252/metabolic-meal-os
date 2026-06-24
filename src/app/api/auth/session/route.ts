@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Server is private by default and APP_AUTH_TOKEN is not configured. Login is unavailable."
+          "Hearth is private by default and APP_AUTH_TOKEN is not configured. Login is unavailable."
       },
       { status: 503 }
     );

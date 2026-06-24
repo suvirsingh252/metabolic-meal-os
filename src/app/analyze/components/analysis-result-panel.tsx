@@ -43,7 +43,7 @@ import { SourceSummary } from "@/src/app/analyze/components/source-evidence-sect
 import type { OptimizationType } from "@/src/app/analyze/types";
 
 const nutritionUnavailableMessage =
-  "Nutrition totals unavailable for this source. Add estimates manually if you want dashboard tracking.";
+  "Nutrition totals unavailable for this source. Add estimates manually if you want household tracking.";
 
 type NutritionEstimate = NonNullable<MealAnalysisResult["nutritionEstimate"]>;
 type NutritionTotals = NutritionEstimate["totals"];
@@ -365,7 +365,7 @@ export function AnalysisResultPanel({
           </div>
         ) : (
           <div className="rounded-2xl bg-background/70 p-5 text-sm leading-6 text-muted-foreground">
-            Paste a meal above and Tablewise will prepare the household answer.
+            Paste a meal above and Hearth will prepare the household answer.
           </div>
         )}
       </CardContent>
@@ -465,7 +465,7 @@ function NutritionTotalsSection({
 
   return (
     <CollapsibleSection
-      description="Meal-level totals used by the dashboard. Leave unknown values blank."
+      description="Meal-level totals used by Hearth Insights. Leave unknown values blank."
       title="Nutrition totals"
     >
       <div className="space-y-4 sm:space-y-5">

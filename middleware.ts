@@ -31,7 +31,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Tablewise is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out for trusted family/beta testing."
+          "Hearth is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out for trusted family/beta testing."
       },
       { status: 503 }
     );

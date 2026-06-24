@@ -6,23 +6,23 @@ import { AppShell } from "@/components/layout/app-shell";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  applicationName: "Tablewise",
+  applicationName: "Hearth",
   title: {
-    default: "Tablewise — Smarter meals for your household",
-    template: "%s | Tablewise"
+    default: "Hearth — Dinner is handled",
+    template: "%s | Hearth"
   },
-  description: "Meal planning that learns your household's real preferences.",
+  description: "The operating system for family meals.",
   openGraph: {
-    title: "Tablewise — Smarter meals for your household",
-    description: "Tablewise remembers what works. Meal planning that learns your household's real preferences.",
-    siteName: "Tablewise",
+    title: "Hearth — Dinner is handled",
+    description: "Hearth learns what your household loves and helps make dinner easier.",
+    siteName: "Hearth",
     type: "website"
   },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Tablewise"
+    title: "Hearth"
   },
   icons: {
     icon: [
@@ -32,23 +32,23 @@ export const metadata: Metadata = {
         type: "image/x-icon"
       },
       {
-        url: "/icons/tablewise-bowl-192.png",
+        url: "/icons/hearth-192.png",
         sizes: "192x192",
         type: "image/png"
       },
       {
-        url: "/icons/tablewise-bowl-512.png",
+        url: "/icons/hearth-512.png",
         sizes: "512x512",
         type: "image/png"
       },
       {
-        url: "/icons/tablewise-bowl-icon.svg",
+        url: "/icons/hearth-icon.svg",
         type: "image/svg+xml"
       }
     ],
     apple: [
       {
-        url: "/icons/tablewise-bowl-apple-touch-icon.png",
+        url: "/icons/hearth-apple-touch-icon.png",
         sizes: "180x180",
         type: "image/png"
       }
@@ -60,7 +60,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1F5E46"
+  themeColor: "#173A34"
 };
 
 export default function RootLayout({

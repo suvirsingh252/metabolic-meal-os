@@ -37,7 +37,7 @@ export function getUrlRecoveryCopy(inputLooksLikeUrl: boolean, error: string) {
   }
 
   return {
-    title: "Tablewise could not read that page automatically.",
+    title: "Hearth could not read that page automatically.",
     body:
       "Some publishers block automated recipe reading, hide recipe text behind scripts, or return limited page data. The app is still working; it just needs the recipe details another way.",
     nextStep:
@@ -60,7 +60,7 @@ export function getClassifiedUrlRecoveryCopy(
     blocked_url:
       "The publisher or platform blocked automated reading, but you can still analyze pasted recipe details.",
     fetch_failed:
-      "Tablewise could not fetch the page reliably, but pasted recipe details will still work.",
+      "Hearth could not fetch the page reliably, but pasted recipe details will still work.",
     no_recipe_found:
       "The page did not expose enough recipe detail, but pasted ingredients or instructions will still work.",
     partial_recipe_found:
@@ -68,7 +68,7 @@ export function getClassifiedUrlRecoveryCopy(
     social_url:
       "Social platforms often hide captions or transcripts, so paste the caption or what you remember.",
     manual_input_needed:
-      "Paste the recipe details directly and Tablewise can continue from there."
+      "Paste the recipe details directly and Hearth can continue from there."
   };
 
   const isDotdashBlocked =
@@ -76,9 +76,9 @@ export function getClassifiedUrlRecoveryCopy(
     isDotdashRecipeDomain(urlRecovery.sourceUrl);
 
   return {
-    title: "Tablewise needs recipe details another way.",
+    title: "Hearth needs recipe details another way.",
     body: isDotdashBlocked
-      ? "This publisher family commonly blocks automated recipe reads. Tablewise can still analyze the recipe if you paste the visible ingredients, instructions, or a rough summary."
+      ? "This publisher family commonly blocks automated recipe reads. Hearth can still analyze the recipe if you paste the visible ingredients, instructions, or a rough summary."
       : reasonCopy[urlRecovery.failureReason],
     nextStep: isDotdashBlocked
       ? "Paste the recipe details from the page into the box and run Analyze again. The original link will stay attached."
@@ -152,7 +152,7 @@ export function StatusBanner({
         {usesBestEffortSocialIntake ? (
           <>
             <p>
-              Tablewise tried the Instagram enrichment path. Captions are often
+              Hearth tried the Instagram enrichment path. Captions are often
               hidden from static page reads, so add notes if you have them or
               run a best-guess analysis again.
             </p>

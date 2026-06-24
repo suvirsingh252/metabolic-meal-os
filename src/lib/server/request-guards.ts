@@ -50,7 +50,7 @@ export function enforcePrivateDeployment(
     return NextResponse.json(
       {
         error:
-          "Server is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out for trusted family/beta testing."
+          "Hearth is private by default. Set APP_AUTH_TOKEN, or set ALLOW_UNAUTHENTICATED=true to explicitly opt out for trusted family/beta testing."
       },
       { status: 503 }
     );

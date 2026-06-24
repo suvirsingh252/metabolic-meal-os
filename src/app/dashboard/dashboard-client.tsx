@@ -146,7 +146,7 @@ export function DashboardClient() {
           Insights
         </h1>
         <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-          What Tablewise is learning from your saved meals.
+          What Hearth is learning from your saved meals.
         </p>
       </section>
 
@@ -205,7 +205,7 @@ function InsightsHero({ dashboard }: { dashboard: DashboardViewModel }) {
             <p className="max-w-2xl text-base leading-7 text-primary-foreground/80">
               {dashboard.week.mealCount > 0
                 ? `${dashboard.week.mealCount} saved meals are shaping this week's view. ${opportunity}`
-                : "Save a few meals and Tablewise will start spotting patterns for your household."}
+                : "Save a few meals and Hearth will start spotting patterns for your household."}
             </p>
           </div>
         </div>
@@ -261,7 +261,7 @@ function BestMealCard({ meal }: { meal: DashboardViewModel["quality"]["bestRecen
             Nothing to call out yet.
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Save meals with quality signals and Tablewise will surface what worked.
+            Save meals with quality signals and Hearth will surface what worked.
           </p>
         </CardContent>
       </Card>
@@ -404,8 +404,8 @@ function DetailedAnalyticsAccordion({
 }) {
   return (
     <CollapsibleDashboardSection
-      helper="Nutrition targets, target progress, quality data, weekly summary, and raw coverage counts."
-      title="Detailed analytics"
+      helper="Nutrition targets, progress, meal quality signals, weekly rhythm, and confidence details."
+      title="Hearth Insights details"
     >
       <div className="flex justify-start">
         <Button disabled={isLoading} onClick={onRefresh} size="sm" type="button" variant="secondary">
@@ -431,7 +431,7 @@ function DetailedAnalyticsAccordion({
         <SmartInsights insights={dashboard.insights} />
         <WeeklySummary dashboard={dashboard} />
       </div>
-      <DataReliabilitySummary dashboard={dashboard} />
+      <SignalConfidenceSummary dashboard={dashboard} />
     </CollapsibleDashboardSection>
   );
 }
@@ -698,7 +698,7 @@ function QualitySummaryText({
   );
 }
 
-function DataReliabilitySummary({ dashboard }: { dashboard: DashboardViewModel }) {
+function SignalConfidenceSummary({ dashboard }: { dashboard: DashboardViewModel }) {
   const mix = dashboard.week.sourceMix;
   const calorieSample = dashboard.week.nutritionCompleteness.calories;
   const proteinSample = dashboard.week.nutritionCompleteness.protein;
@@ -706,7 +706,7 @@ function DataReliabilitySummary({ dashboard }: { dashboard: DashboardViewModel }
 
   return (
     <details className="rounded-md border bg-card p-4">
-      <summary className="cursor-pointer font-medium">Advanced data coverage</summary>
+      <summary className="cursor-pointer font-medium">Signal confidence</summary>
       <div className="mt-3">
         <CardContent className="space-y-4 p-4">
           <div className="flex flex-wrap gap-2">
@@ -714,7 +714,7 @@ function DataReliabilitySummary({ dashboard }: { dashboard: DashboardViewModel }
               {mix.structured} recipe nutrition
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.estimated > 0 ? "steady" : "unavailable"}>
-              {mix.estimated} Tablewise estimates
+              {mix.estimated} Hearth estimates
             </NutritionSignalChip>
             <NutritionSignalChip tone={mix.userEntered + mix.reviewed > 0 ? "positive" : "unavailable"}>
               {mix.userEntered + mix.reviewed} reviewed by household
@@ -751,7 +751,7 @@ function SmartInsights({ insights }: { insights: DashboardInsight[] }) {
   return (
     <Card>
       <CardHeader className="p-4 pb-2">
-        <CardTitle className="text-base">Smart insights</CardTitle>
+        <CardTitle className="text-base">Hearth Insights</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 p-4 pt-2">
         {insights.length === 0 ? (
@@ -906,7 +906,7 @@ function getHeroInterpretation(dashboard: DashboardViewModel) {
   const score = dashboard.week.averageQualityScore ?? dashboard.today.averageQualityScore;
 
   if (dashboard.week.mealCount === 0) {
-    return "Tablewise is ready to learn from your meals.";
+    return "Hearth is ready to learn from your meals.";
   }
 
   if (typeof score === "number" && score >= 75) {
@@ -921,7 +921,7 @@ function getHeroInterpretation(dashboard: DashboardViewModel) {
     return "Your household has a clear next improvement.";
   }
 
-  return "Tablewise is learning what works at your table.";
+  return "Hearth is learning what works at your table.";
 }
 
 function getPrimaryOpportunity(dashboard: DashboardViewModel) {
@@ -983,7 +983,7 @@ function getNextAction(dashboard: DashboardViewModel) {
     return {
       cta: "Analyze a meal",
       description:
-        "Start with one saved dinner so Tablewise can learn what works for your household.",
+        "Start with one saved dinner so Hearth can learn what works for your household.",
       href: "/analyze",
       title: "Save one meal to unlock household insights."
     };
@@ -995,7 +995,7 @@ function getNextAction(dashboard: DashboardViewModel) {
       dashboard.insights[0]?.action ??
       "Use tonight's recommendations to keep building on what is already working.",
     href: "/concierge",
-    title: "Pick the next dinner from what Tablewise has learned."
+    title: "Pick the next dinner from what Hearth has learned."
   };
 }
 
@@ -1035,8 +1035,8 @@ function getOpportunityCopy(dashboard: DashboardViewModel) {
 
   return {
     description:
-      "Save another detailed meal or log feedback so Tablewise can spot the next useful pattern.",
-    title: "More meal signal will sharpen the coach."
+      "Save another detailed meal or log feedback so Hearth can spot the next useful pattern.",
+    title: "More meal signal will sharpen Hearth."
   };
 }
 

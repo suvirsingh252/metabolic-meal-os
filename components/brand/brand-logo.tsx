@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
-export const BRAND_NAME = "Tablewise";
-export const BRAND_TAGLINE = "Tablewise remembers what works.";
-export const BRAND_SECONDARY_TAGLINE = "Smarter meals for your household.";
+export const BRAND_NAME = "Hearth";
+export const BRAND_TAGLINE = "Dinner is handled.";
+export const BRAND_SECONDARY_TAGLINE = "The operating system for family meals.";
 
 type BrandLogoVariant = "full" | "icon" | "stacked";
 
@@ -13,13 +13,11 @@ interface BrandLogoProps {
 }
 
 /**
- * Tablewise "Ingredients Bowl" mark — a warm-cream bowl with a subtle
- * integrated "T" on the front and sage / apricot / muted-green ingredient
- * shapes nestled at the rim. It is multi-color (explicit brand hex rather than
- * currentColor) and decorative: the brand name is always conveyed by adjacent
- * text or an aria-label on the wrapper, so the SVG is hidden from assistive tech.
+ * Hearth mark: a minimal flame held by a gathering arc. The glyph uses fixed
+ * brand colors and stays decorative because the wrapper carries the accessible
+ * "Hearth" label.
  */
-function IngredientsBowlMark({ className }: { className?: string }) {
+function HearthMark({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
@@ -27,35 +25,23 @@ function IngredientsBowlMark({ className }: { className?: string }) {
       viewBox="0 0 48 48"
       className={className}
     >
-      <g transform="translate(24 24) scale(1.12) translate(-24 -28.5)">
-        <ellipse cx="24" cy="27" rx="15" ry="4" fill="#DDEBDD" />
-        <path
-          d="M24 16 C27.5 18 28.5 22.5 24 26.5 C19.5 22.5 20.5 18 24 16 Z"
-          fill="#DDEBDD"
-        />
-        <path d="M24 18.5 L24 25" stroke="#4C8267" strokeWidth="1" strokeLinecap="round" />
-        <circle cx="15" cy="24" r="3.6" fill="#F4A261" />
-        <circle cx="20" cy="20.5" r="2.8" fill="#4C8267" />
-        <circle cx="33" cy="24" r="3.2" fill="#F4A261" />
-        <circle cx="29" cy="20.5" r="2.6" fill="#DDEBDD" />
-        <path
-          d="M8 27 C8 27 13 30 24 30 C35 30 40 27 40 27 C40 34.5 33 41 24 41 C15 41 8 34.5 8 27 Z"
-          fill="#FFF8EC"
-        />
-        <path
-          d="M18.5 34 L29.5 34 M24 34 L24 38.5"
-          stroke="#1F5E46"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
+      <path
+        d="M12 30C16.5 36 31.5 36 36 30"
+        fill="none"
+        stroke="#F5F1E8"
+        strokeLinecap="round"
+        strokeWidth="5"
+      />
+      <path
+        d="M24 11C30 17 33 21.5 33 27C33 33 29 38 24 38C19 38 15 33 15 27C15 22.4 17.8 18.2 22 14.5C22.3 18.5 24 21.2 26.5 23.5C27.2 19.8 26.4 16.1 24 11Z"
+        fill="#D88B3D"
+      />
     </svg>
   );
 }
 
 /**
- * App-icon style glyph: a deep-green rounded tile holding the bowl mark.
+ * App-icon style glyph: a deep-green rounded tile holding the Hearth mark.
  * The tile background uses the brand token (`bg-primary`) so it stays on-brand
  * in any theme context; the mark's own colors are fixed brand hex.
  */
@@ -67,7 +53,7 @@ function IconTile({ className }: { className?: string }) {
         className
       )}
     >
-      <IngredientsBowlMark className="h-full w-full" />
+      <HearthMark className="h-full w-full" />
     </span>
   );
 }

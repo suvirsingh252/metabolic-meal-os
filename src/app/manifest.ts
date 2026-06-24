@@ -2,47 +2,47 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Tablewise",
-    short_name: "Tablewise",
-    description: "Meal planning that learns your household's real preferences.",
+    name: "Hearth",
+    short_name: "Hearth",
+    description: "The operating system for family meals.",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#FFF8EC",
-    theme_color: "#1F5E46",
+    background_color: "#F5F1E8",
+    theme_color: "#173A34",
     icons: [
       {
-        src: "/icons/tablewise-bowl-192.png",
+        src: "/icons/hearth-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any"
       },
       {
-        src: "/icons/tablewise-bowl-192.png",
+        src: "/icons/hearth-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable"
       },
       {
-        src: "/icons/tablewise-bowl-512.png",
+        src: "/icons/hearth-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any"
       },
       {
-        src: "/icons/tablewise-bowl-512.png",
+        src: "/icons/hearth-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable"
       },
       {
-        src: "/icons/tablewise-bowl-icon.svg",
+        src: "/icons/hearth-icon.svg",
         sizes: "any",
         type: "image/svg+xml",
         purpose: "any"
       },
       {
-        src: "/icons/tablewise-bowl-apple-touch-icon.png",
+        src: "/icons/hearth-apple-touch-icon.png",
         sizes: "180x180",
         type: "image/png",
         purpose: "any"

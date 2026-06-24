@@ -380,7 +380,7 @@ export function TodayClient() {
           </h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             Based on your saved meals, recent use, and household signals already
-            in Tablewise.
+            in Hearth.
           </p>
         </div>
         <div className="rounded-md border bg-card p-3 text-sm text-muted-foreground sm:p-4">
@@ -805,7 +805,7 @@ function toHouseholdRecommendationReason(reason: string) {
   }
 
   if (/limited saved meal signals|neutral|sparse/i.test(reason)) {
-    return "Tablewise has limited history for this meal.";
+    return "Hearth has limited history for this meal.";
   }
 
   return reason.endsWith(".") ? reason : `${reason}.`;

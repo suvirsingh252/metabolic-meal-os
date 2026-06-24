@@ -449,7 +449,7 @@ function buildEmptyState(
     return {
       title: "No saved dinners yet",
       message:
-        "Add a few meals and Tablewise will start picking dinner for you.",
+        "Add a few meals and Hearth will start picking dinner for you.",
       actionLabel: "Add a meal"
     };
   }

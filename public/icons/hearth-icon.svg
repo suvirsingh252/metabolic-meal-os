@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">Hearth</title>
+  <rect width="48" height="48" rx="11" fill="#173A34"/>
+  <path d="M12 30C16.5 36 31.5 36 36 30" fill="none" stroke="#F5F1E8" stroke-linecap="round" stroke-width="5"/>
+  <path d="M24 11C30 17 33 21.5 33 27C33 33 29 38 24 38C19 38 15 33 15 27C15 22.4 17.8 18.2 22 14.5C22.3 18.5 24 21.2 26.5 23.5C27.2 19.8 26.4 16.1 24 11Z" fill="#D88B3D"/>
+</svg>
