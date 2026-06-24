@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   index,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -116,3 +117,26 @@ export const dinnerFeedback = pgTable(
 
 export type DinnerFeedback = typeof dinnerFeedback.$inferSelect;
 export type NewDinnerFeedback = typeof dinnerFeedback.$inferInsert;
+
+export const groceryLists = pgTable(
+  "grocery_lists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: text("household_id").notNull(),
+    createdBy: text("created_by"),
+    mealIds: jsonb("meal_ids").$type<string[]>().notNull(),
+    itemCount: numeric("item_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+  },
+  (table) => ({
+    householdCreatedAtIdx: index("grocery_lists_household_created_at_idx").on(
+      table.householdId,
+      table.createdAt
+    )
+  })
+);
+
+export type GroceryListRecord = typeof groceryLists.$inferSelect;
+export type NewGroceryListRecord = typeof groceryLists.$inferInsert;

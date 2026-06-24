@@ -9,6 +9,7 @@ import {
   Heart,
   Loader2,
   Repeat2,
+  ShoppingCart,
   ThumbsDown
 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -240,7 +241,7 @@ export function MealDetailActions({
   return (
     <div className="space-y-3">
       {message ? <Alert>{message}</Alert> : null}
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
         {primaryActionOrder.map((actionId) => {
           const action = actionCopy[actionId];
           const state = saveState[actionId];
@@ -270,12 +271,19 @@ export function MealDetailActions({
             Add to Planner
           </Link>
         </Button>
+        <Button asChild variant="secondary">
+          <Link href={`/grocery?meal=${encodeURIComponent(meal.id)}`}>
+            <ShoppingCart className="h-4 w-4" />
+            Generate Grocery List
+          </Link>
+        </Button>
       </div>
-      <div className="hidden gap-2 text-xs leading-5 text-muted-foreground sm:grid sm:grid-cols-2 lg:grid-cols-5">
+      <div className="hidden gap-2 text-xs leading-5 text-muted-foreground sm:grid sm:grid-cols-2 lg:grid-cols-6">
         {primaryActionOrder.map((actionId) => (
           <p key={actionId}>{actionCopy[actionId].helper}</p>
         ))}
         <p>Opens planner with this meal in context.</p>
+        <p>Builds a shopping checklist from this meal.</p>
       </div>
       <details className="rounded-md border bg-card p-4">
         <summary className="cursor-pointer font-medium">

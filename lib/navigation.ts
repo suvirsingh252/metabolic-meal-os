@@ -5,6 +5,7 @@ import {
   Home,
   Sparkles,
   MessageSquare,
+  ShoppingCart,
   Settings,
   Utensils
 } from "lucide-react";
@@ -30,6 +31,11 @@ export const navItems: NavItem[] = [
     href: "/planner",
     label: "Planner",
     icon: CalendarDays
+  },
+  {
+    href: "/grocery",
+    label: "Grocery",
+    icon: ShoppingCart
   },
   {
     href: "/analyze",
