@@ -32,8 +32,12 @@ test("primary mobile routes use progressive disclosure for secondary content", (
   const dashboard = source("src/app/dashboard/dashboard-client.tsx");
   const feedback = source("src/app/feedback/page.tsx");
   const mealDetail = source("src/app/meals/[id]/page.tsx");
+  const navigation = source("lib/navigation.ts");
 
   assert.match(today, /Learning and secondary insights/);
+  assert.match(navigation, /label: "Insights"/);
+  assert.match(dashboard, /Household intelligence/);
+  assert.match(dashboard, /Detailed analytics/);
   assert.match(dashboard, /CollapsibleDashboardSection/);
   assert.match(feedback, /Optional after-meal details/);
   assert.match(mealDetail, /How we make it/);

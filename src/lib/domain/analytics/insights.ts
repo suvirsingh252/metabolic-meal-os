@@ -16,7 +16,7 @@ export function generateDashboardInsights(
       id: "no-meals-today",
       severity: "info",
       title: "No meals logged yet today.",
-      message: "Today has no saved meals in the dashboard.",
+      message: "Today has no saved meals yet.",
       action: "Analyze or save your first meal.",
       metric: "mealCount"
     });

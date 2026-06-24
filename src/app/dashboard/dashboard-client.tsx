@@ -7,14 +7,15 @@ import {
   ChevronDown,
   Flame,
   Gauge,
+  Lightbulb,
   Loader2,
   RefreshCw,
   Salad,
   ShieldCheck,
+  Trophy,
   Utensils
 } from "lucide-react";
 import Link from "next/link";
-import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ function getErrorMessage(value: unknown) {
     return value.error;
   }
 
-  return "Unable to load dashboard intelligence right now.";
+  return "Unable to load insights right now.";
 }
 
 export function DashboardClient() {
@@ -88,7 +89,7 @@ export function DashboardClient() {
 
       setDashboard(data as DashboardViewModel);
     } catch {
-      setError("Unable to reach the dashboard service. Try again.");
+      setError("Unable to reach the insights service. Try again.");
     } finally {
       setIsLoading(false);
     }
@@ -138,77 +139,300 @@ export function DashboardClient() {
   }, [appliedTargets, loadDashboard, targetsReady]);
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <PageHeader
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={isLoading} onClick={loadDashboard} variant="secondary">
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Refresh
-            </Button>
-            <Button asChild>
-              <Link href="/analyze">
-                Analyze
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        }
-        description="Key household metrics, highlights, and the next useful action."
-        eyebrow="Behavioral intelligence"
-        title="Dashboard"
-      />
+    <div className="space-y-6 md:space-y-8">
+      <section className="space-y-3">
+        <p className="text-sm font-semibold text-accent">Household intelligence</p>
+        <h1 className="text-4xl font-semibold leading-tight tracking-normal text-primary md:text-5xl">
+          Insights
+        </h1>
+        <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+          What Tablewise is learning from your saved meals.
+        </p>
+      </section>
 
       {error ? <Alert>{error}</Alert> : null}
 
       {isLoading && !dashboard ? (
-        <div className="flex min-h-64 items-center justify-center rounded-md border bg-card text-sm text-muted-foreground">
+        <div className="flex min-h-64 items-center justify-center rounded-2xl bg-card text-sm text-muted-foreground shadow-sm">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Loading dashboard...
+          Loading insights...
         </div>
       ) : null}
 
       {dashboard ? (
         <>
-          <HouseholdTakeaways dashboard={dashboard} />
-          <TodayOverview dashboard={dashboard} />
-          <CollapsibleDashboardSection
-            helper="Daily target progress and editable nutrition targets."
-            title="Targets"
-          >
-            <TargetProgress dashboard={dashboard} />
-            <TargetSettings
-              isLoading={isLoading}
-              onApply={() => setAppliedTargets(draftTargets)}
-              onTargetsChange={setDraftTargets}
-              targets={draftTargets}
-              targetsChanged={!areTargetsEqual(draftTargets, appliedTargets)}
-            />
-          </CollapsibleDashboardSection>
-          <CollapsibleDashboardSection
-            helper="Quality scores, opportunities, and data coverage."
-            title="Quality and data"
-          >
-            <QualitySummary dashboard={dashboard} />
-            <DataReliabilitySummary dashboard={dashboard} />
-          </CollapsibleDashboardSection>
-          <CollapsibleDashboardSection
-            helper="Detailed insights, weekly patterns, and recent saved meals."
-            title="Details"
-          >
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
-              <SmartInsights insights={dashboard.insights} />
-              <WeeklySummary dashboard={dashboard} />
-            </div>
-            <RecentMeals meals={dashboard.recentMeals} />
-          </CollapsibleDashboardSection>
+          <InsightsHero dashboard={dashboard} />
+          <NextActionCard dashboard={dashboard} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <BestMealCard meal={dashboard.quality.bestRecentMeal} />
+            <OpportunityCard dashboard={dashboard} />
+          </div>
+          <PatternsSection insights={dashboard.insights} />
+          <RecentMeals meals={dashboard.recentMeals} />
+          <DetailedAnalyticsAccordion
+            dashboard={dashboard}
+            draftTargets={draftTargets}
+            isLoading={isLoading}
+            onApplyTargets={() => setAppliedTargets(draftTargets)}
+            onRefresh={loadDashboard}
+            onTargetsChange={setDraftTargets}
+            targetsChanged={!areTargetsEqual(draftTargets, appliedTargets)}
+          />
         </>
       ) : null}
     </div>
+  );
+}
+
+function InsightsHero({ dashboard }: { dashboard: DashboardViewModel }) {
+  const score = dashboard.week.averageQualityScore ?? dashboard.today.averageQualityScore;
+  const opportunity = getPrimaryOpportunity(dashboard);
+
+  return (
+    <section className="overflow-hidden rounded-[2rem] bg-primary text-primary-foreground shadow-sm">
+      <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:p-10">
+        <div className="space-y-5">
+          <div className="inline-flex items-center gap-2 rounded-full bg-background/10 px-4 py-2 text-sm font-semibold text-primary-foreground/85">
+            <CalendarDays className="h-4 w-4 text-accent" />
+            {formatDateWithYear(dashboard.week.startDate)} to{" "}
+            {formatDateWithYear(dashboard.week.endDate)}
+          </div>
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-accent">What did we learn?</p>
+            <h2 className="max-w-3xl text-3xl font-semibold leading-tight tracking-normal sm:text-4xl">
+              {getHeroInterpretation(dashboard)}
+            </h2>
+            <p className="max-w-2xl text-base leading-7 text-primary-foreground/80">
+              {dashboard.week.mealCount > 0
+                ? `${dashboard.week.mealCount} saved meals are shaping this week's view. ${opportunity}`
+                : "Save a few meals and Tablewise will start spotting patterns for your household."}
+            </p>
+          </div>
+        </div>
+        <div className="rounded-[1.5rem] bg-background/95 p-5 text-primary shadow-sm">
+          <p className="text-sm font-semibold text-accent">Household score</p>
+          <p className="mt-3 text-5xl font-semibold leading-none">
+            {score === null ? "New" : Math.round(score)}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            {score === null
+              ? "More saved meals will make this clearer."
+              : "Weekly quality score from saved meals with enough signal."}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NextActionCard({ dashboard }: { dashboard: DashboardViewModel }) {
+  const action = getNextAction(dashboard);
+
+  return (
+    <Card className="bg-card/90">
+      <CardContent className="grid gap-5 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-accent">Recommended next action</p>
+          <h2 className="text-2xl font-semibold leading-tight text-primary">
+            {action.title}
+          </h2>
+          <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+            {action.description}
+          </p>
+        </div>
+        <Button asChild className="w-full md:w-auto">
+          <Link href={action.href}>
+            {action.cta}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BestMealCard({ meal }: { meal: DashboardViewModel["quality"]["bestRecentMeal"] }) {
+  if (!meal) {
+    return (
+      <Card className="bg-card/80">
+        <CardContent className="p-5 sm:p-6">
+          <p className="text-sm font-semibold text-accent">Best recent meal</p>
+          <h2 className="mt-2 text-2xl font-semibold text-primary">
+            Nothing to call out yet.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Save meals with quality signals and Tablewise will surface what worked.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-card/80">
+      <CardContent className="space-y-4 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-accent">Best recent meal</p>
+            <h2 className="mt-2 break-words text-2xl font-semibold leading-tight text-primary">
+              {meal.name}
+            </h2>
+          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-success/30 text-primary">
+            <Trophy className="h-5 w-5" />
+          </span>
+        </div>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Highest-scoring meal in recent data.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <MealQualityBadge label={meal.qualityLabel} score={meal.qualityScore} />
+          <NutritionSignalChip>{formatNutrient(meal.calories, "kcal")}</NutritionSignalChip>
+          <NutritionSignalChip>{formatNutrient(meal.protein, "g protein")}</NutritionSignalChip>
+        </div>
+        {meal.url ? (
+          <Button asChild variant="secondary">
+            <a href={meal.url} rel="noreferrer" target="_blank">
+              View meal
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OpportunityCard({ dashboard }: { dashboard: DashboardViewModel }) {
+  const opportunity = getOpportunityCopy(dashboard);
+
+  return (
+    <Card className="bg-card/80">
+      <CardContent className="space-y-4 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-accent">Biggest opportunity</p>
+            <h2 className="mt-2 text-2xl font-semibold leading-tight text-primary">
+              {opportunity.title}
+            </h2>
+          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/20 text-primary">
+            <Lightbulb className="h-5 w-5" />
+          </span>
+        </div>
+        <p className="text-sm leading-6 text-muted-foreground">
+          {opportunity.description}
+        </p>
+        {dashboard.quality.highestOpportunityMeal ? (
+          <div className="rounded-2xl bg-background/70 p-4">
+            <p className="text-sm font-semibold text-muted-foreground">
+              Meal to revisit
+            </p>
+            <p className="mt-1 break-words font-semibold">
+              {dashboard.quality.highestOpportunityMeal.name}
+            </p>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PatternsSection({ insights }: { insights: DashboardInsight[] }) {
+  const visibleInsights = insights.slice(0, 3);
+
+  return (
+    <section className="space-y-3">
+      <SectionHeading
+        helper="Short signals from recent meals and targets."
+        title="Patterns we're noticing"
+      />
+      {visibleInsights.length === 0 ? (
+        <Card className="bg-card/80">
+          <CardContent className="p-5 text-sm leading-6 text-muted-foreground">
+            No patterns yet. Save meals with nutrition values to populate this view.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-3">
+          {visibleInsights.map((insight) => (
+            <PatternCard insight={insight} key={insight.id} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PatternCard({ insight }: { insight: DashboardInsight }) {
+  return (
+    <Card className="bg-card/80">
+      <CardContent className="space-y-3 p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className={insightClassName(insight.severity)}>
+            {insightSeverityLabel(insight.severity)}
+          </Badge>
+          {insight.metric ? <NutritionSignalChip>{insight.metric}</NutritionSignalChip> : null}
+        </div>
+        <h3 className="text-lg font-semibold leading-tight text-primary">
+          {insight.title}
+        </h3>
+        <p className="text-sm leading-6 text-muted-foreground">
+          {insight.message}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DetailedAnalyticsAccordion({
+  dashboard,
+  draftTargets,
+  isLoading,
+  onApplyTargets,
+  onRefresh,
+  onTargetsChange,
+  targetsChanged
+}: {
+  dashboard: DashboardViewModel;
+  draftTargets: NutritionTargets;
+  isLoading: boolean;
+  onApplyTargets: () => void;
+  onRefresh: () => void;
+  onTargetsChange: (targets: NutritionTargets) => void;
+  targetsChanged: boolean;
+}) {
+  return (
+    <CollapsibleDashboardSection
+      helper="Nutrition targets, target progress, quality data, weekly summary, and raw coverage counts."
+      title="Detailed analytics"
+    >
+      <div className="flex justify-start">
+        <Button disabled={isLoading} onClick={onRefresh} size="sm" type="button" variant="secondary">
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          Refresh
+        </Button>
+      </div>
+      <TodayOverview dashboard={dashboard} />
+      <TargetProgress dashboard={dashboard} />
+      <TargetSettings
+        isLoading={isLoading}
+        onApply={onApplyTargets}
+        onTargetsChange={onTargetsChange}
+        targets={draftTargets}
+        targetsChanged={targetsChanged}
+      />
+      <QualitySummary dashboard={dashboard} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+        <SmartInsights insights={dashboard.insights} />
+        <WeeklySummary dashboard={dashboard} />
+      </div>
+      <DataReliabilitySummary dashboard={dashboard} />
+    </CollapsibleDashboardSection>
   );
 }
 
@@ -222,17 +446,19 @@ function CollapsibleDashboardSection({
   title: string;
 }) {
   return (
-    <details className="group rounded-md border bg-card p-4">
+    <details className="group rounded-2xl bg-card p-5 shadow-sm">
       <summary className="cursor-pointer list-none">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-normal">{title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{helper}</p>
+            <h2 className="text-xl font-semibold tracking-normal text-primary">{title}</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {helper}
+            </p>
           </div>
           <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
         </div>
       </summary>
-      <div className="mt-4 space-y-5 border-t pt-4">{children}</div>
+      <div className="mt-6 space-y-6">{children}</div>
     </details>
   );
 }
@@ -286,59 +512,6 @@ function TodayOverview({ dashboard }: { dashboard: DashboardViewModel }) {
           label="Meals"
           value={String(dashboard.today.mealCount)}
         />
-      </div>
-    </section>
-  );
-}
-
-function HouseholdTakeaways({ dashboard }: { dashboard: DashboardViewModel }) {
-  const confidence = getHouseholdConfidence(dashboard);
-  const missingNutrition = dashboard.week.sourceMix.missingNutrition;
-  const nutritionLimited = missingNutrition > 0;
-  const firstInsight = dashboard.insights[0];
-
-  return (
-    <section className="space-y-3">
-      <SectionHeading
-        helper={`This week: ${formatDateWithYear(
-          dashboard.week.startDate
-        )} to ${formatDateWithYear(dashboard.week.endDate)}`}
-        title="Household takeaways"
-      />
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-base">What did we learn?</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-2 text-sm leading-6 text-muted-foreground">
-            {dashboard.week.mealCount > 0
-              ? `${dashboard.week.mealCount} saved meals are shaping this week's view. Tablewise is using saved quality, nutrition, and household feedback where available.`
-              : "No saved meals are in this week's window yet."}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-base">What should we do next?</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-2 text-sm leading-6 text-muted-foreground">
-            {firstInsight?.action ?? firstInsight?.message ??
-              "Save one detailed meal or log feedback on a recent meal to improve future suggestions."}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-base">How confident is this?</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 p-4 pt-2 text-sm leading-6 text-muted-foreground">
-            <p>{confidence}</p>
-            {nutritionLimited ? (
-              <p>
-                Nutrition totals are limited right now, so Tablewise is leaning more
-                on meal quality and household feedback.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
       </div>
     </section>
   );
@@ -496,7 +669,7 @@ function QualitySummary({ dashboard }: { dashboard: DashboardViewModel }) {
           value={formatScore(dashboard.week.averageQualityScore)}
         />
         <MealCalloutCard
-          description="Highest-scoring meal in the current dashboard data."
+          description="Highest-scoring meal in recent saved data."
           meal={dashboard.quality.bestRecentMeal}
           title="Best recent meal"
         />
@@ -729,23 +902,154 @@ function formatDateWithYear(value: string) {
   }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
-function getHouseholdConfidence(dashboard: DashboardViewModel) {
+function getHeroInterpretation(dashboard: DashboardViewModel) {
+  const score = dashboard.week.averageQualityScore ?? dashboard.today.averageQualityScore;
+
   if (dashboard.week.mealCount === 0) {
-    return "Low confidence until meals are saved for this week.";
+    return "Tablewise is ready to learn from your meals.";
   }
 
-  if (
-    dashboard.week.qualitySample.isEnoughData &&
-    dashboard.week.sourceMix.missingNutrition === 0
-  ) {
-    return "Good confidence for this week's saved meals.";
+  if (typeof score === "number" && score >= 75) {
+    return "Your household has a strong pattern this week.";
+  }
+
+  if (typeof score === "number" && score >= 50) {
+    return "Your household is building a useful rhythm.";
   }
 
   if (dashboard.week.qualitySample.scoredMeals > 0) {
-    return "Medium confidence because some quality signals are available.";
+    return "Your household has a clear next improvement.";
   }
 
-  return "Low confidence because saved nutrition and feedback are limited.";
+  return "Tablewise is learning what works at your table.";
+}
+
+function getPrimaryOpportunity(dashboard: DashboardViewModel) {
+  const proteinInsight = dashboard.insights.find((insight) =>
+    insight.id.includes("protein")
+  );
+  const fiberInsight = dashboard.insights.find((insight) =>
+    insight.id.includes("fiber")
+  );
+  const sodiumInsight = dashboard.insights.find((insight) =>
+    insight.id.includes("sodium")
+  );
+
+  if (proteinInsight) {
+    return "Protein is the biggest opportunity.";
+  }
+
+  if (fiberInsight) {
+    return "Fiber is the biggest opportunity.";
+  }
+
+  if (sodiumInsight) {
+    return "Sodium needs a little attention today.";
+  }
+
+  if (dashboard.quality.bestRecentMeal) {
+    return `${dashboard.quality.bestRecentMeal.name} is a good signal to repeat.`;
+  }
+
+  return "The next saved meal will make these insights sharper.";
+}
+
+function getNextAction(dashboard: DashboardViewModel) {
+  const warningInsight = dashboard.insights.find(
+    (insight) => insight.severity === "warning"
+  );
+
+  if (warningInsight?.id.includes("protein")) {
+    return {
+      cta: "Find protein-forward meals",
+      description:
+        "Choose a dinner with a stronger protein anchor before tuning anything else.",
+      href: "/concierge",
+      title: "Prioritize a protein-forward dinner next."
+    };
+  }
+
+  if (warningInsight?.id.includes("fiber")) {
+    return {
+      cta: "Show dinner ideas",
+      description:
+        "Look for a dinner that makes beans, vegetables, oats, or whole grains easy.",
+      href: "/concierge",
+      title: "Add one fiber-friendly meal next."
+    };
+  }
+
+  if (dashboard.week.mealCount === 0) {
+    return {
+      cta: "Analyze a meal",
+      description:
+        "Start with one saved dinner so Tablewise can learn what works for your household.",
+      href: "/analyze",
+      title: "Save one meal to unlock household insights."
+    };
+  }
+
+  return {
+    cta: "Show dinner ideas",
+    description:
+      dashboard.insights[0]?.action ??
+      "Use tonight's recommendations to keep building on what is already working.",
+    href: "/concierge",
+    title: "Pick the next dinner from what Tablewise has learned."
+  };
+}
+
+function getOpportunityCopy(dashboard: DashboardViewModel) {
+  const warningInsight = dashboard.insights.find(
+    (insight) => insight.severity === "warning"
+  );
+
+  if (warningInsight?.id.includes("protein")) {
+    return {
+      description: "Cook one protein-forward meal next. This is the clearest lever in the current week.",
+      title: "Protein has been below target this week."
+    };
+  }
+
+  if (warningInsight?.id.includes("fiber")) {
+    return {
+      description: "Add one meal with legumes, vegetables, oats, berries, or whole grains.",
+      title: "Fiber has room to improve."
+    };
+  }
+
+  if (warningInsight?.id.includes("sodium")) {
+    return {
+      description: "Choose a lower-sodium dinner or balance the day with simpler whole foods.",
+      title: "Sodium needs attention today."
+    };
+  }
+
+  if (dashboard.quality.highestOpportunityMeal) {
+    return {
+      description:
+        "This meal has the most room to improve among meals with available quality data.",
+      title: "One saved meal is worth revisiting."
+    };
+  }
+
+  return {
+    description:
+      "Save another detailed meal or log feedback so Tablewise can spot the next useful pattern.",
+    title: "More meal signal will sharpen the coach."
+  };
+}
+
+function insightSeverityLabel(severity: DashboardInsight["severity"]) {
+  if (severity === "positive") {
+    return "Strong";
+  }
+
+  if (severity === "warning") {
+    return "Needs attention";
+  }
+
+  return "Improving";
 }
 
 function insightClassName(severity: DashboardInsight["severity"]) {

@@ -3,7 +3,7 @@ import {
   BarChart3,
   CalendarDays,
   Home,
-  LayoutDashboard,
+  Sparkles,
   MessageSquare,
   Settings,
   Utensils
@@ -23,8 +23,8 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard
+    label: "Insights",
+    icon: Sparkles
   },
   {
     href: "/planner",
