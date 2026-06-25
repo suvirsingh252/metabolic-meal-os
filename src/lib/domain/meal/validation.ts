@@ -2,6 +2,8 @@ import {
   bloodSugarImpacts,
   cuisines,
   effortLevels,
+  mealImageSources,
+  mealImageStatuses,
   mealTypes,
   proteinLevels,
   satietyLevels,
@@ -13,6 +15,7 @@ import {
   recipeSourceTypes
 } from "@/src/lib/types/recipe";
 import { mergeIngredientWithParsedRawText } from "@/src/lib/ingredients";
+import { getSafeImageUrl } from "@/src/lib/images/image-url";
 import { getSafeHttpUrl } from "@/src/lib/security/source-url";
 
 export interface ValidationResult<T> {
@@ -396,6 +399,26 @@ export function validateMealAnalysisResult(
         ? body.analysisModel.trim()
         : undefined,
     nutritionEstimate: readNutritionEstimate(body, errors),
+    imageUrl: getSafeImageUrl(body.imageUrl),
+    imageSource: enumIncludes(body.imageSource, mealImageSources)
+      ? body.imageSource
+      : undefined,
+    imageOriginalUrl: getSafeHttpUrl(body.imageOriginalUrl),
+    imagePrompt:
+      typeof body.imagePrompt === "string" && body.imagePrompt.trim()
+        ? body.imagePrompt.trim()
+        : null,
+    imageAttribution:
+      typeof body.imageAttribution === "string" && body.imageAttribution.trim()
+        ? body.imageAttribution.trim()
+        : null,
+    imageStatus: enumIncludes(body.imageStatus, mealImageStatuses)
+      ? body.imageStatus
+      : undefined,
+    imageLastUpdated:
+      typeof body.imageLastUpdated === "string" && body.imageLastUpdated.trim()
+        ? body.imageLastUpdated.trim()
+        : null,
     householdId:
       typeof body.householdId === "string" && body.householdId.trim()
         ? body.householdId.trim()

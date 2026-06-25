@@ -55,6 +55,15 @@ export const meals = pgTable("meals", {
   analysisVersion: text("analysis_version"),
   analysisModel: text("analysis_model"),
 
+  // Recipe image pipeline
+  imageUrl: text("image_url"),
+  imageSource: text("image_source"),
+  imageOriginalUrl: text("image_original_url"),
+  imagePrompt: text("image_prompt"),
+  imageAttribution: text("image_attribution"),
+  imageStatus: text("image_status"),
+  imageLastUpdated: timestamp("image_last_updated", { withTimezone: true }),
+
   // Recipe content
   ingredientsText: text("ingredients_text"),
   instructionsText: text("instructions_text"),

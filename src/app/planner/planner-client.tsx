@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { MealImage } from "@/src/components/meal-image";
 import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import type {
   DinnerPlanDay,
@@ -430,13 +431,21 @@ function PlannerDayCard({
         </Select>
 
         {selectedMeal ? (
-          <div className="rounded-md border bg-background p-3">
-            <Link
-              className="font-medium leading-6 text-primary underline-offset-4 hover:underline"
-              href={getMealDetailPath(selectedMeal.id)}
-            >
-              {selectedMeal.mealName}
-            </Link>
+          <div className="overflow-hidden rounded-md border bg-background">
+            <div className="relative aspect-[16/9] w-full">
+              <MealImage
+                alt={`${selectedMeal.mealName} image`}
+                imageUrl={selectedMeal.imageUrl}
+                sizes="(min-width: 1024px) 14vw, 100vw"
+              />
+            </div>
+            <div className="p-3">
+              <Link
+                className="font-medium leading-6 text-primary underline-offset-4 hover:underline"
+                href={getMealDetailPath(selectedMeal.id)}
+              >
+                {selectedMeal.mealName}
+              </Link>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {[selectedMeal.cuisine, selectedMeal.effortLevel]
                 .filter((value): value is string => Boolean(value))
@@ -454,6 +463,7 @@ function PlannerDayCard({
               <Trash2 className="h-4 w-4" />
               Clear
             </Button>
+            </div>
           </div>
         ) : (
           <div className="rounded-md border border-dashed bg-background p-3 text-sm text-muted-foreground">

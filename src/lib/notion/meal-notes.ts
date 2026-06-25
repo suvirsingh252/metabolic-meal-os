@@ -60,6 +60,29 @@ export function buildMealNotesSummary(meal: MealAnalysisResult): string {
     );
   }
 
+  if (meal.imageUrl || meal.imageStatus || meal.imageSource) {
+    parts.push(
+      [
+        "Image Metadata:",
+        meal.imageUrl ? `Image URL: ${meal.imageUrl}` : null,
+        meal.imageSource ? `Image Source: ${meal.imageSource}` : null,
+        meal.imageOriginalUrl
+          ? `Original Image URL: ${meal.imageOriginalUrl}`
+          : null,
+        meal.imageAttribution
+          ? `Image Attribution: ${meal.imageAttribution}`
+          : null,
+        meal.imageStatus ? `Image Status: ${meal.imageStatus}` : null,
+        meal.imageLastUpdated
+          ? `Image Last Updated: ${meal.imageLastUpdated}`
+          : null,
+        meal.imagePrompt ? `Image Prompt: ${meal.imagePrompt}` : null
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
+
   const scorecardLines = [
     `- Metabolic: ${meal.metabolicScore}/10`,
     `- Protein: ${meal.proteinScore}/10`,

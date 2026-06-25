@@ -330,6 +330,22 @@ test("Notes summary embeds cookbook sections the reader parses back out", () => 
   assert.match(summary, /2\. Saute onions in ghee until golden\./);
 });
 
+test("Notes summary embeds image metadata when image fields are present", () => {
+  const summary = buildMealNotesSummary({
+    ...baseAnalysis,
+    imageUrl: "https://blob.example/recipe-images/chana.png",
+    imageSource: "ai",
+    imagePrompt: "Professional cookbook photograph of chana masala.",
+    imageStatus: "ready",
+    imageLastUpdated: "2026-06-25T12:00:00.000Z"
+  });
+
+  assert.match(summary, /Image Metadata:/);
+  assert.match(summary, /Image URL: https:\/\/blob\.example\/recipe-images\/chana\.png/);
+  assert.match(summary, /Image Source: ai/);
+  assert.match(summary, /Image Status: ready/);
+});
+
 test("save mapping persists cookbook fields to dedicated properties when available", () => {
   const properties = mapMealAnalysisToNotionProperties(
     {

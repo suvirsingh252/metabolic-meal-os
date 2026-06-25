@@ -1,5 +1,7 @@
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { getSafeImageUrl } from "@/src/lib/images/image-url";
 import { backfillMealMetadata } from "@/src/lib/notion/meal-backfill";
+import type { MealImageSource, MealImageStatus } from "@/src/lib/types/meal";
 
 export interface MealSummary {
   id: string;
@@ -39,6 +41,13 @@ export interface MealSummary {
   processingScore: number | null;
   satietyScoreNumeric: number | null;
   bloodSugarRiskScore: number | null;
+  imageUrl?: string | null;
+  imageSource?: MealImageSource;
+  imageOriginalUrl?: string | null;
+  imagePrompt?: string | null;
+  imageAttribution?: string | null;
+  imageStatus?: MealImageStatus;
+  imageLastUpdated?: string | null;
 }
 
 type NotionProperty = PageObjectResponse["properties"][string];
@@ -208,6 +217,51 @@ function readDate(page: PageObjectResponse, propertyNames: string[]) {
   return null;
 }
 
+function readCoverUrl(page: PageObjectResponse) {
+  if (!page.cover) {
+    return null;
+  }
+
+  if (page.cover.type === "external") {
+    return getSafeImageUrl(page.cover.external.url);
+  }
+
+  if (page.cover.type === "file") {
+    return getSafeImageUrl(page.cover.file.url);
+  }
+
+  return null;
+}
+
+function readImageSource(value: string | null): MealImageSource | null {
+  return value === "manual" ||
+    value === "original" ||
+    value === "ai" ||
+    value === "placeholder"
+    ? value
+    : null;
+}
+
+function readImageStatus(value: string | null): MealImageStatus | null {
+  return value === "pending" ||
+    value === "ready" ||
+    value === "needs_ai" ||
+    value === "generating" ||
+    value === "failed" ||
+    value === "placeholder"
+    ? value
+    : null;
+}
+
+function readNotesImageField(notes: string | null, label: string) {
+  if (!notes) {
+    return null;
+  }
+
+  const match = notes.match(new RegExp(`^${label}:\\s*(.+)$`, "im"));
+  return match?.[1]?.trim() || null;
+}
+
 export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
   if (!isFullPage(page)) {
     return null;
@@ -269,6 +323,24 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     satietyScoreNumeric: readNumber(page, ["Satiety Score"]),
     bloodSugarRiskScore: readNumber(page, ["Blood Sugar Risk Score"])
   });
+  const explicitImageUrl = getSafeImageUrl(
+    readUrlLike(page, ["Image URL", "Image Url", "Hero Image", "imageUrl"])
+  );
+  const coverImageUrl = readCoverUrl(page);
+  const notesImageUrl = getSafeImageUrl(readNotesImageField(notes, "Image URL"));
+  const imageUrl = explicitImageUrl ?? coverImageUrl ?? notesImageUrl;
+  const imageSource =
+    readImageSource(
+      readTextLike(page, ["Image Source", "imageSource"]) ??
+        readNotesImageField(notes, "Image Source")
+    ) ??
+    (imageUrl ? "original" : "placeholder");
+  const imageStatus =
+    readImageStatus(
+      readTextLike(page, ["Image Status", "imageStatus"]) ??
+        readNotesImageField(notes, "Image Status")
+    ) ??
+    (imageUrl ? "ready" : "placeholder");
 
   return {
     id: page.id,
@@ -321,6 +393,25 @@ export function mapNotionPageToMealSummary(page: unknown): MealSummary | null {
     energyDensityScore: backfill.energyDensityScore,
     processingScore: backfill.processingScore,
     satietyScoreNumeric: backfill.satietyScoreNumeric,
-    bloodSugarRiskScore: backfill.bloodSugarRiskScore
+    bloodSugarRiskScore: backfill.bloodSugarRiskScore,
+    imageUrl,
+    imageSource,
+    imageOriginalUrl: getSafeImageUrl(
+      readUrlLike(page, [
+        "Image Original URL",
+        "Original Image URL",
+        "imageOriginalUrl"
+      ]) ?? readNotesImageField(notes, "Original Image URL")
+    ),
+    imagePrompt:
+      readTextLike(page, ["Image Prompt", "imagePrompt"]) ??
+      readNotesImageField(notes, "Image Prompt"),
+    imageAttribution:
+      readTextLike(page, ["Image Attribution", "imageAttribution"]) ??
+      readNotesImageField(notes, "Image Attribution"),
+    imageStatus,
+    imageLastUpdated:
+      readDate(page, ["Image Last Updated", "imageLastUpdated"]) ??
+      readNotesImageField(notes, "Image Last Updated")
   };
 }

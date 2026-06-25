@@ -29,6 +29,13 @@
       "when": 1782343280787,
       "tag": "0003_fearless_big_bertha",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782362864837,
+      "tag": "0004_perpetual_franklin_storm",
+      "breakpoints": true
     }
   ]
 }

@@ -95,6 +95,15 @@ export interface RecipeNutritionFacts {
   provenance: string;
 }
 
+export interface RecipeImageCandidate {
+  url: string;
+  source: "jsonld" | "schema" | "opengraph" | "twitter" | "html";
+  attribution?: string | null;
+  width?: number | null;
+  height?: number | null;
+  score?: number;
+}
+
 export interface CanonicalRecipe {
   title: string | null;
   servings: string | null;
@@ -107,6 +116,7 @@ export interface CanonicalRecipe {
   confidence: RecipeExtractionConfidence;
   nutrition?: RecipeNutritionFacts | null;
   description?: string | null;
+  image?: RecipeImageCandidate | null;
 }
 
 export const defaultManualRecipeSource: RecipeSourceMetadata = {

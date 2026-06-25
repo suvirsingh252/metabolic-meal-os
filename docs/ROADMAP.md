@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
+Last updated: 2026-06-25 (Visual Cookbook v1 hardening)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -122,6 +122,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Complete Phase 8A.1 Ingredient Intelligence Hardening (`894441c`): deterministic ingredient blob splitting, note/retailer annotation cleanup, stronger aliases, smarter category placement, and regression tests for Beef and Broccoli, Beef Kafta, and notes such as `as needed`.
 - [x] Complete Phase 8B Weekly Meal Planning & Grocery Workflow (`5fe9198`): current-week dinner planner, persisted weekly plan, grocery generation from the plan, persisted checklist state, saved grocery list reopening, regeneration with matched-item completion preservation, and mobile shopping UX.
 - [x] Apply and verify Phase 8 production database migrations through `drizzle/0002_grocery_lists.sql` and `drizzle/0003_fearless_big_bertha.sql`; production smoke passed for `/planner`, `/grocery`, saved grocery lists, checklist refresh persistence, and `/grocery?meal=<real-meal-id>`.
+- [x] Complete Visual Cookbook v1: recipe image metadata, Vercel Blob/local image storage, original recipe image extraction, AI fallback generation, manual upload override, MealImage rendering across cookbook surfaces, and Notion/Postgres image metadata projection.
+- [x] Harden Visual Cookbook v1: recipe analysis/save now records pending image metadata instead of blocking on slow image work, image candidate scoring rejects common logos/favicons/tiny/tracking images, AI image prompts include recipe context, and `npm run images:backfill` can fill missing images for existing meals.
 
 ## Current Sprint
 
@@ -179,6 +181,9 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Grocery history and persisted shopping checklist state.
 - [ ] AI-assisted weekly planning suggestions.
 - [ ] Meal templates.
+- [ ] Multiple recipe images per meal.
+- [ ] Cooking step images and household user photos.
+- [ ] Image moderation/review queue for generated and uploaded images.
 - [ ] Household preference profile.
 - [ ] Pantry-aware substitutions.
 - [ ] Quantity aggregation for grocery lists.
@@ -202,6 +207,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Add real model-quality golden fixtures/evals beyond parser/schema unit tests.
 - [x] Migration from Notion to a dedicated database — Phase 1 foundation complete (Drizzle + Neon schema, migration file, DB client; no active reads/writes yet).
 - [ ] Provider abstraction for AI and storage.
+- [ ] Production image backfill should eventually move from a manual script to a queued background job if image volume grows.
 
 ## Technical Debt
 

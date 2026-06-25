@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { MealImage } from "@/src/components/meal-image";
 import type { DashboardMealSummary } from "@/src/lib/domain/analytics";
 import {
   getMealQualityState,
@@ -110,6 +111,13 @@ export function NutritionSignalChip({
 export function RecentMealCard({ meal }: { meal: DashboardMealSummary }) {
   return (
     <Card className="overflow-hidden">
+      <div className="relative aspect-[16/9] w-full">
+        <MealImage
+          alt={`${meal.name} image`}
+          imageUrl={meal.imageUrl}
+          sizes="(min-width: 1024px) 50vw, 100vw"
+        />
+      </div>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -164,6 +172,13 @@ export function MealCalloutCard({
 
   return (
     <Card className="overflow-hidden">
+      <div className="relative aspect-[16/9] w-full">
+        <MealImage
+          alt={`${meal.name} image`}
+          imageUrl={meal.imageUrl}
+          sizes="(min-width: 1024px) 50vw, 100vw"
+        />
+      </div>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

@@ -64,6 +64,7 @@ function mapMealToRecommendationMeal(meal: MealSummary): RecommendationMeal {
   return {
     id: meal.id,
     url: meal.url,
+    imageUrl: meal.imageUrl,
     mealName: meal.mealName,
     createdAt: meal.createdAt,
     cuisine: meal.cuisine,

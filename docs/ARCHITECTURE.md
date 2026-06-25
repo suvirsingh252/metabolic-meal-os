@@ -203,6 +203,44 @@ Analyze -> Save -> Notion -> Reload -> Cookbook
    - `buildMealCookbook` prefers dedicated properties, then falls back to Notes sections, then to empty states. Read-time parsing structures `name` / `quantity` / `unit` from `rawText` lines, so the persisted form preserves original fidelity and structure derivation can improve later without migration.
    - Family adjustments remain overlays sourced from marked Meal Feedback records; they never modify the persisted recipe content.
 
+Visual Cookbook Image Pipeline (Visual Cookbook v1):
+
+Every saved meal can carry image metadata: `imageUrl`, `imageSource`,
+`imageOriginalUrl`, `imagePrompt`, `imageAttribution`, `imageStatus`, and
+`imageLastUpdated`. Source priority is always manual upload, original recipe
+image, AI-generated image, then placeholder. The UI never depends on a raw
+external image URL; original recipe images are copied into app-controlled
+storage before display.
+
+Storage:
+- Production storage is Vercel Blob through `@vercel/blob`; set
+  `BLOB_READ_WRITE_TOKEN` in Vercel.
+- Local development falls back to `public/uploads/recipe-images`.
+- OpenAI image generation uses the existing `OPENAI_API_KEY`; no separate env
+  var is required, but AI image generation has additional latency and cost.
+
+Import behavior:
+- `/api/analyze-meal` extracts image candidates from recipe metadata but does
+  not download or generate images inline. It stores pending image metadata so
+  meal analysis stays responsive and does not fail due to image work.
+- Recipe image extraction prefers JSON-LD `Recipe.image`, then large
+  OpenGraph images, schema/meta image tags, Twitter images, and finally
+  `image_src`, while penalizing favicons, logos, sprites, tiny thumbnails,
+  tracking pixels, and generic site images.
+- Slow original image copying and AI fallback generation are handled by
+  explicit maintenance flows: `npm run images:backfill -- --write` or the
+  regenerate endpoint.
+
+Persistence:
+- Notion remains schema-neutral. New saves write compatible optional image
+  properties when present, store image metadata in Notes as a fallback, and set
+  the Notion page cover when the stored image URL is absolute.
+- Postgres mirror rows include image metadata for future Postgres-primary reads.
+- `POST /api/meals/[id]/image` manually replaces the image and always marks the
+  source as `manual`.
+- `POST /api/meals/[id]/image/regenerate` can regenerate an AI image and will
+  not replace manual images unless `allowManual: true` is provided.
+
 Phase 8 update: grocery list generation is now active, but it deliberately
 avoids quantity math. The grocery engine extracts purchasable ingredient names,
 normalizes aliases, splits obvious ingredient blobs, strips shopping-irrelevant

@@ -10,6 +10,7 @@ import { prepareRecipeForMealAnalysis } from "@/src/lib/ai/meal-analysis/v1/reci
 import { parseMealAnalysisResponse } from "@/src/lib/ai/meal-analysis/v1/response-parser";
 import { mealAnalysisJsonSchema } from "@/src/lib/ai/meal-analysis/v1/schema";
 import { getKnownIngredientContext } from "@/src/lib/notion/ingredient-context";
+import { buildPendingRecipeImageMetadata } from "@/src/lib/images/recipe-image-pipeline";
 import type { MealAnalysisRequest } from "@/src/lib/types/meal";
 
 async function safeGetKnownIngredientContext(analysisText: string) {
@@ -80,6 +81,25 @@ export async function analyzeMeal(request: MealAnalysisRequest) {
   const confidenceNotes = recoveryConfidenceNote
     ? Array.from(new Set([recoveryConfidenceNote, ...result.confidenceNotes]))
     : result.confidenceNotes;
+  const imageMetadata = buildPendingRecipeImageMetadata({
+    title: result.mealName,
+    cuisine: result.cuisine,
+    ingredients: ingredients ?? [],
+    instructions: instructions ?? [],
+    dietaryTags: [
+      result.mealType,
+      result.proteinLevel ? `${result.proteinLevel} protein` : "",
+      result.weeknightFriendly ? "weeknight friendly" : "",
+      result.comfortMeal ? "comfort meal" : ""
+    ].filter(Boolean),
+    platingContext: result.plateStrategy,
+    sourceName: preparedRecipe.sourceName,
+    sourceUrl: preparedRecipe.sourceUrl,
+    originalImageUrl:
+      preparedRecipe.originalImage?.url ??
+      preparedRecipe.canonicalRecipe?.image?.url ??
+      null
+  });
 
   return {
     ...result,
@@ -105,6 +125,16 @@ export async function analyzeMeal(request: MealAnalysisRequest) {
     analysisVersion: mealAnalysisModelConfig.analysisVersion,
     analysisModel: mealAnalysisModelConfig.model,
     nutritionEstimate: preparedRecipe.nutritionEstimate,
+    imageUrl: imageMetadata.imageUrl,
+    imageSource: imageMetadata.imageSource,
+    imageOriginalUrl: imageMetadata.imageOriginalUrl,
+    imagePrompt: imageMetadata.imagePrompt,
+    imageAttribution:
+      imageMetadata.imageAttribution ??
+      preparedRecipe.originalImage?.attribution ??
+      null,
+    imageStatus: imageMetadata.imageStatus,
+    imageLastUpdated: imageMetadata.imageLastUpdated,
     householdId: household.householdId,
     createdBy: household.createdBy,
     visibility: household.visibility,

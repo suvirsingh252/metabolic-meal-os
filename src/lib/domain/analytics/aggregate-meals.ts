@@ -142,7 +142,8 @@ export function buildRecentMeals(
       protein: numericOrNull(meal.nutrition.protein),
       confidence: meal.confidence ?? null,
       provenance: meal.provenance ?? meal.source ?? null,
-      url: meal.url ?? null
+      url: meal.url ?? null,
+      imageUrl: meal.imageUrl ?? null
     }));
 }
 

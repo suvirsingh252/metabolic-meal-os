@@ -28,6 +28,7 @@ export interface AnalyticsMeal {
   name: string;
   loggedAt: string;
   url?: string | null;
+  imageUrl?: string | null;
   mealType?: string | null;
   confidence?: string | null;
   source?: string | null;
@@ -58,6 +59,7 @@ export interface DashboardMealSummary {
   qualityScore: number | null;
   qualityLabel: "high" | "moderate" | "low" | "unknown";
   url: string | null;
+  imageUrl: string | null;
 }
 
 export interface NutritionProgress {

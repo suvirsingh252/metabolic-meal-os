@@ -132,6 +132,13 @@ export interface MealSourcePropertySchema {
   satietyScoreNumeric?: { name: string; type: "number" };
   bloodSugarRiskScore?: { name: string; type: "number" };
   mealDate?: { name: string; type: "date" };
+  imageUrl?: { name: string; type: "url" | "rich_text" };
+  imageSource?: { name: string; type: "select" | "rich_text" };
+  imageOriginalUrl?: { name: string; type: "url" | "rich_text" };
+  imagePrompt?: { name: string; type: "rich_text" };
+  imageAttribution?: { name: string; type: "rich_text" };
+  imageStatus?: { name: string; type: "select" | "rich_text" };
+  imageLastUpdated?: { name: string; type: "date" };
 }
 
 export function mapMealAnalysisToNotionProperties(
@@ -235,6 +242,28 @@ function applyMealSourceProperties(
 
   if (schema.mealDate) {
     properties[schema.mealDate.name] = date(meal.importedAt ?? new Date().toISOString());
+  }
+
+  if (schema.imageUrl && meal.imageUrl) {
+    properties[schema.imageUrl.name] =
+      schema.imageUrl.type === "url" ? url(meal.imageUrl) : richText(meal.imageUrl);
+  }
+  applyTextLikeProperty(properties, schema.imageSource, meal.imageSource);
+  if (schema.imageOriginalUrl && meal.imageOriginalUrl) {
+    properties[schema.imageOriginalUrl.name] =
+      schema.imageOriginalUrl.type === "url"
+        ? url(meal.imageOriginalUrl)
+        : richText(meal.imageOriginalUrl);
+  }
+  applyTextLikeProperty(properties, schema.imagePrompt, meal.imagePrompt);
+  applyTextLikeProperty(
+    properties,
+    schema.imageAttribution,
+    meal.imageAttribution
+  );
+  applyTextLikeProperty(properties, schema.imageStatus, meal.imageStatus);
+  if (schema.imageLastUpdated && meal.imageLastUpdated) {
+    properties[schema.imageLastUpdated.name] = date(meal.imageLastUpdated);
   }
 
   if (meal.nutritionEstimate) {

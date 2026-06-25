@@ -1,6 +1,44 @@
 # Architectural Decisions
 
-Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
+Last updated: 2026-06-25 (Visual Cookbook v1 hardening)
+
+## 2026-06-25 — Visual Cookbook Images Are Deferred Work With Blob-First Storage
+
+Decision: Recipe image metadata is part of the meal model, but slow image
+copying and AI generation should not block recipe analysis/save. New recipe
+imports can save pending image metadata first; a backfill command and explicit
+regeneration endpoint do the slower storage/generation work. Vercel Blob is the
+primary storage provider, with a local filesystem fallback for development.
+
+Reasoning:
+- A household should not lose a recipe save because a source image is slow,
+  missing, blocked, or because AI image generation is unavailable.
+- The image source priority is product-critical and deterministic: manual
+  upload, copied original recipe image, AI-generated image, then placeholder.
+- Vercel Blob fits the current deployment target and avoids introducing another
+  provider while still letting the app permanently store images instead of
+  hotlinking external recipe sites.
+- Postgres mirrors and optional Notion image fields should receive the same
+  image metadata, but Notion schema changes remain optional and manual.
+
+Implementation:
+- `src/lib/images/recipe-image-pipeline.ts` builds pending, original, and AI
+  image metadata and professional cookbook-photo prompts.
+- `src/lib/images/recipe-image-storage.ts` stores images in Vercel Blob when
+  `BLOB_READ_WRITE_TOKEN` is configured and falls back to
+  `public/uploads/recipe-images` locally.
+- `scripts/backfill-recipe-images.ts` supports dry-run and write modes for
+  existing meals.
+- `/api/meals/[id]/image` handles manual upload override.
+- `/api/meals/[id]/image/regenerate` regenerates AI images and protects manual
+  images unless explicitly overridden.
+
+Boundaries:
+- Image backfill can incur OpenAI image-generation cost and network latency.
+- Local fallback images are suitable for development, not durable production
+  storage across Vercel deployments.
+- Multiple photos, step photos, household user photos, and image moderation
+  workflows remain future enhancements.
 
 ## 2026-06-25 — Phase 8 Grocery Planning Uses Deterministic Names Before Quantity Math
 

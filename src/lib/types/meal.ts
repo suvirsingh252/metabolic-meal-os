@@ -96,6 +96,35 @@ export interface MealNutritionEstimate {
   };
 }
 
+export const mealImageSources = [
+  "manual",
+  "original",
+  "ai",
+  "placeholder"
+] as const;
+
+export const mealImageStatuses = [
+  "pending",
+  "ready",
+  "needs_ai",
+  "generating",
+  "failed",
+  "placeholder"
+] as const;
+
+export type MealImageSource = (typeof mealImageSources)[number];
+export type MealImageStatus = (typeof mealImageStatuses)[number];
+
+export interface MealImageMetadata {
+  imageUrl: string | null;
+  imageSource: MealImageSource;
+  imageOriginalUrl: string | null;
+  imagePrompt: string | null;
+  imageAttribution: string | null;
+  imageStatus: MealImageStatus;
+  imageLastUpdated: string | null;
+}
+
 export type MealSourceClassification =
   | "recipe-page"
   | "social-video"
@@ -194,6 +223,14 @@ export interface MealAnalysisResult {
   analysisModel?: string;
 
   nutritionEstimate?: MealNutritionEstimate | null;
+
+  imageUrl?: string | null;
+  imageSource?: MealImageSource | null;
+  imageOriginalUrl?: string | null;
+  imagePrompt?: string | null;
+  imageAttribution?: string | null;
+  imageStatus?: MealImageStatus | null;
+  imageLastUpdated?: string | null;
 
   householdId?: string;
   createdBy?: string;

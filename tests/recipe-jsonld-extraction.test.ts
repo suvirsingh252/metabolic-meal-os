@@ -20,6 +20,7 @@ test("JSON-LD Recipe extraction normalizes a canonical recipe", () => {
             "recipeYield": "4 servings",
             "prepTime": "PT10M",
             "cookTime": "PT25M",
+            "image": "https://example.com/images/chana.jpg",
             "recipeIngredient": ["1 can chickpeas", "1 cup tomato"],
             "recipeInstructions": [
               { "@type": "HowToStep", "text": "Simmer the sauce." },
@@ -38,6 +39,12 @@ test("JSON-LD Recipe extraction normalizes a canonical recipe", () => {
   assert.equal(recipe.servings, "4 servings");
   assert.equal(recipe.prepTime, "PT10M");
   assert.equal(recipe.cookTime, "PT25M");
+  assert.deepEqual(recipe.image, {
+    url: "https://example.com/images/chana.jpg",
+    source: "jsonld",
+    attribution: "example.com",
+    score: 100
+  });
   assert.equal(recipe.extractionMethod, "jsonld");
   assert.equal(recipe.confidence, "full_recipe");
   assert.deepEqual(
@@ -216,5 +223,75 @@ test("JSON-LD extraction prefers visible ingredient quantities over bare tag lis
     name: "Salt",
     quantity: "to taste",
     unit: null
+  });
+});
+
+test("fallback image extraction prefers large OpenGraph food images", () => {
+  const html = `
+    <html>
+      <head>
+        <meta property="og:site_name" content="Example Kitchen">
+        <meta property="og:image" content="/photos/chana-masala-hero.jpg">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="800">
+        <meta itemprop="image" content="/images/chana-masala-small.jpg">
+        <meta name="twitter:image" content="/images/chana-twitter.jpg">
+        <script type="application/ld+json">
+          {
+            "@type": "Recipe",
+            "name": "Chana masala",
+            "recipeIngredient": ["chickpeas", "tomatoes"],
+            "recipeInstructions": ["Simmer until thick."]
+          }
+        </script>
+      </head>
+    </html>
+  `;
+
+  const draft = parseRecipeJsonLd(html, sourceUrl, "recipe-page");
+
+  assert.ok(draft);
+  assert.deepEqual(draft.image, {
+    url: "https://example.com/photos/chana-masala-hero.jpg",
+    source: "opengraph",
+    attribution: "Example Kitchen",
+    width: 1200,
+    height: 800,
+    score: 105
+  });
+});
+
+test("fallback image extraction rejects logos and tiny tracking images", () => {
+  const html = `
+    <html>
+      <head>
+        <meta property="og:site_name" content="Example Kitchen">
+        <meta property="og:image" content="/assets/site-logo.png">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta itemprop="image" content="/tracking/pixel-1x1.gif">
+        <meta name="twitter:image" content="/recipes/chana-finished-dish.jpg">
+        <script type="application/ld+json">
+          {
+            "@type": "Recipe",
+            "name": "Chana masala",
+            "recipeIngredient": ["chickpeas", "tomatoes"],
+            "recipeInstructions": ["Simmer until thick."]
+          }
+        </script>
+      </head>
+    </html>
+  `;
+
+  const draft = parseRecipeJsonLd(html, sourceUrl, "recipe-page");
+
+  assert.ok(draft);
+  assert.deepEqual(draft.image, {
+    url: "https://example.com/recipes/chana-finished-dish.jpg",
+    source: "twitter",
+    attribution: "Example Kitchen",
+    width: null,
+    height: null,
+    score: 55
   });
 });

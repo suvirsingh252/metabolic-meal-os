@@ -4,7 +4,8 @@ import type {
   RecipeSourceClassification,
   RecipeSourceMetadata,
   CanonicalRecipe,
-  RecipeExtractionConfidence
+  RecipeExtractionConfidence,
+  RecipeImageCandidate
 } from "@/src/lib/types/recipe";
 import dns from "node:dns/promises";
 import type { LookupAddress } from "node:dns";
@@ -20,6 +21,7 @@ export interface ParsedRecipeDraft {
   instructions?: string[];
   notes?: string;
   nutrition?: RecipeNutritionFacts | null;
+  image?: RecipeImageCandidate | null;
   extractionConfidence?: "high" | "medium" | "low";
   extractionNotes?: string[];
   canonicalRecipe?: CanonicalRecipe | null;
@@ -268,6 +270,7 @@ export function formatParsedRecipeForAnalysis(recipe: ParsedRecipeDraft) {
           .map((note) => `- ${note}`)
           .join("\n")}`
       : null,
+    recipe.image?.url ? `Image URL: ${recipe.image.url}` : null,
     recipe.ingredients.length
       ? `Ingredients:\n${recipe.ingredients
           .map((ingredient) => `- ${ingredient.rawText}`)
@@ -684,7 +687,8 @@ export function parseCanonicalRecipeJsonLd(
       extractionMethod: "jsonld",
       confidence: getCanonicalRecipeConfidence(ingredients, instructions),
       nutrition: readRecipeNutrition(recipeNode.nutrition),
-      description: readString(recipeNode.description)
+      description: readString(recipeNode.description),
+      image: readRecipeImage(recipeNode.image, url)
     };
   }
 
@@ -778,6 +782,7 @@ function canonicalRecipeToParsedDraft(
     instructions: recipe.instructions,
     notes: recipe.description ?? undefined,
     nutrition: recipe.nutrition,
+    image: recipe.image ?? findFallbackImageCandidate(html, url, readSiteName(html)),
     extractionConfidence:
       recipe.confidence === "full_recipe" ? "high" : "medium",
     extractionNotes: sourceNotes,
@@ -792,6 +797,7 @@ function parseFallbackHtml(
 ): ParsedRecipeDraft {
   const title = readTitle(html);
   const siteName = readSiteName(html) ?? domainName(url);
+  const image = findFallbackImageCandidate(html, url, siteName);
   const description = readMetaContent(html, "description");
   const ogTitle = readMetaContent(html, "og:title");
   const ogDescription = readMetaContent(html, "og:description");
@@ -843,6 +849,7 @@ function parseFallbackHtml(
         sourceNotes
       }),
       ingredients: [],
+      image,
       notes: socialText.slice(0, 4_000),
       extractionConfidence: "low",
       extractionNotes: sourceNotes,
@@ -895,6 +902,7 @@ function parseFallbackHtml(
       title,
       servings: null,
       ingredients: [],
+      image,
       instructions: [],
       prepTime: null,
       cookTime: null,
@@ -950,12 +958,182 @@ function readMetaContent(html: string, name: string) {
     : null;
 }
 
+function readLinkHref(html: string, rel: string) {
+  const escapedRel = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `<link\\s+[^>]*rel=["'][^"']*${escapedRel}[^"']*["'][^>]*>`,
+    "i"
+  );
+  const match = html.match(pattern);
+
+  if (!match) {
+    return null;
+  }
+
+  const hrefMatch = match[0].match(/\shref=(["'])([\s\S]*?)\1/i);
+
+  return hrefMatch ? normalizeWhitespace(decodeHtmlEntities(hrefMatch[2])) : null;
+}
+
 function readSiteName(html: string) {
   return (
     readMetaContent(html, "og:site_name") ??
     readMetaContent(html, "application-name") ??
     null
   );
+}
+
+function absolutizeImageUrl(value: string | null | undefined, baseUrl: URL) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value, baseUrl);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function findFallbackImageCandidate(
+  html: string,
+  url: URL,
+  attribution?: string | null
+): RecipeImageCandidate | null {
+  const ogWidth = readMetaNumber(html, "og:image:width");
+  const ogHeight = readMetaNumber(html, "og:image:height");
+  const twitterWidth = readMetaNumber(html, "twitter:image:width");
+  const twitterHeight = readMetaNumber(html, "twitter:image:height");
+  const candidates: Array<{
+    value: string | null;
+    source: RecipeImageCandidate["source"];
+    width?: number | null;
+    height?: number | null;
+  }> = [
+    {
+      value: readMetaContent(html, "og:image:secure_url"),
+      source: "opengraph",
+      width: ogWidth,
+      height: ogHeight
+    },
+    {
+      value: readMetaContent(html, "og:image"),
+      source: "opengraph",
+      width: ogWidth,
+      height: ogHeight
+    },
+    { value: readMetaContent(html, "image"), source: "schema" },
+    {
+      value: readMetaContent(html, "twitter:image"),
+      source: "twitter",
+      width: twitterWidth,
+      height: twitterHeight
+    },
+    { value: readLinkHref(html, "image_src"), source: "html" }
+  ];
+
+  const scoredCandidates: RecipeImageCandidate[] = candidates
+    .flatMap((candidate) => {
+      const imageUrl = absolutizeImageUrl(candidate.value, url);
+
+      if (!imageUrl) {
+        return [];
+      }
+
+      const score = scoreImageCandidate({
+        url: imageUrl,
+        source: candidate.source,
+        width: candidate.width ?? null,
+        height: candidate.height ?? null,
+        pageUrl: url
+      });
+
+      if (score < 20) {
+        return [];
+      }
+
+      return [{
+        url: imageUrl,
+        source: candidate.source,
+        width: candidate.width ?? null,
+        height: candidate.height ?? null,
+        score,
+        attribution: attribution ?? domainName(url)
+      } satisfies RecipeImageCandidate];
+    })
+    .sort((left, right) => (right.score ?? 0) - (left.score ?? 0));
+
+  return scoredCandidates[0] ?? null;
+}
+
+function readMetaNumber(html: string, name: string) {
+  return readPositiveNumber(readMetaContent(html, name));
+}
+
+function scoreImageCandidate(input: {
+  url: string;
+  source: RecipeImageCandidate["source"];
+  width?: number | null;
+  height?: number | null;
+  pageUrl: URL;
+}) {
+  const pathname = new URL(input.url).pathname.toLowerCase();
+  const filename = pathname.split("/").pop() ?? "";
+  let score =
+    input.source === "opengraph"
+      ? 80
+      : input.source === "schema"
+        ? 70
+        : input.source === "twitter"
+          ? 55
+          : 35;
+
+  if (input.width && input.height) {
+    const area = input.width * input.height;
+
+    if (input.width < 300 || input.height < 200 || area < 90_000) {
+      score -= 70;
+    } else if (input.width >= 900 && input.height >= 500) {
+      score += 25;
+    } else if (input.width >= 600 && input.height >= 400) {
+      score += 15;
+    }
+  }
+
+  if (
+    /\b(favicon|icon|logo|sprite|avatar|badge|placeholder|default|pixel|tracking|analytics|adserver)\b/i.test(
+      filename
+    )
+  ) {
+    score -= 90;
+  }
+
+  if (
+    /\b(logo|favicon|sprite|pixel|tracking|analytics|placeholder|default-image)\b/i.test(
+      input.url
+    )
+  ) {
+    score -= 60;
+  }
+
+  if (
+    input.url.includes("1x1") ||
+    /(?:^|[^\d])(?:16|32|48|64)x(?:16|32|48|64)(?:[^\d]|$)/i.test(
+      input.url
+    )
+  ) {
+    score -= 70;
+  }
+
+  if (
+    filename.includes(input.pageUrl.hostname.replace(/^www\./, "")) &&
+    !/\b(recipe|food|dish|meal|cook|kitchen|dinner|lunch|breakfast)\b/i.test(input.url)
+  ) {
+    score -= 15;
+  }
+
+  return score;
 }
 
 function extractUsefulRecipeSections(text: string) {
@@ -1167,6 +1345,66 @@ function readRecipeNutrition(value: unknown): RecipeNutritionFacts | null {
     confidence: "medium",
     provenance: "Recipe page structured nutrition facts"
   };
+}
+
+function readRecipeImage(
+  value: unknown,
+  baseUrl: URL
+): RecipeImageCandidate | null {
+  if (typeof value === "string") {
+    const imageUrl = absolutizeImageUrl(readString(value), baseUrl);
+    return imageUrl
+      ? {
+          url: imageUrl,
+          source: "jsonld",
+          attribution: domainName(baseUrl),
+          score: 100
+        }
+      : null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const image = readRecipeImage(item, baseUrl);
+
+      if (image) {
+        return image;
+      }
+    }
+
+    return null;
+  }
+
+  if (isRecord(value)) {
+    const imageUrl = absolutizeImageUrl(readString(value.url), baseUrl);
+    const width = readPositiveNumber(value.width);
+    const height = readPositiveNumber(value.height);
+    return imageUrl
+      ? {
+          url: imageUrl,
+          source: "jsonld",
+          attribution: domainName(baseUrl),
+          width,
+          height,
+          score: 100
+        }
+      : null;
+  }
+
+  return null;
+}
+
+function readPositiveNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[^\d.]/g, ""));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  return null;
 }
 
 function readNutritionNumber(value: unknown) {

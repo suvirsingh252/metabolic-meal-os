@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { MealImage } from "@/src/components/meal-image";
 import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 
@@ -268,7 +269,15 @@ function MealCard({
   const preview = getMealPreview(meal.notes);
 
   return (
-    <div className={["rounded-md border bg-background p-4", className].filter(Boolean).join(" ")}>
+    <div className={["overflow-hidden rounded-md border bg-background", className].filter(Boolean).join(" ")}>
+      <div className="relative aspect-[16/9] w-full">
+        <MealImage
+          alt={`${meal.mealName} image`}
+          imageUrl={meal.imageUrl}
+          sizes="(min-width: 1024px) 50vw, 100vw"
+        />
+      </div>
+      <div className="p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">
@@ -319,6 +328,7 @@ function MealCard({
           View meal
         </Link>
       </Button>
+      </div>
     </div>
   );
 }

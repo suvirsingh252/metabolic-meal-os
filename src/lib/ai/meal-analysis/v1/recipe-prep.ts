@@ -327,6 +327,7 @@ export async function prepareRecipeForMealAnalysis(
           parserVersion: parsedRecipe.source.parserVersion ?? null,
           socialRecipeCandidate: null,
           canonicalRecipe: parsedRecipe.canonicalRecipe ?? null,
+          originalImage: parsedRecipe.image ?? null,
           nutritionEstimate: mapRecipeNutritionEstimate(parsedRecipe)
         };
       }
@@ -404,6 +405,7 @@ export async function prepareRecipeForMealAnalysis(
       parserVersion: parsedRecipe.source.parserVersion ?? null,
       socialRecipeCandidate: null,
       canonicalRecipe: parsedRecipe.canonicalRecipe ?? null,
+      originalImage: parsedRecipe.image ?? null,
       nutritionEstimate: mapRecipeNutritionEstimate(parsedRecipe)
     };
   }

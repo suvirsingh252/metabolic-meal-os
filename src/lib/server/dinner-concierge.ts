@@ -89,7 +89,7 @@ function deriveTags(summary: MealSummary): string[] {
  * Metadata gap decisions:
  * - estimatedMinutes: Notion meals carry no explicit time, so this stays null
  *   (honest); the view model derives a time-band proxy from effortLevel.
- * - imageUrl: not exposed by the meal summary; null until a source exists.
+ * - imageUrl: sourced from the recipe image pipeline, with UI placeholder fallback.
  * - tags: derived from existing fields (cuisine/effort/protein/satiety signals).
  */
 export function mapMealSummaryToConciergeMeal(
@@ -111,7 +111,7 @@ export function mapMealSummaryToConciergeMeal(
     fatG: summary.fatG,
     fiberG: summary.fiberG,
     qualityScore: summary.qualityScore,
-    imageUrl: null,
+    imageUrl: summary.imageUrl ?? null,
     estimatedMinutes: null,
     effortLevel: summary.effortLevel,
     tags: deriveTags(summary)

@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
+Last updated: 2026-06-25 (Visual Cookbook v1 hardening)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -31,6 +31,29 @@ Recommended next product slice:
 - Dinner Concierge -> Weekly Planner Integration. Reuse the existing planner and
   grocery engine so a selected dinner can flow into the current week and then
   into grocery generation.
+
+Visual Cookbook v1 current state:
+- Recipe image metadata is implemented across the meal model, Postgres mirror,
+  optional Notion-compatible image properties, and page cover updates.
+- Image source priority is manual upload, copied original recipe image,
+  AI-generated image, then placeholder.
+- New recipe analysis/save records pending image metadata without waiting for
+  original image copying or AI generation. This keeps recipe import responsive
+  when image providers are slow or unavailable.
+- `npm run images:backfill` is the operator path for filling missing images.
+  Dry-run is default; use `npm run images:backfill -- --write` to copy/generate
+  and persist image metadata.
+- Required production image storage env var: `BLOB_READ_WRITE_TOKEN`. Without
+  it, image storage falls back to `public/uploads/recipe-images`, which is useful
+  locally but not durable across Vercel deployments.
+- AI image generation uses the existing `OPENAI_API_KEY`; if it is absent or
+  image generation fails, meals keep graceful placeholder/pending/failed states.
+- Manual uploads are handled by `/api/meals/[id]/image` and always win.
+- AI regeneration is available through `/api/meals/[id]/image/regenerate`; it
+  refuses to replace manual images unless the request explicitly allows it.
+- Known risks: backfill may incur OpenAI image costs and external image fetch
+  latency; local fallback storage is not production-durable; large backfills
+  should be run in small batches with `--limit`.
 
 ### Prior QA Status (2026-06-13 Postgres Phase 1 + Notion pagination hardening)
 
@@ -202,6 +225,8 @@ Stack:
 - Notion SDK for persistence.
 - Drizzle ORM with Neon/Vercel Postgres for the Phase 8 grocery and weekly
   planning workflow.
+- Vercel Blob for durable recipe image storage when `BLOB_READ_WRITE_TOKEN` is
+  configured; local filesystem fallback for development.
 - Vercel is the intended deployment target.
 
 Current household workflow architecture:
@@ -248,6 +273,8 @@ Code organization:
 - `src/lib/notion/meals-query.ts`: shared Notion Meals read path used by `/api/notion/meals` and `/api/dashboard`.
 - `src/lib/notion/ingredient-context.ts`: best-effort read-only helper for matching known Ingredients and formatting lightweight household ingredient context for analysis prompts.
 - `src/lib/notion/ingredient-summary.ts`: maps Notion Ingredient pages into simplified summaries for Settings picker/enrichment UX.
+- `src/lib/images`: recipe image storage, URL normalization, image metadata pipeline, and shared Notion/Postgres image persistence.
+- `src/components/meal-image.tsx`: shared Next.js Image-backed meal image renderer with placeholder fallback.
 - `components`: reusable UI and layout components.
 - `public/icons`: original placeholder PWA icon assets.
 

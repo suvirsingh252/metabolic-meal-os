@@ -25,6 +25,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MealImage } from "@/src/components/meal-image";
 import { formatLocalCalendarDate } from "@/src/lib/date/local-calendar";
 import {
   buildTodayViewModel,
@@ -67,6 +68,7 @@ function mapMealSummary(meal: MealSummary): RecommendationMeal {
   return {
     id: meal.id,
     url: meal.url,
+    imageUrl: meal.imageUrl,
     mealName: meal.mealName,
     createdAt: meal.createdAt,
     cuisine: meal.cuisine,
@@ -452,17 +454,26 @@ export function TodayClient() {
                 <div className="grid gap-3 md:grid-cols-3">
                   {viewModel.freshIdeas.map((idea) => (
                     <a
-                      className="rounded-md border bg-card p-4 transition-colors hover:bg-secondary/60"
+                      className="overflow-hidden rounded-md border bg-card transition-colors hover:bg-secondary/60"
                       href={getMealDetailPath(idea.meal.id)}
                       key={idea.meal.id}
                     >
-                      <Badge>New Idea</Badge>
-                      <h3 className="mt-3 font-semibold leading-tight">
-                        {idea.meal.mealName}
-                      </h3>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {idea.reason}. Not yet treated as a household favorite.
-                      </p>
+                      <div className="relative aspect-[4/3] w-full">
+                        <MealImage
+                          alt={`${idea.meal.mealName} image`}
+                          imageUrl={idea.meal.imageUrl}
+                          sizes="(min-width: 768px) 33vw, 100vw"
+                        />
+                      </div>
+                      <div className="p-4">
+                        <Badge>New Idea</Badge>
+                        <h3 className="mt-3 font-semibold leading-tight">
+                          {idea.meal.mealName}
+                        </h3>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {idea.reason}. Not yet treated as a household favorite.
+                        </p>
+                      </div>
                     </a>
                   ))}
                 </div>
@@ -638,7 +649,14 @@ function SuggestionCard({
   const explanation = recommendation.explanation;
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      <div className="relative aspect-[16/9] w-full">
+        <MealImage
+          alt={`${recommendation.meal.mealName} image`}
+          imageUrl={recommendation.meal.imageUrl}
+          sizes="(min-width: 1024px) 50vw, 100vw"
+        />
+      </div>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">

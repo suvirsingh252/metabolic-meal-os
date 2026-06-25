@@ -12,6 +12,7 @@ function mapMealSummaryToAnalyticsMeal(meal: MealSummary): AnalyticsMeal {
     name: meal.mealName,
     loggedAt: meal.createdAt,
     url: meal.url,
+    imageUrl: meal.imageUrl,
     mealType: meal.mealType,
     confidence: meal.nutritionConfidence,
     source: meal.nutritionSource,

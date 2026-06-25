@@ -39,6 +39,7 @@ function mapMealToAnalytics(meal: RecommendationMeal) {
     id: meal.id,
     name: meal.mealName,
     loggedAt: meal.createdAt,
+    imageUrl: meal.imageUrl,
     mealType: meal.mealType,
     qualityScore: meal.qualityScore,
     nutrition: {

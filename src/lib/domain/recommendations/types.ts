@@ -12,6 +12,7 @@ export const todayMealCategories: TodayMealCategory[] = [
 export interface RecommendationMeal {
   id: string;
   url: string;
+  imageUrl?: string | null;
   mealName: string;
   createdAt: string;
   cuisine: string | null;

@@ -17,6 +17,7 @@
     "backfill:ingredients:dry-run": "tsx scripts/dry-run-ingredient-backfill.ts",
     "backfill:ingredients:review": "tsx scripts/export-ingredient-backfill-review.ts",
     "backfill:ingredients:apply": "tsx scripts/apply-ingredient-backfill.ts",
+    "images:backfill": "tsx scripts/backfill-recipe-images.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/.bin/drizzle-kit migrate"
   },
@@ -24,6 +25,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@notionhq/client": "^5.22.0",
     "@radix-ui/react-slot": "^1.0.2",
+    "@vercel/blob": "^2.4.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

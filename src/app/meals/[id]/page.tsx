@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MealImage } from "@/src/components/meal-image";
 import { FamilyAdjustmentsEditor } from "@/src/app/meals/[id]/family-adjustments-editor";
 import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
+import { MealImageUpload } from "@/src/app/meals/[id]/meal-image-upload";
 import { formatCookbookIngredientAmount } from "@/src/lib/domain/meals/cookbook";
 import { formatPlannerContextLabel } from "@/src/lib/domain/planner";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
@@ -113,24 +115,12 @@ function MealDetailHero({
           <div className="flex flex-wrap gap-2">{badges}</div>
         </div>
         <div className="relative min-h-56 bg-accent/90 md:min-h-full">
-          {imageUrl ? (
-            <div
-              aria-hidden
-              className="h-full min-h-56 w-full bg-cover bg-center"
-              style={{ backgroundImage: `url(${imageUrl})` }}
-            />
-          ) : (
-            <div className="flex h-full min-h-56 flex-col justify-end bg-[radial-gradient(circle_at_30%_20%,rgba(245,241,232,0.55),transparent_36%),linear-gradient(135deg,rgba(216,139,61,0.95),rgba(139,170,139,0.9))] p-6">
-              <div className="rounded-[1.5rem] bg-background/90 p-5 text-primary shadow-sm">
-                <p className="text-sm font-semibold text-accent">
-                  Ready for tonight
-                </p>
-                <p className="mt-2 text-2xl font-semibold leading-tight">
-                  Cook from the version your household actually repeats.
-                </p>
-              </div>
-            </div>
-          )}
+          <MealImage
+            alt={`${title} image`}
+            imageUrl={imageUrl}
+            priority
+            sizes="(min-width: 1024px) 28rem, (min-width: 768px) 22rem, 100vw"
+          />
         </div>
       </div>
     </section>
@@ -195,8 +185,7 @@ export default async function MealDetailPage({
   const dateLabel = formatDate(detail.dateLabel);
   const { cookbook } = detail;
   const safeOriginalRecipeUrl = getSafeHttpUrl(cookbook.originalRecipeUrl);
-  const heroImageUrl =
-    (meal as MealSummary & { imageUrl?: string | null }).imageUrl ?? null;
+  const heroImageUrl = meal.imageUrl ?? null;
   const heroBadges = (
     <>
       {meal.cuisine ? <Badge>{meal.cuisine}</Badge> : null}
@@ -226,6 +215,8 @@ export default async function MealDetailPage({
         imageUrl={heroImageUrl}
         title={meal.mealName}
       />
+
+      <MealImageUpload mealId={meal.id} />
 
       <MealDetailActions
         initialFeedbackSummary={feedbackSummary}

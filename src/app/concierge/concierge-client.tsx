@@ -18,6 +18,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MealImage } from "@/src/components/meal-image";
 import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
 import {
   dinnerConciergeRefinements,
@@ -306,7 +307,15 @@ function LeadCard({
   const reasonLine = recommendation.reasons.slice(0, 2).join(" · ");
 
   return (
-    <Card className="bg-primary text-primary-foreground">
+    <Card className="overflow-hidden bg-primary text-primary-foreground">
+      <div className="relative aspect-[16/9] w-full">
+        <MealImage
+          alt={`${recommendation.name} image`}
+          imageUrl={recommendation.imageUrl}
+          priority
+          sizes="100vw"
+        />
+      </div>
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-accent">Tonight&apos;s pick</p>
@@ -345,9 +354,17 @@ function AlternateCard({
 
   return (
     <a
-      className="flex h-full flex-col gap-2 rounded-md border bg-card p-4 transition-colors hover:bg-secondary/60"
+      className="flex h-full flex-col overflow-hidden rounded-md border bg-card transition-colors hover:bg-secondary/60"
       href={getMealDetailPath(recommendation.mealId)}
     >
+      <div className="relative aspect-[4/3] w-full">
+        <MealImage
+          alt={`${recommendation.name} image`}
+          imageUrl={recommendation.imageUrl}
+          sizes="(min-width: 640px) 33vw, 100vw"
+        />
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-4">
       {label ? (
         <Badge className="w-fit bg-muted text-muted-foreground">{label}</Badge>
       ) : null}
@@ -356,6 +373,7 @@ function AlternateCard({
         <p className="text-sm text-muted-foreground">{reasonLine}</p>
       ) : null}
       <MetaBadges recommendation={recommendation} compact />
+      </div>
     </a>
   );
 }

@@ -75,7 +75,14 @@ function getMealSourcePropertySchema(database: unknown): MealSourcePropertySchem
     { key: "fiberScore", names: ["Fiber Score"], types: ["number"] },
     { key: "satietyScoreNumeric", names: ["Satiety Score"], types: ["number"] },
     { key: "bloodSugarRiskScore", names: ["Blood Sugar Risk Score"], types: ["number"] },
-    { key: "mealDate", names: ["Meal Date", "Date", "Logged At"], types: ["date"] }
+    { key: "mealDate", names: ["Meal Date", "Date", "Logged At"], types: ["date"] },
+    { key: "imageUrl", names: ["Image URL", "Image Url", "Hero Image", "imageUrl"], types: ["url", "rich_text"] },
+    { key: "imageSource", names: ["Image Source", "imageSource"], types: ["select", "rich_text"] },
+    { key: "imageOriginalUrl", names: ["Image Original URL", "Original Image URL", "imageOriginalUrl"], types: ["url", "rich_text"] },
+    { key: "imagePrompt", names: ["Image Prompt", "imagePrompt"], types: ["rich_text"] },
+    { key: "imageAttribution", names: ["Image Attribution", "imageAttribution"], types: ["rich_text"] },
+    { key: "imageStatus", names: ["Image Status", "imageStatus"], types: ["select", "rich_text"] },
+    { key: "imageLastUpdated", names: ["Image Last Updated", "imageLastUpdated"], types: ["date"] }
   ];
 
   for (const spec of fieldSpecs) {
@@ -127,21 +134,30 @@ export async function POST(request: Request) {
     const sourceSchema = getMealSourcePropertySchema(dataSource);
 
     const ownership = getConfiguredHouseholdMetadata();
+    const mealToSave = {
+      ...validatedMeal.data,
+      householdId: validatedMeal.data.householdId ?? ownership.householdId,
+      createdBy: validatedMeal.data.createdBy ?? ownership.createdBy,
+      visibility: validatedMeal.data.visibility ?? ownership.visibility,
+      schemaVersion:
+        validatedMeal.data.schemaVersion ?? ownership.schemaVersion
+    };
+    const cover =
+      mealToSave.imageUrl?.startsWith("http://") ||
+      mealToSave.imageUrl?.startsWith("https://")
+        ? {
+            type: "external" as const,
+            external: {
+              url: mealToSave.imageUrl
+            }
+          }
+        : undefined;
     const page = await notion.pages.create({
       parent: {
         database_id: NOTION_MEALS_DATABASE_ID
       },
-      properties: mapMealAnalysisToNotionProperties(
-        {
-          ...validatedMeal.data,
-          householdId: validatedMeal.data.householdId ?? ownership.householdId,
-          createdBy: validatedMeal.data.createdBy ?? ownership.createdBy,
-          visibility: validatedMeal.data.visibility ?? ownership.visibility,
-          schemaVersion:
-            validatedMeal.data.schemaVersion ?? ownership.schemaVersion
-        },
-        sourceSchema
-      )
+      cover,
+      properties: mapMealAnalysisToNotionProperties(mealToSave, sourceSchema)
     });
 
     return NextResponse.json({
