@@ -4,9 +4,9 @@ import { GroceryClient } from "@/src/app/grocery/grocery-client";
 export default async function GroceryPage({
   searchParams
 }: {
-  searchParams: Promise<{ meal?: string }>;
+  searchParams: Promise<{ meal?: string; list?: string }>;
 }) {
-  const { meal } = await searchParams;
+  const { meal, list } = await searchParams;
 
   return (
     <div className="space-y-6">
@@ -15,7 +15,10 @@ export default async function GroceryPage({
         title="Grocery list"
         description="Turn saved meals into a categorized shopping checklist."
       />
-      <GroceryClient preselectedMealId={meal ?? null} />
+      <GroceryClient
+        initialListId={list ?? null}
+        preselectedMealId={meal ?? null}
+      />
     </div>
   );
 }

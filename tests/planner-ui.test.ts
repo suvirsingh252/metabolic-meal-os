@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("planner client renders all configured meal slots", () => {
+test("planner client renders the Phase 8B weekly dinner workflow", () => {
   const source = readFileSync("src/app/planner/planner-client.tsx", "utf8");
 
-  assert.match(source, /mealSlots\.map/);
-  assert.match(source, /mutatePlanner\(day\.date, mealSlot/);
-  assert.doesNotMatch(source, /slot: "Dinner"/);
+  assert.match(source, /plannerDays\.map/);
+  assert.match(source, /Save Plan/);
+  assert.match(source, /Regenerate Grocery List/);
+  assert.match(source, /\/api\/weekly-plan\/grocery/);
+  assert.doesNotMatch(source, /mealSlots\.map/);
 });

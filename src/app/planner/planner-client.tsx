@@ -1,35 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDays,
   CheckCircle2,
   Loader2,
-  RotateCcw,
-  Trash2,
-  Utensils,
-  XCircle
+  RefreshCw,
+  Save,
+  ShoppingCart,
+  Trash2
 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import {
-  getDeepLinkPreselection,
-  groupPlannerSlotsByDateAndSlot,
-  getDefaultPlannerDayIndex,
-  getPlannerSlotKey,
-  mealSlots,
-  plannerStatuses,
-  type MealSlot,
-  type PlannerStatus,
-  type PlannerViewModel
-} from "@/src/lib/domain/planner";
+import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
+import type {
+  DinnerPlanDay,
+  WeeklyDinnerPlanViewModel,
+  WeeklyDinnerSelection
+} from "@/src/lib/domain/weekly-planning";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
+
+type PlannerDay = WeeklyDinnerPlanViewModel["days"][number];
 
 interface MealsResponse {
   meals: MealSummary[];
+}
+
+interface WeeklyGroceryResponse {
+  list: {
+    id: string;
+    itemCount: number;
+    completedCount: number;
+  };
 }
 
 function getErrorMessage(value: unknown, fallback: string) {
@@ -45,20 +51,12 @@ function getErrorMessage(value: unknown, fallback: string) {
   return fallback;
 }
 
-function mealMatchesSlot(meal: MealSummary, slot: MealSlot) {
-  return (meal.mealType ?? "").toLowerCase().includes(slot.toLowerCase());
-}
+function formatPlanRange(plan: WeeklyDinnerPlanViewModel | null) {
+  if (!plan) {
+    return "This week";
+  }
 
-function getMealGroupsForSlot(meals: MealSummary[], slot: MealSlot) {
-  const matching = meals.filter((meal) => mealMatchesSlot(meal, slot));
-  const other = meals.filter((meal) => !mealMatchesSlot(meal, slot));
-
-  return matching.length > 0
-    ? [
-        { label: `${slot} meals`, meals: matching },
-        { label: "Other saved meals", meals: other }
-      ].filter((group) => group.meals.length > 0)
-    : [{ label: "Saved meals", meals }];
+  return `${plan.weekStartDate} to ${plan.weekEndDate}`;
 }
 
 export function PlannerClient({
@@ -66,428 +64,402 @@ export function PlannerClient({
 }: {
   preselectedMealId?: string | null;
 }) {
-  const [planner, setPlanner] = useState<PlannerViewModel | null>(null);
+  const [plan, setPlan] = useState<WeeklyDinnerPlanViewModel | null>(null);
   const [meals, setMeals] = useState<MealSummary[]>([]);
-  const [selectedMeals, setSelectedMeals] = useState<Record<string, string>>({});
+  const [selections, setSelections] = useState<Record<string, string>>({});
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mealsError, setMealsError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const slotsByKey = useMemo(
-    () => groupPlannerSlotsByDateAndSlot(planner?.slots ?? []),
-    [planner]
+  const sortedMeals = useMemo(
+    () =>
+      [...meals].sort((first, second) =>
+        first.mealName.localeCompare(second.mealName)
+      ),
+    [meals]
   );
-  const preselectedMeals = useMemo(() => {
-    if (!preselectedMealId || !planner || meals.length === 0) {
-      return {};
-    }
+  const plannedCount = Object.values(selections).filter(Boolean).length;
+  const hasActiveGroceryList = Boolean(plan?.activeGroceryList);
+  const plannerDays = plan?.days ?? [];
+  const activePlannerDay =
+    plannerDays[selectedDayIndex] ?? plannerDays[0] ?? null;
 
-    return getDeepLinkPreselection(
-      preselectedMealId,
-      meals,
-      planner,
-      getDefaultPlannerDayIndex(planner)
-    );
-  }, [meals, planner, preselectedMealId]);
-  const visibleSelectedMeals = useMemo(
-    () => ({ ...preselectedMeals, ...selectedMeals }),
-    [preselectedMeals, selectedMeals]
-  );
-
-  const loadPlanner = useCallback(async (): Promise<PlannerViewModel | null> => {
+  const load = useCallback(async () => {
+    setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/planner");
-      const data: unknown = await response.json();
+      const [planResponse, mealsResponse] = await Promise.all([
+        fetch("/api/weekly-plan"),
+        fetch("/api/notion/meals?pageSize=100")
+      ]);
+      const planData: unknown = await planResponse.json();
+      const mealsData: unknown = await mealsResponse.json();
 
-      if (!response.ok) {
-        setError(getErrorMessage(data, "Unable to load planner."));
-        return null;
+      if (!planResponse.ok) {
+        setError(getErrorMessage(planData, "Unable to load weekly plan."));
+        return;
       }
 
-      const nextPlanner = data as PlannerViewModel;
-      setPlanner(nextPlanner);
-      setSelectedDayIndex(getDefaultPlannerDayIndex(nextPlanner));
-      return nextPlanner;
-    } catch {
-      setError("Unable to reach the planner service. Try again.");
-      return null;
-    }
-  }, []);
-
-  const loadMeals = useCallback(async (): Promise<MealSummary[]> => {
-    setMealsError(null);
-
-    try {
-      const response = await fetch("/api/notion/meals?pageSize=100");
-      const data: unknown = await response.json();
-
-      if (!response.ok) {
-        setMealsError(getErrorMessage(data, "Unable to load saved meals."));
-        return [];
+      if (!mealsResponse.ok) {
+        setError(getErrorMessage(mealsData, "Unable to load saved meals."));
+        return;
       }
 
-      const loaded = (data as MealsResponse).meals;
-      setMeals(loaded);
-      return loaded;
+      const nextPlan = planData as WeeklyDinnerPlanViewModel;
+      const nextSelections = Object.fromEntries(
+        nextPlan.days
+          .filter((day) => Boolean(day.meal))
+          .map((day) => [day.dayOfWeek, day.meal!.id])
+      );
+
+      if (
+        preselectedMealId &&
+        !Object.values(nextSelections).includes(preselectedMealId)
+      ) {
+        const firstEmptyDay = nextPlan.days.find(
+          (day) => !nextSelections[day.dayOfWeek]
+        );
+
+        if (firstEmptyDay) {
+          nextSelections[firstEmptyDay.dayOfWeek] = preselectedMealId;
+        }
+      }
+
+      setPlan(nextPlan);
+      setMeals((mealsData as MealsResponse).meals);
+      setSelections(nextSelections);
+      setSelectedDayIndex((current) =>
+        current < nextPlan.days.length ? current : 0
+      );
     } catch {
-      setMealsError("Unable to reach saved meals. Try again.");
-      return [];
+      setError("Unable to reach the weekly planner service. Try again.");
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [preselectedMealId]);
 
   useEffect(() => {
-    let active = true;
+    const timeoutId = window.setTimeout(() => {
+      void load();
+    }, 0);
 
-    async function load() {
-      setIsLoading(true);
-      await Promise.all([loadPlanner(), loadMeals()]);
+    return () => window.clearTimeout(timeoutId);
+  }, [load]);
 
-      if (active) {
-        setIsLoading(false);
-      }
-    }
-
-    void load();
-
-    return () => {
-      active = false;
-    };
-  }, [loadMeals, loadPlanner]);
-
-  function updateSelectedMeal(key: string, mealId: string) {
-    setSelectedMeals((current) => ({
+  function updateSelection(dayOfWeek: DinnerPlanDay, mealId: string) {
+    setSelections((current) => ({
       ...current,
-      [key]: mealId
+      [dayOfWeek]: mealId
     }));
+    setSuccess(null);
   }
 
-  async function mutatePlanner(
-    date: string,
-    slot: MealSlot,
-    body:
-      | { action: "assign"; mealId: string }
-      | { action: "clear" }
-      | { action: "status"; status: PlannerStatus }
-  ) {
-    setIsSaving(`${date}-${slot}-${body.action}`);
+  function clearSelection(dayOfWeek: DinnerPlanDay) {
+    setSelections((current) => {
+      const next = { ...current };
+      delete next[dayOfWeek];
+      return next;
+    });
+    setSuccess(null);
+  }
+
+  async function savePlan() {
+    if (!plan) {
+      return false;
+    }
+
+    setIsSaving(true);
     setError(null);
+    setSuccess(null);
+
+    const payload: WeeklyDinnerSelection[] = plan.days.map((day) => ({
+      dayOfWeek: day.dayOfWeek,
+      mealId: selections[day.dayOfWeek] || null
+    }));
 
     try {
-      const response = await fetch("/api/planner", {
+      const response = await fetch("/api/weekly-plan", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          planDate: date,
-          slot,
-          ...body
-        })
+        body: JSON.stringify({ selections: payload })
       });
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        setError(getErrorMessage(data, "Unable to update planner."));
-        return;
+        setError(getErrorMessage(data, "Unable to save weekly plan."));
+        return false;
       }
 
-      await loadPlanner();
+      setPlan(data as WeeklyDinnerPlanViewModel);
+      setSuccess("Weekly plan saved.");
+      return true;
     } catch {
-      setError("Unable to reach the planner service. Try again.");
+      setError("Unable to reach the weekly planner service. Try again.");
+      return false;
     } finally {
-      setIsSaving(null);
+      setIsSaving(false);
     }
   }
 
-  const canWrite = Boolean(planner?.setup.ok);
-  const activePlannerDay =
-    planner?.days[selectedDayIndex] ?? planner?.days[0] ?? null;
+  async function generateGroceryList() {
+    const saved = await savePlan();
+
+    if (!saved) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch("/api/weekly-plan/grocery", {
+        method: "POST"
+      });
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        setError(getErrorMessage(data, "Unable to generate grocery list."));
+        return;
+      }
+
+      const result = data as WeeklyGroceryResponse;
+      await load();
+      setSuccess(`Grocery list ready with ${result.list.itemCount} items.`);
+    } catch {
+      setError("Unable to reach the grocery service. Try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading weekly planner...
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {isLoading ? (
-        <Card>
-          <CardContent className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading planner...
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {!isLoading && planner ? (
-        <>
-          <div className="flex flex-col gap-2 rounded-md border bg-card p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 font-medium">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              {planner.weekStart} to {planner.weekEnd}
+    <div className="space-y-5">
+      <section className="sticky top-20 z-10 rounded-md border bg-card/95 p-4 shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-primary" />
+            <div>
+              <p className="font-semibold">{formatPlanRange(plan)}</p>
+              <p className="text-sm text-muted-foreground">
+                {plannedCount} dinners planned
+              </p>
             </div>
-            <Button
-              disabled={isLoading}
-              onClick={() => void loadPlanner()}
-              size="sm"
-              type="button"
-              variant="secondary"
-            >
-              <RotateCcw className="h-4 w-4" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={load} type="button" variant="secondary">
+              <RefreshCw className="h-4 w-4" />
               Refresh
             </Button>
+            <Button disabled={isSaving} onClick={savePlan} type="button">
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save Plan
+            </Button>
           </div>
+        </div>
+      </section>
 
-          {!planner.setup.ok ? (
-            <Alert>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 font-medium">
-                  <XCircle className="h-4 w-4" />
-                  Planner setup incomplete
-                </div>
-                {planner.setup.issues.map((issue) => (
-                  <p key={issue.message}>{issue.message}</p>
-                ))}
-              </div>
-            </Alert>
-          ) : (
-            <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
-              <CheckCircle2 className="h-4 w-4" />
-              Planner is connected to Hearth.
-            </div>
-          )}
-
-          {(() => {
-            const preselectedMeal = preselectedMealId
-              ? meals.find((m) => m.id === preselectedMealId)
-              : null;
-            return preselectedMeal && canWrite ? (
-              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
-                <CalendarDays className="h-4 w-4 shrink-0" />
-                Adding{" "}
-                <strong className="mx-1">{preselectedMeal.mealName}</strong> —
-                select a day and slot, then tap Assign.
-              </div>
-            ) : null;
-          })()}
-
-          {error ? (
-            <Alert>
-              <span className="inline-flex items-center gap-2">
-                <XCircle className="h-4 w-4" />
-                {error}
-              </span>
-            </Alert>
-          ) : null}
-
-          {mealsError ? (
-            <Alert>
-              <span className="inline-flex items-center gap-2">
-                <XCircle className="h-4 w-4" />
-                {mealsError}
-              </span>
-            </Alert>
-          ) : null}
-
-          {meals.length === 0 && !mealsError ? (
-            <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">
-              Save meals from Analyze before assigning meal slots.
-            </div>
-          ) : null}
-
-          <div className="space-y-3 lg:hidden">
-            <div
-              aria-label="Choose planner day"
-              className="flex gap-2 overflow-x-auto rounded-md border bg-card p-2"
-            >
-              {planner.days.map((day, index) => (
-                <Button
-                  aria-pressed={selectedDayIndex === index}
-                  className="shrink-0"
-                  key={day.date}
-                  onClick={() => setSelectedDayIndex(index)}
-                  size="sm"
-                  type="button"
-                  variant={selectedDayIndex === index ? "default" : "secondary"}
-                >
-                  {day.weekday.slice(0, 3)}
-                </Button>
-              ))}
-            </div>
-            {activePlannerDay ? (
-              <PlannerDayCard
-                canWrite={canWrite}
-                day={activePlannerDay}
-                isSaving={isSaving}
-                meals={meals}
-                mutatePlanner={mutatePlanner}
-                selectedMeals={visibleSelectedMeals}
-                slotsByKey={slotsByKey}
-                updateSelectedMeal={updateSelectedMeal}
-              />
-            ) : null}
-          </div>
-
-          <div className="hidden gap-3 lg:grid lg:grid-cols-7">
-            {planner.days.map((day) => (
-              <PlannerDayCard
-                canWrite={canWrite}
-                day={day}
-                isSaving={isSaving}
-                key={day.date}
-                meals={meals}
-                mutatePlanner={mutatePlanner}
-                selectedMeals={visibleSelectedMeals}
-                slotsByKey={slotsByKey}
-                updateSelectedMeal={updateSelectedMeal}
-              />
-            ))}
-          </div>
-        </>
+      {error ? <Alert>{error}</Alert> : null}
+      {success ? (
+        <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
+          <CheckCircle2 className="h-4 w-4" />
+          {success}
+        </div>
       ) : null}
+
+      <section className="space-y-3 lg:hidden">
+        <div
+          aria-label="Choose planner day"
+          className="flex gap-2 overflow-x-auto rounded-md border bg-card p-2"
+          role="tablist"
+        >
+          {plannerDays.map((day, index) => (
+            <button
+              aria-selected={index === selectedDayIndex}
+              className={[
+                "min-h-12 min-w-24 rounded-md px-3 py-2 text-left text-sm",
+                index === selectedDayIndex
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background"
+              ].join(" ")}
+              key={day.dayOfWeek}
+              onClick={() => setSelectedDayIndex(index)}
+              role="tab"
+              type="button"
+            >
+              <span className="block font-semibold">{day.dayOfWeek.slice(0, 3)}</span>
+              <span className="text-xs opacity-80">{day.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {activePlannerDay ? (
+          <PlannerDayCard
+            clearSelection={clearSelection}
+            day={activePlannerDay}
+            meals={meals}
+            selectedMealId={selections[activePlannerDay.dayOfWeek] ?? ""}
+            sortedMeals={sortedMeals}
+            updateSelection={updateSelection}
+          />
+        ) : null}
+      </section>
+
+      <section className="hidden gap-3 lg:grid lg:grid-cols-7">
+        {plannerDays.map((day) => (
+          <PlannerDayCard
+            clearSelection={clearSelection}
+            day={day}
+            key={day.dayOfWeek}
+            meals={meals}
+            selectedMealId={selections[day.dayOfWeek] ?? ""}
+            sortedMeals={sortedMeals}
+            updateSelection={updateSelection}
+          />
+        ))}
+      </section>
+
+      <section className="rounded-md border bg-card p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Weekly grocery list</h2>
+            {plan?.activeGroceryList ? (
+              <p className="text-sm text-muted-foreground">
+                {plan.activeGroceryList.completedCount} /{" "}
+                {plan.activeGroceryList.itemCount} items purchased
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Generate one consolidated list from planned dinners.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {plan?.activeGroceryList ? (
+              <Button asChild type="button" variant="secondary">
+                <Link href={`/grocery?list=${plan.activeGroceryList.id}`}>
+                  <ShoppingCart className="h-4 w-4" />
+                  Open List
+                </Link>
+              </Button>
+            ) : null}
+            <Button
+              disabled={isGenerating || plannedCount === 0}
+              onClick={() => void generateGroceryList()}
+              type="button"
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="h-4 w-4" />
+              )}
+              {hasActiveGroceryList
+                ? "Regenerate Grocery List"
+                : "Generate Grocery List"}
+            </Button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
 
 function PlannerDayCard({
-  canWrite,
+  clearSelection,
   day,
-  isSaving,
   meals,
-  mutatePlanner,
-  selectedMeals,
-  slotsByKey,
-  updateSelectedMeal
+  selectedMealId,
+  sortedMeals,
+  updateSelection
 }: {
-  canWrite: boolean;
-  day: PlannerViewModel["days"][number];
-  isSaving: string | null;
+  clearSelection: (dayOfWeek: DinnerPlanDay) => void;
+  day: PlannerDay;
   meals: MealSummary[];
-  mutatePlanner: (
-    date: string,
-    slot: MealSlot,
-    body:
-      | { action: "assign"; mealId: string }
-      | { action: "clear" }
-      | { action: "status"; status: PlannerStatus }
-  ) => Promise<void>;
-  selectedMeals: Record<string, string>;
-  slotsByKey: Map<string, PlannerViewModel["slots"][number]>;
-  updateSelectedMeal: (key: string, mealId: string) => void;
+  selectedMealId: string;
+  sortedMeals: MealSummary[];
+  updateSelection: (dayOfWeek: DinnerPlanDay, mealId: string) => void;
 }) {
+  const selectedMeal = meals.find((meal) => meal.id === selectedMealId);
+
   return (
-    <Card className="overflow-hidden" key={day.date}>
-      <CardHeader className="space-y-1 p-4">
-        <CardTitle className="text-base">{day.weekday}</CardTitle>
-        <p className="text-sm text-muted-foreground">{day.label}</p>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-start justify-between gap-2 text-base">
+          <span>
+            <span className="block">{day.dayOfWeek}</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              {day.label}
+            </span>
+          </span>
+          {selectedMeal ? <Badge>Dinner</Badge> : null}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 p-4 pt-0 lg:space-y-4">
-        {mealSlots.map((mealSlot) => {
-          const slotKey = getPlannerSlotKey(day.date, mealSlot);
-          const slot = slotsByKey.get(slotKey);
-          const selectedMealId = selectedMeals[slotKey] ?? slot?.meal?.id ?? "";
-          const saving = Boolean(
-            isSaving && isSaving.startsWith(`${day.date}-${mealSlot}-`)
-          );
-          const mealGroups = getMealGroupsForSlot(meals, mealSlot);
+      <CardContent className="space-y-3">
+        <Select
+          aria-label={`Choose ${day.dayOfWeek} dinner`}
+          onChange={(event) => updateSelection(day.dayOfWeek, event.target.value)}
+          value={selectedMealId}
+        >
+          <option value="">No meal selected</option>
+          {sortedMeals.map((meal) => (
+            <option key={meal.id} value={meal.id}>
+              {meal.mealName}
+            </option>
+          ))}
+        </Select>
 
-          return (
-            <section
-              className="space-y-3 rounded-md border bg-background p-3"
-              key={slotKey}
+        {selectedMeal ? (
+          <div className="rounded-md border bg-background p-3">
+            <Link
+              className="font-medium leading-6 text-primary underline-offset-4 hover:underline"
+              href={getMealDetailPath(selectedMeal.id)}
             >
-              <div className="flex items-start gap-2">
-                <Utensils className="mt-0.5 h-4 w-4 text-primary" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">
-                    {mealSlot}
-                  </p>
-                  <p className="mt-1 truncate text-sm font-medium">
-                    {slot?.meal?.name ?? "Unplanned"}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {slot?.status ?? "Planned"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor={`meal-${slotKey}`}>Saved meal</Label>
-                <Select
-                  disabled={!canWrite || meals.length === 0 || saving}
-                  id={`meal-${slotKey}`}
-                  onChange={(event) =>
-                    updateSelectedMeal(slotKey, event.target.value)
-                  }
-                  value={selectedMealId}
-                >
-                  <option value="">Choose a saved meal</option>
-                  {mealGroups.map((group) => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.meals.map((meal) => (
-                        <option key={meal.id} value={meal.id}>
-                          {meal.mealName}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </Select>
-                <Button
-                  className="w-full"
-                  disabled={!canWrite || !selectedMealId || saving}
-                  onClick={() =>
-                    void mutatePlanner(day.date, mealSlot, {
-                      action: "assign",
-                      mealId: selectedMealId
-                    })
-                  }
-                  type="button"
-                >
-                  {saving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
-                  )}
-                  Assign {mealSlot}
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {plannerStatuses.map((status) => (
-                  <Button
-                    disabled={!canWrite || !slot || saving}
-                    key={status}
-                    onClick={() =>
-                      void mutatePlanner(day.date, mealSlot, {
-                        action: "status",
-                        status
-                      })
-                    }
-                    size="sm"
-                    type="button"
-                    variant={slot?.status === status ? "default" : "secondary"}
-                  >
-                    {status}
-                  </Button>
+              {selectedMeal.mealName}
+            </Link>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {[selectedMeal.cuisine, selectedMeal.effortLevel]
+                .filter((value): value is string => Boolean(value))
+                .map((value) => (
+                  <Badge key={value}>{value}</Badge>
                 ))}
-              </div>
-
-              <Button
-                className="w-full"
-                disabled={!canWrite || !slot || saving}
-                onClick={() =>
-                  void mutatePlanner(day.date, mealSlot, {
-                    action: "clear"
-                  })
-                }
-                type="button"
-                variant="ghost"
-              >
-                <Trash2 className="h-4 w-4" />
-                Clear {mealSlot}
-              </Button>
-            </section>
-          );
-        })}
+            </div>
+            <Button
+              className="mt-3 w-full"
+              onClick={() => clearSelection(day.dayOfWeek)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed bg-background p-3 text-sm text-muted-foreground">
+            Open slot for dinner.
+          </div>
+        )}
       </CardContent>
     </Card>
   );

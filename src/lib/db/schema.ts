@@ -1,12 +1,14 @@
 import {
   boolean,
   date,
+  integer,
   index,
   jsonb,
   numeric,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid
 } from "drizzle-orm/pg-core";
 
@@ -124,9 +126,14 @@ export const groceryLists = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     householdId: text("household_id").notNull(),
     createdBy: text("created_by"),
+    sourceType: text("source_type"),
+    weekStartDate: date("week_start_date"),
     mealIds: jsonb("meal_ids").$type<string[]>().notNull(),
     itemCount: numeric("item_count").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
   },
@@ -134,9 +141,71 @@ export const groceryLists = pgTable(
     householdCreatedAtIdx: index("grocery_lists_household_created_at_idx").on(
       table.householdId,
       table.createdAt
+    ),
+    householdWeekIdx: index("grocery_lists_household_week_idx").on(
+      table.householdId,
+      table.weekStartDate
     )
   })
 );
 
 export type GroceryListRecord = typeof groceryLists.$inferSelect;
 export type NewGroceryListRecord = typeof groceryLists.$inferInsert;
+
+export const groceryListItems = pgTable(
+  "grocery_list_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groceryListId: uuid("grocery_list_id")
+      .notNull()
+      .references(() => groceryLists.id),
+    ingredient: text("ingredient").notNull(),
+    category: text("category").notNull(),
+    completed: boolean("completed").notNull().default(false),
+    sortOrder: integer("sort_order").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+  },
+  (table) => ({
+    groceryListIdx: index("grocery_list_items_list_idx").on(table.groceryListId),
+    groceryListIngredientIdx: uniqueIndex(
+      "grocery_list_items_list_ingredient_idx"
+    ).on(table.groceryListId, table.ingredient)
+  })
+);
+
+export type GroceryListItemRecord = typeof groceryListItems.$inferSelect;
+export type NewGroceryListItemRecord = typeof groceryListItems.$inferInsert;
+
+export const weeklyDinnerPlans = pgTable(
+  "weekly_dinner_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: text("household_id").notNull(),
+    weekStartDate: date("week_start_date").notNull(),
+    dayOfWeek: text("day_of_week").notNull(),
+    mealId: text("meal_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+  },
+  (table) => ({
+    householdWeekIdx: index("weekly_dinner_plans_household_week_idx").on(
+      table.householdId,
+      table.weekStartDate
+    ),
+    householdWeekDayIdx: uniqueIndex(
+      "weekly_dinner_plans_household_week_day_idx"
+    ).on(table.householdId, table.weekStartDate, table.dayOfWeek)
+  })
+);
+
+export type WeeklyDinnerPlanRecord = typeof weeklyDinnerPlans.$inferSelect;
+export type NewWeeklyDinnerPlanRecord = typeof weeklyDinnerPlans.$inferInsert;

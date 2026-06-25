@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
+  ChevronDown,
   Loader2,
   Plus,
   RefreshCw,
@@ -17,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import type {
-  GroceryCategorySection,
+  GroceryCategory,
   GroceryList
 } from "@/src/lib/domain/grocery";
 import { getMealDetailPath } from "@/src/lib/domain/meals/detail-view-model";
@@ -27,16 +28,46 @@ interface MealsResponse {
   meals: MealSummary[];
 }
 
+interface PersistedGroceryItem {
+  id: string;
+  ingredient: string;
+  category: GroceryCategory;
+  completed: boolean;
+  sortOrder: number;
+}
+
+interface PersistedGroceryList {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  mealIds: string[];
+  itemCount: number;
+  completedCount: number;
+  completionPercentage: number;
+  weekStartDate: string | null;
+  sourceType: string | null;
+  sections: Array<{
+    category: GroceryCategory;
+    items: PersistedGroceryItem[];
+  }>;
+}
+
 interface GroceryGenerationResponse {
   list: GroceryList;
+  persistedList?: PersistedGroceryList;
   warning?: string;
 }
 
 interface GroceryHistorySummary {
   id: string;
   createdAt: string;
+  updatedAt: string;
   mealIds: string[];
   itemCount: number;
+  completedCount: number;
+  completionPercentage: number;
+  weekStartDate: string | null;
+  sourceType: string | null;
 }
 
 function getErrorMessage(value: unknown, fallback: string) {
@@ -67,21 +98,48 @@ function formatDate(value: string) {
   }).format(date);
 }
 
+function toClientOnlyPersistedList(list: GroceryList): PersistedGroceryList {
+  return {
+    id: list.id ?? "client-only",
+    createdAt: list.createdAt,
+    updatedAt: list.createdAt,
+    mealIds: list.mealIds,
+    itemCount: list.itemCount,
+    completedCount: 0,
+    completionPercentage: 0,
+    weekStartDate: null,
+    sourceType: null,
+    sections: list.sections.map((section) => ({
+      category: section.category,
+      items: section.items.map((item, index) => ({
+        id: item.id,
+        ingredient: item.name,
+        category: item.category,
+        completed: false,
+        sortOrder: index
+      }))
+    }))
+  };
+}
+
 export function GroceryClient({
-  preselectedMealId = null
+  preselectedMealId = null,
+  initialListId = null
 }: {
   preselectedMealId?: string | null;
+  initialListId?: string | null;
 }) {
   const [meals, setMeals] = useState<MealSummary[]>([]);
   const [selectedMealIds, setSelectedMealIds] = useState<string[]>(
     preselectedMealId ? [preselectedMealId] : []
   );
   const [query, setQuery] = useState("");
-  const [list, setList] = useState<GroceryList | null>(null);
+  const [list, setList] = useState<PersistedGroceryList | null>(null);
   const [history, setHistory] = useState<GroceryHistorySummary[]>([]);
-  const [checkedItemIds, setCheckedItemIds] = useState<Set<string>>(new Set());
   const [isLoadingMeals, setIsLoadingMeals] = useState(true);
+  const [isLoadingList, setIsLoadingList] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [pendingItemId, setPendingItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
@@ -95,6 +153,30 @@ export function GroceryClient({
       }
     } catch {
       // History is supporting context; generation remains the primary workflow.
+    }
+  }, []);
+
+  const loadList = useCallback(async (listId: string) => {
+    setIsLoadingList(true);
+    setError(null);
+    setWarning(null);
+
+    try {
+      const response = await fetch(`/api/grocery-lists/${listId}`);
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        setError(getErrorMessage(data, "Unable to load grocery list."));
+        return;
+      }
+
+      const loaded = (data as { list: PersistedGroceryList }).list;
+      setList(loaded);
+      setSelectedMealIds(loaded.mealIds);
+    } catch {
+      setError("Unable to reach the grocery service. Try again.");
+    } finally {
+      setIsLoadingList(false);
     }
   }, []);
 
@@ -121,11 +203,15 @@ export function GroceryClient({
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadMeals(), loadHistory()]);
+      void Promise.all([
+        loadMeals(),
+        loadHistory(),
+        initialListId ? loadList(initialListId) : Promise.resolve()
+      ]);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadHistory, loadMeals]);
+  }, [initialListId, loadHistory, loadList, loadMeals]);
 
   const filteredMeals = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -151,7 +237,7 @@ export function GroceryClient({
     [meals, selectedMealIds]
   );
 
-  const purchasedCount = checkedItemIds.size;
+  const purchasedCount = list?.completedCount ?? 0;
   const totalCount = list?.itemCount ?? 0;
 
   async function generateList(mealIds = selectedMealIds) {
@@ -180,9 +266,10 @@ export function GroceryClient({
       }
 
       const result = data as GroceryGenerationResponse;
-      setList(result.list);
-      setCheckedItemIds(new Set());
       setWarning(result.warning ?? null);
+
+      setList(result.persistedList ?? toClientOnlyPersistedList(result.list));
+
       void loadHistory();
     } catch {
       setError("Unable to reach the grocery service. Try again.");
@@ -192,7 +279,7 @@ export function GroceryClient({
   }
 
   useEffect(() => {
-    if (!preselectedMealId || meals.length === 0 || list) {
+    if (!preselectedMealId || initialListId || meals.length === 0 || list) {
       return;
     }
 
@@ -206,7 +293,7 @@ export function GroceryClient({
       return () => window.clearTimeout(timeoutId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meals, preselectedMealId, list]);
+  }, [initialListId, meals, preselectedMealId, list]);
 
   function toggleMeal(mealId: string) {
     setSelectedMealIds((current) =>
@@ -216,18 +303,39 @@ export function GroceryClient({
     );
   }
 
-  function toggleItem(itemId: string) {
-    setCheckedItemIds((current) => {
-      const next = new Set(current);
+  async function toggleItem(item: PersistedGroceryItem) {
+    if (!list || pendingItemId) {
+      return;
+    }
 
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
+    setPendingItemId(item.id);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/grocery-lists/${list.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          itemId: item.id,
+          completed: !item.completed
+        })
+      });
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        setError(getErrorMessage(data, "Unable to update grocery list."));
+        return;
       }
 
-      return next;
-    });
+      setList((data as { list: PersistedGroceryList }).list);
+      void loadHistory();
+    } catch {
+      setError("Unable to reach the grocery service. Try again.");
+    } finally {
+      setPendingItemId(null);
+    }
   }
 
   return (
@@ -335,14 +443,23 @@ export function GroceryClient({
               </Button>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground">
-              {history.slice(0, 5).map((item) => (
-                <div
-                  className="flex items-center justify-between gap-3 rounded-md bg-background p-3"
+              {history.slice(0, 6).map((item) => (
+                <button
+                  className="flex min-h-14 w-full items-center justify-between gap-3 rounded-md bg-background p-3 text-left"
                   key={item.id}
+                  onClick={() => void loadList(item.id)}
+                  type="button"
                 >
-                  <span>{formatDate(item.createdAt)}</span>
-                  <span>{item.itemCount} items</span>
-                </div>
+                  <span>
+                    <span className="block font-medium text-foreground">
+                      {formatDate(item.updatedAt)}
+                    </span>
+                    <span>
+                      {item.completedCount} / {item.itemCount} purchased
+                    </span>
+                  </span>
+                  <Badge>{item.completionPercentage}%</Badge>
+                </button>
               ))}
             </div>
           </section>
@@ -360,7 +477,11 @@ export function GroceryClient({
                 {purchasedCount} / {totalCount} items purchased
               </p>
             </div>
-            <CheckCircle2 className="h-8 w-8 text-accent" />
+            {isLoadingList ? (
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            ) : (
+              <CheckCircle2 className="h-8 w-8 text-accent" />
+            )}
           </div>
           {list ? (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -379,7 +500,7 @@ export function GroceryClient({
 
         {list ? (
           <GroceryChecklist
-            checkedItemIds={checkedItemIds}
+            pendingItemId={pendingItemId}
             sections={list.sections}
             toggleItem={toggleItem}
           />
@@ -409,67 +530,81 @@ export function GroceryClient({
 }
 
 function GroceryChecklist({
-  checkedItemIds,
+  pendingItemId,
   sections,
   toggleItem
 }: {
-  checkedItemIds: Set<string>;
-  sections: GroceryCategorySection[];
-  toggleItem: (itemId: string) => void;
+  pendingItemId: string | null;
+  sections: PersistedGroceryList["sections"];
+  toggleItem: (item: PersistedGroceryItem) => void;
 }) {
   return (
     <div className="space-y-5">
-      {sections.map((section) => (
-        <section className="rounded-md border bg-card p-4" key={section.category}>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-primary">
-              {section.category}
-            </h2>
-            <Badge>{section.items.length} items</Badge>
-          </div>
-          <div className="divide-y">
-            {section.items.map((item) => {
-              const checked = checkedItemIds.has(item.id);
+      {sections.map((section) => {
+        const completedCount = section.items.filter((item) => item.completed).length;
+        const complete = completedCount === section.items.length;
 
-              return (
-                <button
-                  className="flex min-h-14 w-full items-center gap-3 py-3 text-left"
-                  key={item.id}
-                  onClick={() => toggleItem(item.id)}
-                  type="button"
-                >
-                  <span
-                    className={[
-                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
-                      checked
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-input bg-background"
-                    ].join(" ")}
-                    aria-hidden
+        return (
+          <details
+            className="rounded-md border bg-card p-4"
+            key={section.category}
+            open={!complete}
+          >
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xl font-semibold text-primary">
+                  {section.category}
+                </span>
+              </span>
+              <Badge>
+                {completedCount} / {section.items.length}
+              </Badge>
+            </summary>
+            <div className="mt-3 divide-y">
+              {section.items.map((item) => {
+                const checked = item.completed;
+
+                return (
+                  <button
+                    className="flex min-h-16 w-full items-center gap-3 py-3 text-left"
+                    disabled={pendingItemId === item.id}
+                    key={item.id}
+                    onClick={() => toggleItem(item)}
+                    type="button"
                   >
-                    {checked ? <CheckCircle2 className="h-4 w-4" /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1">
                     <span
                       className={[
-                        "block text-lg font-medium leading-6",
-                        checked ? "text-muted-foreground line-through" : ""
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
+                        checked
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background"
                       ].join(" ")}
+                      aria-hidden
                     >
-                      {item.name}
+                      {pendingItemId === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : checked ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : null}
                     </span>
-                    {item.sourceMealNames.length > 1 ? (
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        Used by {item.sourceMealNames.length} meals
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={[
+                          "block text-lg font-medium leading-6",
+                          checked ? "text-muted-foreground line-through" : ""
+                        ].join(" ")}
+                      >
+                        {item.ingredient}
                       </span>
-                    ) : null}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </details>
+        );
+      })}
     </div>
   );
 }

@@ -22,6 +22,13 @@
       "when": 1782337226715,
       "tag": "0002_grocery_lists",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782343280787,
+      "tag": "0003_fearless_big_bertha",
+      "breakpoints": true
     }
   ]
 }

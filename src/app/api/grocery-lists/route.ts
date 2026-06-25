@@ -6,9 +6,9 @@ import {
 } from "@/src/lib/domain/grocery";
 import { getConfiguredHouseholdMetadata } from "@/src/lib/domain/household/metadata";
 import {
-  queryGroceryListHistory,
-  saveGroceryListHistory
-} from "@/src/lib/db/grocery-lists";
+  queryGroceryListHistoryWithProgress,
+  saveGeneratedGroceryList
+} from "@/src/lib/db/grocery-list-items";
 import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 import {
   guardApiRequest,
@@ -33,7 +33,10 @@ export async function GET(request: Request) {
 
   try {
     const { householdId } = getConfiguredHouseholdMetadata();
-    const history = await queryGroceryListHistory({ householdId, limit: 20 });
+    const history = await queryGroceryListHistoryWithProgress({
+      householdId,
+      limit: 20
+    });
 
     return NextResponse.json({ history });
   } catch (error) {
@@ -74,18 +77,25 @@ export async function POST(request: Request) {
 
     try {
       const { householdId, createdBy } = getConfiguredHouseholdMetadata();
-      const history = await saveGroceryListHistory({
+      const persisted = await saveGeneratedGroceryList({
         householdId,
         createdBy,
-        mealIds: generated.mealIds,
-        itemCount: generated.itemCount
+        generated,
+        sourceType: "manual"
       });
 
       list = {
         ...generated,
-        id: history.id,
-        createdAt: history.createdAt
+        id: persisted.id,
+        createdAt: persisted.createdAt
       };
+
+      return NextResponse.json({
+        list,
+        persistedList: persisted,
+        history: summarizeGroceryList(list),
+        warning
+      });
     } catch (error) {
       console.error("Grocery history save failure", error);
       warning = "Generated list was not saved to grocery history.";
