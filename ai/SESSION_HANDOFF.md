@@ -23,6 +23,31 @@ and who has it now.
 
 ---
 
+### 2026-06-25 01:45 — Codex → user
+- Task: Phase 8 end-of-day closeout — Grocery Engine and Weekly Planning
+- State: Done
+- Changed: Phase 8A Grocery Engine, Phase 8A.1 Ingredient Intelligence
+  Hardening, and Phase 8B Weekly Meal Planning were implemented, committed,
+  pushed, deployed, migrated, and smoke-tested in production before this
+  closeout. Current product status: Grocery Engine complete; Weekly Planner
+  complete; grocery history complete; persisted checklist state complete;
+  production deployed; production database migrated; smoke tests passed.
+- Current architecture:
+  `Dinner Concierge -> Weekly Planner -> Grocery Engine -> Persisted Grocery Lists -> Shopping Workflow`.
+- Current production commit:
+  `5fe91983e32f175971a22db74033566da1050f71`.
+- Current production URL: `https://metabolic-meal-os.vercel.app`.
+- Verified: production DB migration `drizzle/0003_fearless_big_bertha.sql`
+  applied successfully via `npm run db:migrate`; `npm run db:check` confirmed
+  `weekly_dinner_plans`, `grocery_list_items`, and new `grocery_lists`
+  columns; production smoke verified `/planner`, `/grocery`,
+  `/grocery?list=...`, and `/grocery?meal=<real-meal-id>` with persisted
+  checklist progress and no missing-table/column errors.
+- Open / next: recommended next feature is Dinner Concierge -> Weekly Planner
+  Integration. Future roadmap: quantity aggregation, pantry intelligence,
+  household inventory, shopping optimization, and retailer integrations.
+- Tree owner now: user
+
 ### 2026-06-18 00:34 — Codex → user
 - Task: Phase 5B — Dinner Loop Hardening
 - State: Done (pending commit at closeout)

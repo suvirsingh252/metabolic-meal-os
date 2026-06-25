@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-13 (Postgres Phase 1 foundation; Notion pagination hardening)
+Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -8,7 +8,31 @@ For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`,
 
 Metabolic Meal OS is a production-oriented MVP Next.js app for household meal optimization. It remains a private/beta household tool, not a publicly hardened multi-tenant product.
 
-### Current QA Status (2026-06-13 Postgres Phase 1 + Notion pagination hardening)
+### Current QA Status (2026-06-25 Phase 8 Grocery Planning)
+
+Production state:
+- Current production commit: `5fe91983e32f175971a22db74033566da1050f71`.
+- Current production URL: `https://metabolic-meal-os.vercel.app`.
+- Phase 8A Grocery Engine, Phase 8A.1 Ingredient Intelligence Hardening, and
+  Phase 8B Weekly Meal Planning are committed, pushed, deployed, and migrated.
+- Production database migrations through `drizzle/0003_fearless_big_bertha.sql`
+  have been applied to the Neon/Vercel Postgres database.
+
+Production verification completed:
+- `npm run db:migrate`: passed for the Phase 8B migration.
+- `npm run db:check`: passed; confirmed `weekly_dinner_plans`,
+  `grocery_list_items`, and the new `grocery_lists.source_type`,
+  `grocery_lists.week_start_date`, and `grocery_lists.updated_at` columns.
+- Browser smoke passed for `/planner`, `/grocery`, saved grocery list reopening,
+  persisted checklist progress after refresh, and `/grocery?meal=<real-meal-id>`.
+- No missing-table or missing-column production errors were observed.
+
+Recommended next product slice:
+- Dinner Concierge -> Weekly Planner Integration. Reuse the existing planner and
+  grocery engine so a selected dinner can flow into the current week and then
+  into grocery generation.
+
+### Prior QA Status (2026-06-13 Postgres Phase 1 + Notion pagination hardening)
 
 Local validation gate (post Phase 1 commit):
 - `npm run lint`: passed (clean).
@@ -50,6 +74,21 @@ Production verified:
 - Canada-centred defaults are implemented.
 - Known Ingredient context indicator exists in `/analyze`.
 - Read-only production smoke-test automation exists and passes against the live Vercel URL.
+- Grocery Engine is production-active: `/grocery` can generate categorized,
+  deduplicated grocery lists from one or more meals using deterministic
+  ingredient normalization and grocery category mapping.
+- Ingredient Intelligence Hardening is production-active: grocery generation
+  splits obvious ingredient blobs, strips shopping-irrelevant notes such as
+  `optional`, `as needed`, and retailer annotations, normalizes common aliases,
+  and categorizes ingredients into Produce, Protein, Dairy, Bakery, Frozen,
+  Pantry, Spices, Condiments, Beverages, or Other.
+- Weekly Planner is production-active: `/planner` persists one selected dinner
+  per day for the current week in Postgres and can generate a consolidated
+  grocery list from the planned meals.
+- Grocery history and persisted checklist state are production-active:
+  generated lists can be reopened, item completion survives refresh/browser
+  close, and weekly list regeneration preserves completed state where
+  normalized ingredient names still match.
 
 Implemented:
 - Responsive dashboard shell and route navigation.
@@ -123,12 +162,14 @@ Implemented:
 Not implemented yet:
 - Full user-account authentication and household RBAC. Beta token/private-mode guardrails are implemented.
 - Dedicated per-meal structured ingredient persistence beyond parsed cookbook display and normalized suggestions.
-- AI-generated weekly planning, grocery lists, drag-and-drop planning, and meal-slot-specific recommendation generation.
+- AI-generated weekly planning, drag-and-drop planning, and meal-slot-specific recommendation generation.
 - Meal template workflows.
 - Service worker/offline PWA support.
 - Full settings persistence UI.
 - Server-side persisted user nutrition targets.
 - Full pantry management.
+- Grocery quantity aggregation, unit conversion, cost estimation, pantry
+  deduction, and retailer/delivery integrations.
 - Live Open Food Facts, nutrition, grocery price, flyer, or weather API integrations.
 - Persistence for structured ingredients, pantry items, household preferences, or separate AI analysis records beyond current safe Notion meal-source writes.
 - Automatic meal-level nutrition calculation from FoodData Central ingredient records. The app does not calculate serving-level totals from USDA ingredient records; automatic nutrition remains limited to structured recipe nutrition and deterministic calories/protein/fiber estimates from free text or parsed recipe ingredients with coarse beta-grade serving controls.
@@ -159,7 +200,19 @@ Stack:
 - Tailwind CSS and local shadcn-style UI primitives.
 - OpenAI SDK for meal analysis.
 - Notion SDK for persistence.
+- Drizzle ORM with Neon/Vercel Postgres for the Phase 8 grocery and weekly
+  planning workflow.
 - Vercel is the intended deployment target.
+
+Current household workflow architecture:
+
+```text
+Dinner Concierge
+  -> Weekly Planner
+  -> Grocery Engine
+  -> Persisted Grocery Lists
+  -> Shopping Workflow
+```
 
 Code organization:
 - `src/app`: App Router pages and API routes.
@@ -174,6 +227,10 @@ Code organization:
 - `src/lib/integrations/*`: future API adapter boundaries. `recipe-parser` has a basic URL parser; the other adapters are currently stubs only.
 - `src/lib/integrations/food-data-central/*`: server-side USDA FoodData Central client, types, and nutrient snapshot mapper.
 - `src/lib/domain/meal`: shared meal validation.
+- `src/lib/domain/grocery`: deterministic grocery generation, ingredient
+  normalization, grocery category mapping, and checklist-state helpers.
+- `src/lib/domain/weekly-planning.ts`: current-week dinner planning and grocery
+  orchestration rules.
 - `src/lib/domain/nutrition`: canonical nutrition snapshot/provenance types, validation, and the small free-text calories/protein/fiber estimator.
 - `src/lib/domain/analytics`: dashboard view-model, aggregation, insight, target-progress, and meal-quality scoring logic.
 - `src/lib/domain/recommendations`: Today ranking, component scoring, explanation generation, reason badges, variety helpers, and Today view-model construction.
@@ -209,12 +266,46 @@ Pages:
 - `/analyze`: paste recipe text or URL, call analysis API with staged loading copy, review a household-first summary, request optional optimization prompts (More Protein, Healthier, Kid-Friendly, Budget), edit progressively disclosed details, and save the meal.
 - `/meals`: fetch and display saved meals with Meal OS wording and internal detail links.
 - `/meals/[id]`: family cookbook detail with quick cooking actions, `How We Make It`, ingredients, mobile cooking instructions, original recipe access, nutrition, advanced details, and a weekly planning-context badge (Planned/Cooked/Skipped for this week, or "Not planned this week") when the planner is configured. Add to Planner deep-links to `/planner?meal=<id>`.
-- `/planner`: weekly planner; accepts a `?meal=<id>` query param to preselect that meal into the matching slot for assignment.
+- `/planner`: Phase 8B current-week dinner planner backed by Postgres for the
+  grocery workflow; one selected dinner per day, generate/regenerate weekly
+  grocery list from the plan. It still accepts `?meal=<id>` to preselect a meal
+  from Meal Detail/Cook Again flows.
+- `/grocery`: grocery list generation, recent grocery history, saved list
+  reopening, and persisted shopping checklist. Supports `/grocery?meal=<id>`
+  for single-meal deep links and `/grocery?list=<id>` for saved lists.
 - `/feedback`: select a saved meal or enter a manual meal name, then log post-meal feedback with Meal OS success copy.
 - `/settings`: Notion diagnostics and server environment status.
 - `/settings`: also includes a diagnostic Ingredient Lookup Test panel backed by the server-side USDA lookup route.
 
 ## Current API Endpoints
+
+- `GET /api/weekly-plan`
+  - Loads the current persisted weekly dinner plan from Postgres.
+  - Returns one optional meal selection per Monday-Sunday day.
+
+- `POST /api/weekly-plan`
+  - Persists current-week dinner selections.
+  - Validates day/date and saved meal IDs before writing.
+
+- `POST /api/weekly-plan/grocery`
+  - Generates or regenerates the consolidated grocery list for the current
+    weekly plan using the grocery engine.
+  - Reuses normalized ingredient/category/deduplication logic and preserves
+    completed checklist state where ingredient names still match.
+
+- `GET /api/grocery-lists`
+  - Returns saved grocery history with generated date, item count, and
+    completion percentage.
+
+- `POST /api/grocery-lists`
+  - Generates and stores a grocery list from one or more selected meals outside
+    the weekly-plan flow.
+
+- `GET /api/grocery-lists/[id]`
+  - Opens a saved grocery list with persisted checklist state.
+
+- `PATCH /api/grocery-lists/[id]`
+  - Updates checklist item completion state for a saved list.
 
 - `POST /api/analyze-meal`
   - Input: `{ recipeText: string }`
@@ -620,14 +711,17 @@ Required databases:
 - Meals.
 - Ingredients.
 - Meal Feedback.
-- Weekly Plans.
-- Meal Templates.
+- Postgres/Neon database for Phase 8 weekly plans, grocery lists, and grocery
+  checklist items.
+- Legacy Notion Weekly Plans and Meal Templates may still be configured for
+  older workflows, but they are not required for Phase 8 grocery planning.
 
 Current write/read usage:
 - Meals: save analyzed meals and list saved meals.
 - Ingredients: save normalized ingredient suggestions after meal save.
 - Meal Feedback: save post-meal feedback with a saved or manual meal name.
-- Other database IDs are configured but not actively used yet.
+- Postgres: save current-week dinner plans, grocery list history, and checklist
+  item completion.
 
 Required sharing:
 - Each used database must be shared with the Notion integration tied to `NOTION_API_KEY`.

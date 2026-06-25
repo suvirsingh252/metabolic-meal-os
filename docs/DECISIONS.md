@@ -1,6 +1,44 @@
 # Architectural Decisions
 
-Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
+Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
+
+## 2026-06-25 — Phase 8 Grocery Planning Uses Deterministic Names Before Quantity Math
+
+Decision: Ship the first production Grocery Engine and Weekly Meal Planning
+workflow as deterministic, normalized ingredient-name checklists backed by
+Postgres, while explicitly deferring quantity aggregation, unit conversion,
+pantry deduction, pricing, and retailer integrations.
+
+Reasoning:
+- The household value is planning several dinners, generating one list, checking
+  items off while shopping, and returning later without losing progress.
+- Recipe imports exposed ingredient-blob and annotation problems; deterministic
+  splitting, note cleanup, aliases, category mapping, and regression fixtures are
+  the right first hardening layer.
+- Quantity/unit math is higher risk than name deduplication because cookbook
+  quantities and serving assumptions are not yet trustworthy enough across
+  mixed imported recipes and pasted/social recipes.
+- Postgres is the right persistence layer for generated grocery history,
+  checklist item state, and current-week dinner plans; Notion remains the saved
+  meal archive and feedback/ingredient enrichment layer.
+
+Implementation:
+- `src/lib/domain/grocery` owns ingredient normalization, category mapping,
+  grocery generation, deduplication, and checklist-state helpers.
+- `/grocery` supports meal-backed generation, saved list history, saved list
+  reopening, and persisted checklist progress.
+- `/planner` supports one dinner per current-week day and can generate or
+  regenerate a consolidated grocery list through the same grocery engine.
+- Production migrations through `drizzle/0003_fearless_big_bertha.sql` are
+  applied and verified in Neon/Vercel Postgres.
+
+Boundaries:
+- No pantry tracking, household inventory, barcode scanning, cost estimation,
+  Instacart/Walmart/retailer integration, meal calendar, breakfast/lunch
+  planning, or AI ingredient matching was added.
+- Regeneration preserves completed items only when normalized ingredient names
+  still match.
+- Recommended next slice: Dinner Concierge -> Weekly Planner Integration.
 
 ## 2026-06-13 — Beta 6.5 Nutrition Reliability Uses Ingredient Estimates Before Manual Entry
 
@@ -822,6 +860,9 @@ Tradeoffs:
 - The household `Original Source` url property was added to Source URL aliases; alias lists remain a convention rather than a schema guarantee.
 
 Decision: Defer grocery list and inventory systems again, intentionally.
+Superseded in part by the 2026-06-25 Phase 8 decision: grocery list generation
+and shopping checklist persistence are now implemented; inventory, pantry, and
+quantity aggregation remain deferred.
 
 Reasoning:
 - Ingredient aggregation needs trustworthy quantities and serving assumptions across meals; today's quantities are verbatim strings with best-effort parsing.

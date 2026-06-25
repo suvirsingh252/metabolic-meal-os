@@ -1,5 +1,38 @@
 # Session Log
 
+## 2026-06-25 Phase 8 Grocery Planning Milestone Closeout
+
+Goal:
+- Close out the deployed Phase 8 grocery planning work and update project docs
+  to match the production state.
+
+Completed:
+- Phase 8A Grocery Engine (`8d7ffc0`): deterministic ingredient normalization,
+  grocery category mapping, single-meal/multi-meal grocery generation, grocery
+  history metadata, and mobile-first checklist UI.
+- Phase 8A.1 Ingredient Intelligence Hardening (`894441c`): ingredient blob
+  splitting, note/retailer annotation cleanup, expanded aliases, category
+  mapping fixes, and production-example regression tests.
+- Phase 8B Weekly Meal Planning (`5fe9198`): current-week dinner planner,
+  persisted weekly plan, grocery generation from planned meals, persisted
+  checklist state, saved grocery list reopening, and regeneration with completed
+  item preservation where normalized ingredient names still match.
+- Production database migrations through `drizzle/0003_fearless_big_bertha.sql`
+  applied successfully to the Neon/Vercel Postgres database.
+- Production smoke passed for `/planner`, `/grocery`, saved grocery list
+  reopening, persisted checklist state after refresh, history reopen, and
+  `/grocery?meal=<real-meal-id>`.
+
+Current production:
+- Commit: `5fe91983e32f175971a22db74033566da1050f71`.
+- URL: `https://metabolic-meal-os.vercel.app`.
+
+Remaining limitations:
+- No quantity aggregation, unit conversion, pantry deduction, cost estimation,
+  barcode scanning, retailer integration, grocery delivery, or AI ingredient
+  matching.
+- Recommended next slice: Dinner Concierge -> Weekly Planner Integration.
+
 ## 2026-06-13 Postgres Phase 1 Foundation + Notion Pagination Hardening
 
 ### Notion Pagination Hardening (eb51e4f)

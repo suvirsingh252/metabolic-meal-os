@@ -51,3 +51,19 @@ Via `bash scripts/agent-closeout.sh`:
 
 Notes: AgentOps v1 is docs/tooling only; no runtime files changed, so a green
 gate here just confirms the repo was not disturbed.
+
+---
+
+## Current run — 2026-06-25-phase-8-closeout
+
+Documentation closeout only:
+
+- Repository audit: `main` checked out; local HEAD and `origin/main` both at
+  `5fe91983e32f175971a22db74033566da1050f71` before documentation edits.
+- Production state recorded: Phase 8A, Phase 8A.1, and Phase 8B complete;
+  production deployed; production DB migrated; smoke tests passed.
+- Validation commands: npm validation not rerun for this docs-only closeout.
+  Phase 8 feature commits were validated before commit, and production DB/browser
+  verification completed after deployment.
+- DB check: production `npm run db:migrate` and `npm run db:check` already
+  passed during the Phase 8B operational migration step.

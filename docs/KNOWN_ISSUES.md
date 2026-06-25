@@ -1,12 +1,23 @@
 # Known Issues
 
-Last updated: 2026-06-13 (Beta 6 QA closeout; Beta 6.3-6.5 family-feedback closeout)
+Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
-## Current QA Status (2026-06-13)
+## Current QA Status (2026-06-25)
 
-Validation gate is green on `main`: `npm run typecheck`, `npm run lint`, `npm test` (366/366), and `npm run build` all pass. The B-series security audit has been reconciled against code in `docs/AUDIT-2026-06-11.md`: B1, B2, B3, B4, B5, and B6 are fixed; B7 is reworked. B5 was closed by the 2026-06-13 consolidation pass, which routed all remaining Notion-context helper duplicates through `src/lib/notion/route-helpers.ts` (behavior preserved; `tests/notion-route-helpers.test.ts` added). A first step toward Beta 6.6 URL Recovery exists, committed locally as `ce7dc0d` (`getUrlRecoveryCopy` + `tests/analyze-guided-recovery.test.ts`) but not yet pushed.
+Phase 8A Grocery Engine, Phase 8A.1 Ingredient Intelligence Hardening, and
+Phase 8B Weekly Meal Planning are deployed at
+`https://metabolic-meal-os.vercel.app` on production commit
+`5fe91983e32f175971a22db74033566da1050f71`. Production migrations through
+`drizzle/0003_fearless_big_bertha.sql` have been applied and verified. Browser
+smoke passed for `/planner`, `/grocery`, saved grocery-list reopening,
+persisted checklist state after refresh, and `/grocery?meal=<real-meal-id>`.
+No missing-table or missing-column errors were observed.
+
+Earlier validation gate was green on `main`: `npm run typecheck`,
+`npm run lint`, `npm test`, and `npm run build` passed during the relevant
+feature commits.
 
 ## Critical
 
@@ -29,15 +40,36 @@ Validation gate is green on `main`: `npm run typecheck`, `npm run lint`, `npm te
 
 ## Planner v1.1 Known Limitations
 
-- [ ] `NOTION_MEAL_PLAN_SOURCE_ID` must be set manually and the Meal Plan data source/database must be shared with the Notion integration. `NOTION_MEAL_PLAN_DATABASE_ID` remains a fallback.
-- [ ] Planner assignment uses existing saved Meals only. There is no AI week generation, grocery-list generation, drag-and-drop, or meal invention.
-- [ ] Clearing a planned meal removes the Meal relation and resets status/source, but it does not archive/delete the Notion Meal Plan row.
+- [x] Phase 8B current-week dinner planning is production-active and backed by
+  Postgres for the grocery workflow.
+- [ ] Planner assignment uses existing saved Meals only. There is no AI week
+  generation, drag-and-drop, or meal invention.
+- [ ] Legacy Notion Planner behavior may still leave historical Meal Plan rows;
+  Phase 8B weekly dinner planning uses Postgres for the active grocery workflow.
+
+## Phase 8 Grocery / Weekly Planning Known Limitations
+
+- [ ] Grocery generation deduplicates normalized ingredient names only. It does
+  not aggregate quantities, reconcile units, estimate package sizes, or calculate
+  cost.
+- [ ] Checklist state is persisted per saved grocery list, but there is no
+  multi-user conflict handling or account-level household sharing yet.
+- [ ] Regeneration preserves completed state only when normalized ingredient
+  names still match.
+- [ ] Pantry tracking, household inventory deduction, barcode scanning, retailer
+  integrations, Instacart/Walmart flows, and shopping optimization are still out
+  of scope.
+- [ ] Ingredient parsing is deterministic and improved for known production
+  examples, but unusual recipe prose can still require future parser aliases or
+  fixtures.
 
 ## Beta 5 Cookbook Known Limitations
 
 - [ ] Family adjustments are persisted as marked Meal Feedback notes, not a dedicated Family Adjustments table. This is schema-neutral but append-only and should be migrated if richer editing/history is needed.
 - [ ] Older meals without recognizable Ingredients or Instructions sections show cookbook empty states and rely on Original Recipe access.
-- [ ] Cookbook ingredient parsing is read-time and conservative. It preserves `name`, `quantity`, `unit`, and `rawText` where available, but it is not ready for grocery aggregation.
+- [ ] Cookbook ingredient parsing is read-time and conservative. Phase 8 grocery
+  lists use normalized ingredient names, but quantity/unit aggregation remains
+  deferred.
 - [x] `Add to Planner` now deep-links to `/planner?meal=<id>` and Planner preselects the matching saved meal for assignment.
 - [ ] Original recipe access uses `Source URL` when present and the saved Notion record as fallback.
 
@@ -118,7 +150,8 @@ Validation gate is green on `main`: `npm run typecheck`, `npm run lint`, `npm te
 - [ ] Household metadata projection/filtering depends on optional Notion properties. Existing databases without those properties still operate as single-household private stores.
 - [ ] Ingredient enrichment is explicit/manual only from Settings or direct API calls; it does not run during meal analysis or ingredient suggestion persistence.
 - [ ] Canada grocery, nutrition, Open Food Facts, and weather integrations are adapter stubs only. Recipe parser has an active shared-URL implementation, but it remains intentionally dependency-free.
-- [ ] Legacy Weekly Plans and Meal Templates database IDs exist but are not used by `/planner`; the new planner uses `NOTION_MEAL_PLAN_SOURCE_ID`.
+- [ ] Legacy Weekly Plans and Meal Templates database IDs may still exist, but
+  Phase 8B's grocery workflow planner uses Postgres weekly dinner plans.
 - [ ] Production smoke-test automation is read-only by design and does not cover OpenAI analysis or Notion write flows.
 - [ ] Beta 3.5 added local write-flow verification for Analyze -> Save -> Notion -> Meals -> Dashboard, but production write-flow smoke automation is still manual because it creates Notion records.
 - [ ] Beta 2/Beta 3 feedback refresh, learning strip, usability copy, and client-only undo required no Notion schema changes. Richer feedback analytics or persisted undo/reversal would need explicit backend and schema/product decisions.

@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-13 (Beta 6 QA closeout; Beta 6.3-6.5 family-feedback closeout)
+Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -118,10 +118,14 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Complete Beta 6.5 Nutrition Reliability v1 (`9a04047`): structured nutrition still wins, ingredient-based estimates fill many gaps, social intake paths benefit when ingredients are recovered, and manual nutrition entry remains optional.
 - [x] Add social intake normalization (landed outside the approved Beta 6 PR sequence; parallel share-intake hardening): source classifier for social/recipe/plain-text input, versioned social-recipe-normalization AI module, and Analyze social fallback UX that preserves source metadata.
 - [x] Harden Notion schema handling: household filtering reads the active Meals data source, new saves write `Meal Date` when a compatible property exists, schema diagnostics cover Feedback/Ingredients Meal relations, nutrient basis fields, and optional Meal Intake storage, and `docs/NOTION_SCHEMA_CHECKLIST.md` documents the full optional schema. No automatic Notion schema mutation; all manual Notion additions remain optional.
+- [x] Complete Phase 8A Grocery Engine (`8d7ffc0`): deterministic ingredient normalization, grocery category mapping, single-meal and multi-meal grocery generation, grocery history metadata, and mobile-first categorized checklist UI.
+- [x] Complete Phase 8A.1 Ingredient Intelligence Hardening (`894441c`): deterministic ingredient blob splitting, note/retailer annotation cleanup, stronger aliases, smarter category placement, and regression tests for Beef and Broccoli, Beef Kafta, and notes such as `as needed`.
+- [x] Complete Phase 8B Weekly Meal Planning & Grocery Workflow (`5fe9198`): current-week dinner planner, persisted weekly plan, grocery generation from the plan, persisted checklist state, saved grocery list reopening, regeneration with matched-item completion preservation, and mobile shopping UX.
+- [x] Apply and verify Phase 8 production database migrations through `drizzle/0002_grocery_lists.sql` and `drizzle/0003_fearless_big_bertha.sql`; production smoke passed for `/planner`, `/grocery`, saved grocery lists, checklist refresh persistence, and `/grocery?meal=<real-meal-id>`.
 
 ## Current Sprint
 
-- [ ] Deploy the completed family-feedback cycle commits (`f49d023`, `8be7817`, `9a04047`) plus this docs closeout, then observe Save Continuity, Meal OS Summary, and Nutrition Reliability on real family meals.
+- [x] Deploy the Phase 8 grocery planning milestone and verify production database migrations.
 - [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
 - [x] Review evidence-aware guidance quality on representative real household meals and tune the first household answer.
@@ -134,11 +138,12 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] If optional nutrition and quality properties are added to Notion Meals, confirm new saves populate them.
 - [ ] Verify Meal Feedback → Meals relation property is created in Notion and relation writes work in production.
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
-- [ ] Verify `/planner` against the production Meal Plan data source after adding `NOTION_MEAL_PLAN_SOURCE_ID`.
+- [x] Verify `/planner` against production data after Phase 8B deployment and migration.
 - [ ] Run an on-device iPhone Safari Beta 4 pass for `/today`, `/analyze`, `/meals`, `/planner`, `/dashboard`, `/feedback`, `/settings`, and representative `/meals/[id]`.
 
 ## Next Up
 
+- [ ] **Phase 8C (recommended next slice) — Dinner Concierge -> Weekly Planner Integration:** let a committed Dinner Concierge choice flow naturally into the current weekly plan and then into grocery generation. Reuse the existing planner and grocery engine; do not add AI planning, pantry, quantity math, or retailer integrations in this slice.
 - [ ] **Postgres Phase 2 — Shadow writes:** add a non-blocking Postgres shadow write to `POST /api/notion/save-meal` after Notion write succeeds. Run `scripts/backfill-meals-to-postgres.ts` (to be written) against the live meal archive. Validate row counts before enabling reads.
 - [ ] **Beta 6.6 (recommended next slice) — URL Recovery / Guided Intake Fallback v1:** improve blocked or script-rendered URL recovery with clearer guided paste/caption fallback while preserving source-URL re-attachment. Keep it a small reliability/UX slice — no Notion schema changes, no new AI calls. A first step already exists, committed locally as `ce7dc0d` but not yet pushed (`getUrlRecoveryCopy` in `src/app/analyze/components/status-banner.tsx` + `tests/analyze-guided-recovery.test.ts`). Domain-specific learning and a richer parser dependency stay deferred unless the tradeoff proves worth it.
 - [ ] Persistent Intelligence Snapshot v2: preserve more exact Analyze fields with a deliberate schema/storage plan once the compact Meal OS Summary proves useful.
@@ -170,12 +175,14 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 ## Future Ideas
 
 - [x] Weekly dinner planning foundation.
+- [x] Shopping list generation.
+- [x] Grocery history and persisted shopping checklist state.
 - [ ] AI-assisted weekly planning suggestions.
 - [ ] Meal templates.
 - [ ] Household preference profile.
-- [ ] Shopping list generation.
 - [ ] Pantry-aware substitutions.
-- [ ] Grocery list generation from structured cookbook ingredients after quantity/unit persistence is trustworthy.
+- [ ] Quantity aggregation for grocery lists.
+- [ ] Grocery list generation from structured cookbook quantities after unit/quantity persistence is trustworthy.
 - [ ] Inventory and pantry consumption after grocery list behavior is validated.
 - [ ] Open Food Facts enrichment for Canadian grocery products.
 - [ ] Canadian grocery price/flyer intelligence through adapters.
@@ -204,7 +211,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Need broader integration tests for API route validators and Notion adapter behavior.
 - [ ] Notion Notes field has a 2000-character hard limit; buildMealNotesSummary truncates with an explicit marker as a safety measure.
 - [ ] Integration adapter interfaces are intentionally stubbed and may evolve once real providers are selected.
-- [ ] Beta 5 cookbook ingredient parsing is intentionally narrow and read-time. Dedicated per-meal structured ingredient persistence is still needed before grocery aggregation.
+- [ ] Phase 8 grocery generation intentionally deduplicates normalized ingredient names only. Quantity aggregation, unit conversion, and pantry deduction remain deferred until structured quantities are trustworthy.
 - [ ] Recipe parser remains dependency-free. It now handles shared/social intake more gracefully, but it is still not as robust as a full Readability parser and cannot access blocked captions/transcripts.
 - [ ] FoodData Central matching is improved but remains heuristic and needs ongoing quality review.
 - [ ] The `/analyze` review UI has a first hierarchy pass, but the rest of the app still needs household UX simplification.

@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-13 (Beta 6.3-6.5 family-feedback closeout)
+Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -16,6 +16,7 @@ Frontend surfaces:
   - `/meals`
   - `/meals/[id]`
   - `/planner`
+  - `/grocery`
   - `/feedback`
   - `/settings`
 - `/` renders Today. `/dashboard` remains available as the dashboard intelligence client backed by `/api/dashboard`.
@@ -43,6 +44,10 @@ Backend work is implemented through App Router API routes:
 - `src/app/api/notion/save-ingredients/route.ts`
 - `src/app/api/notion/log-feedback/route.ts`
 - `src/app/api/planner/route.ts` — Weekly Planner v1.1
+- `src/app/api/weekly-plan/route.ts` — Phase 8B Postgres weekly dinner plan
+- `src/app/api/weekly-plan/grocery/route.ts` — grocery generation from the weekly plan
+- `src/app/api/grocery-lists/route.ts` — grocery history and ad hoc grocery generation
+- `src/app/api/grocery-lists/[id]/route.ts` — saved grocery list retrieval and checklist updates
 - `src/app/api/intake/share/route.ts` — iPhone Share Sheet intake (Beta 3.6)
 
 Intake flow (Beta 3.6):
@@ -198,21 +203,47 @@ Analyze -> Save -> Notion -> Reload -> Cookbook
    - `buildMealCookbook` prefers dedicated properties, then falls back to Notes sections, then to empty states. Read-time parsing structures `name` / `quantity` / `unit` from `rawText` lines, so the persisted form preserves original fidelity and structure derivation can improve later without migration.
    - Family adjustments remain overlays sourced from marked Meal Feedback records; they never modify the persisted recipe content.
 
-Why grocery/inventory stays deferred: aggregation needs trustworthy per-ingredient quantities and serving assumptions across meals. Beta 5.1 deliberately stops at verbatim `rawText` fidelity plus best-effort structure, because aggregating heuristic quantities would bake wrong numbers into shopping lists. Once enough newly saved meals carry verbatim ingredient lines, aggregation can be layered on without redesigning capture.
+Phase 8 update: grocery list generation is now active, but it deliberately
+avoids quantity math. The grocery engine extracts purchasable ingredient names,
+normalizes aliases, splits obvious ingredient blobs, strips shopping-irrelevant
+notes, deduplicates after normalization, and groups by grocery category. This
+solves the household shopping-list workflow without pretending to reconcile
+serving sizes, units, or package quantities.
 
 Deferred systems:
-- Grocery lists, pantry tracking, inventory consumption, barcode scanning, shopping workflows, multi-user permissions, and auth changes are intentionally out of scope.
-- The app should not aggregate ingredients into shopping quantities until structured ingredient persistence and serving assumptions are stronger.
+- Pantry tracking, inventory consumption, barcode scanning, retailer delivery,
+  price estimation, multi-user permissions, and auth changes are intentionally
+  out of scope.
+- The app should not aggregate ingredient quantities until structured ingredient
+  persistence, units, and serving assumptions are stronger.
 - The current feedback-backed adjustment persistence is schema-neutral; a later migration can promote marked notes into a dedicated Family Adjustments relation without changing the cookbook UI contract.
 
 Weekly Planner:
 1. `/planner` renders `src/app/planner/planner-client.tsx`.
-2. Client loads planner state from `GET /api/planner` and saved meal options from `GET /api/notion/meals?pageSize=100`.
-3. `src/lib/notion/meal-plan.ts` reads `NOTION_MEAL_PLAN_SOURCE_ID` directly, or falls back to `NOTION_MEAL_PLAN_DATABASE_ID` and retrieves the primary data source, then validates required properties and queries current-week rows.
-4. Planner rows use `Plan Date`, `Meal Slot`, `Meal`, `Status`, `Source`, and `Household Notes`; Breakfast, Lunch, Dinner, and Snack are shown in v1.1.
-5. `POST /api/planner` validates `planDate` as `YYYY-MM-DD`, `slot`, `status`, and Notion meal page IDs before writing.
-6. Assign upserts one row per date/slot with `Source: Manual` and `Status: Planned`; clear removes only the Meal relation and resets status to Planned; status updates only the Status property.
-7. Missing Meal Plan source/database config returns setup diagnostics instead of crashing. Incomplete schema also blocks writes and surfaces safe setup messages.
+2. Legacy Notion planner support remains documented in historical Beta 6
+   sections, but Phase 8B's household dinner-planning workflow uses Postgres via
+   `GET /api/weekly-plan` and `POST /api/weekly-plan`.
+3. The Phase 8B planner persists one dinner meal per Monday-Sunday day for the
+   current week in `weekly_dinner_plans`.
+4. Saved meal options still come from the existing saved meal archive.
+5. `POST /api/weekly-plan/grocery` gathers planned meals and generates or
+   regenerates one consolidated grocery list through the grocery engine.
+6. Regeneration updates the active weekly grocery list and preserves completed
+   checklist state where normalized ingredient names still match.
+
+Grocery Engine and Shopping Workflow:
+1. Grocery domain logic lives under `src/lib/domain/grocery`.
+2. `ingredient-normalizer.ts` strips notes, splits ingredient blobs, normalizes
+   aliases, and deduplicates after normalization.
+3. `grocery-categories.ts` maps every item into Produce, Protein, Dairy,
+   Bakery, Frozen, Pantry, Spices, Condiments, Beverages, or Other.
+4. `grocery-generator.ts` builds grouped single-meal and multi-meal grocery
+   lists. UI components do not own business rules.
+5. `grocery_lists` stores list metadata, source type, meal IDs, optional week
+   start date, created time, and updated time.
+6. `grocery_list_items` stores persisted item/category/completed state.
+7. `/grocery` supports ad hoc meal-backed generation, recent list history,
+   saved-list reopening, and persisted shopping progress.
 
 Diagnostics:
 1. `/settings` calls `GET /api/diagnostics/notion`.
@@ -358,7 +389,10 @@ Tenancy:
 
 ## Postgres / Drizzle Layer (Phase 1 Foundation)
 
-Added 2026-06-13. Notion remains the active source of truth; Postgres is not yet read or written by any API route.
+Added 2026-06-13. Updated 2026-06-25: Notion remains the active source of truth
+for the saved meal archive, feedback, and ingredient enrichment. Postgres is now
+active for Phase 8 grocery lists, grocery checklist items, and weekly dinner
+plans.
 
 ### Infrastructure
 
@@ -372,7 +406,9 @@ Added 2026-06-13. Notion remains the active source of truth; Postgres is not yet
 
 ### Schema
 
-`src/lib/db/schema.ts` — `meals` table only. Phase 2+ will add `meal_feedback`, `ingredients`, `meal_ingredient_links`, `planner_slots`, and `intake_queue`.
+`src/lib/db/schema.ts` — includes the original Postgres `meals` foundation plus
+Phase 8 grocery and planning tables: `grocery_lists`, `grocery_list_items`, and
+`weekly_dinner_plans`.
 
 Key design decisions:
 - `notion_page_id` (unique) and `notion_url` are permanent sync anchors; they survive even after Notion is demoted to archive.
@@ -396,7 +432,9 @@ Key design decisions:
 
 ### Phase roadmap
 
-- **Phase 1 (current):** Infrastructure only. Drizzle schema, migration file, DB client. No reads, no writes.
+- **Phase 1:** Infrastructure only. Drizzle schema, migration file, DB client.
+- **Phase 8 grocery/planning slice:** Postgres is production-active for grocery
+  history, checklist item state, and weekly dinner plans.
 - **Phase 2:** Shadow writes to `meals` from `POST /api/notion/save-meal` (non-blocking try-catch). Run backfill script.
 - **Phase 3:** Dual-read behind `POSTGRES_SOURCE_ENABLED` feature flag. Validate row counts match Notion.
 - **Phase 4:** Postgres primary for meals reads/writes. Notion kept as archive. Migrate feedback, planner, ingredients.
@@ -404,15 +442,20 @@ Key design decisions:
 ## Planned Data Model Evolution
 
 Current source of truth:
-- Notion databases (Postgres shadow layer added in Phase 1; not yet active).
+- Notion databases for saved meals, feedback, ingredient enrichment, and legacy
+  planner history.
+- Postgres for Phase 8 weekly dinner plans, grocery list metadata, and grocery
+  checklist items.
 
 Actively used entities:
 - Meals.
 - Ingredients.
 - Meal Feedback.
+- Weekly Dinner Plans.
+- Grocery Lists.
+- Grocery List Items.
 
 Configured but not fully used:
-- Weekly Plans.
 - Meal Templates.
 
 Expected evolution:

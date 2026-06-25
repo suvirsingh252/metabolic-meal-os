@@ -1,6 +1,6 @@
 # PM Handover
 
-Last updated: 2026-06-11 (Beta 3.5 Functional Audit)
+Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
 
 This is the recommended starting point for a new PM/chat with no prior conversation context. Read this first, then read `docs/HANDOFF.md`, `docs/ROADMAP.md`, and `docs/KNOWN_ISSUES.md` before proposing work.
 
@@ -45,6 +45,20 @@ Live and working:
 - Read-only production smoke-test automation via `npm run smoke:prod`.
 - `/analyze` review UI has a first household-first simplification pass with progressive disclosure.
 - Dashboard intelligence remains available at `/dashboard` through `/api/dashboard`, `DashboardViewModel`, daily/weekly summaries, insights, configurable targets, recent meals, and meal quality v1. Beta 3.5 verified a known saved meal round-tripped `755 kcal`, `26 g protein`, `15 g fiber`, `medium` confidence, `estimated` source, provenance, and quality into Notion retrieval and dashboard totals.
+- Grocery Engine is live at `/grocery`: users can generate categorized,
+  deduplicated grocery lists from one or more meals, open saved grocery lists,
+  and check items off while shopping.
+- Ingredient Intelligence Hardening is live: grocery generation splits obvious
+  ingredient blobs, strips notes such as `optional`, `as needed`, and retailer
+  annotations, normalizes common ingredient aliases, and maps every item to a
+  grocery category.
+- Weekly Meal Planning is live at `/planner`: users can select one dinner for
+  each day of the current week, generate one consolidated grocery list from the
+  plan, regenerate after plan changes, and keep checklist progress across
+  refreshes or multiple shopping trips.
+- Production database migrations through Phase 8B are applied and verified in
+  Neon/Vercel Postgres. Current production commit is
+  `5fe91983e32f175971a22db74033566da1050f71`.
 
 Recently verified production facts:
 - Evidence-Aware Analysis v3 works in production.
@@ -68,6 +82,8 @@ Core stack:
 
 Data and services:
 - Notion is the current persistence layer.
+- Neon/Vercel Postgres stores Phase 8 weekly dinner plans, grocery list history,
+  and grocery checklist items.
 - OpenAI is the analysis layer and returns structured JSON.
 - USDA FoodData Central is the nutrient lookup/enrichment source.
 - Source registry and health-guidance modules provide static evidence-aware guidance context.
@@ -114,6 +130,21 @@ Important architecture rules:
 - Raw notes, provenance, and external saved-record links are hidden under Advanced details.
 - `Would Make Again` is repeat-only in household summaries.
 
+`/planner`:
+- Shows the current week and supports one dinner selection per day.
+- Persists selections in Postgres through `/api/weekly-plan`.
+- Generates or regenerates a consolidated grocery list from planned meals.
+- Recommended next integration point: Dinner Concierge should be able to send a
+  chosen dinner into this planner without duplicating planner logic.
+
+`/grocery`:
+- Generates grocery lists from one or more meals or opens an existing saved
+  list.
+- Groups items by grocery category and deduplicates after normalization.
+- Persists generated list history and checklist completion state.
+- `/grocery?meal=<id>` remains the single-meal deep link; `/grocery?list=<id>`
+  opens saved lists.
+
 `/feedback`:
 - Loads saved meals for selection.
 - Allows saved-meal or manual feedback.
@@ -150,8 +181,14 @@ Meal Feedback:
 - Used by `/feedback`, Today quick actions, Meal Detail quick actions, Recent Household Learning, and deterministic Today preference scoring. No Beta 2/Beta 3 schema changes were required.
 
 Weekly Plans:
-- Configured by env/database ID but not actively used yet.
-- Future planning workflow.
+- Phase 8B current-week dinner planning is active in Postgres.
+- Legacy Notion planner data/source configuration may still exist for older
+  planning history, but the grocery workflow now uses the Postgres weekly plan.
+
+Grocery Lists:
+- Active in Postgres.
+- Store list metadata, source type, generated meal IDs, optional week start
+  date, item count/history, and per-item completed state.
 
 Meal Templates:
 - Configured by env/database ID but not actively used yet.
@@ -185,6 +222,9 @@ Highest priority:
 - Persisted feedback reversal/delete remains deferred; do not imply feedback can be durably undone until a backend behavior exists.
 - Recommendation scoring is deterministic v1 and unpersisted; there is no recommendation audit log or planning workflow yet.
 - Structured ingredient parsing/persistence is pending.
+- Grocery quantity aggregation, unit conversion, pantry deduction, and retailer
+  integrations are intentionally deferred; current grocery lists are normalized
+  ingredient-name checklists.
 - No Notion write-back migration exists for legacy nutrition or quality fields.
 - Dashboard targets are client-side only.
 - Recipe parser is dependency-free and improved for shared intake, but still cannot bypass blocked, login-gated, video-only, or client-rendered sources.
@@ -218,7 +258,7 @@ Other debt:
 6. Continue real-world recipe/social URL intake testing and record blocked/problematic domains.
 7. Persisted feedback reversal/delete path, only if product rules require it.
 8. Household preference persistence.
-9. Weekly planning later.
+9. Dinner Concierge -> Weekly Planner Integration.
 
 ## 10. Manual Closeout Notes From 2026-05-25
 
