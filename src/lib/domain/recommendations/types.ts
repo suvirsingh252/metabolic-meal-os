@@ -1,4 +1,5 @@
 import type { MealFeedbackSummary } from "@/src/lib/domain/feedback";
+import type { MealIntelligence } from "@/src/lib/domain/meal-intelligence";
 
 export type TodayMealCategory = "Breakfast" | "Lunch" | "Dinner" | "Snack";
 
@@ -26,6 +27,19 @@ export interface RecommendationMeal {
   fatG: number | null;
   fiberG: number | null;
   qualityScore: number | null;
+  proteinLevel?: string | null;
+  satietyLevel?: string | null;
+  bloodSugarImpact?: string | null;
+  effortLevel?: string | null;
+  notes?: string | null;
+  ingredientsText?: string | null;
+  instructionsText?: string | null;
+  metabolicScore?: number | null;
+  proteinScore?: number | null;
+  fiberScore?: number | null;
+  satietyScoreNumeric?: number | null;
+  bloodSugarRiskScore?: number | null;
+  intelligence?: MealIntelligence;
 }
 
 export interface RecommendationScoreBreakdown {
@@ -33,6 +47,7 @@ export interface RecommendationScoreBreakdown {
   recencyScore: number;
   varietyPenalty: number;
   schedulingScore: number;
+  intelligenceScore: number;
   feedbackAdjustment: number;
   totalScore: number;
 }

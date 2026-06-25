@@ -34,7 +34,19 @@ function meal(overrides: Partial<DinnerConciergeMeal>): DinnerConciergeMeal {
     imageUrl: overrides.imageUrl,
     estimatedMinutes: overrides.estimatedMinutes,
     effortLevel: overrides.effortLevel,
-    tags: overrides.tags
+    tags: overrides.tags,
+    proteinLevel: overrides.proteinLevel,
+    satietyLevel: overrides.satietyLevel,
+    bloodSugarImpact: overrides.bloodSugarImpact,
+    notes: overrides.notes,
+    ingredientsText: overrides.ingredientsText,
+    instructionsText: overrides.instructionsText,
+    metabolicScore: overrides.metabolicScore,
+    proteinScore: overrides.proteinScore,
+    fiberScore: overrides.fiberScore,
+    satietyScoreNumeric: overrides.satietyScoreNumeric,
+    bloodSugarRiskScore: overrides.bloodSugarRiskScore,
+    intelligence: overrides.intelligence
   };
 }
 
@@ -60,6 +72,8 @@ test("1. view model returns a lead and two alternates from ranked meals", () => 
 
   assert.ok(view.leadRecommendation);
   assert.equal(view.alternates.length, 2);
+  assert.ok(view.leadRecommendation!.explanation.headline.length > 0);
+  assert.ok(view.leadRecommendation!.explanation.details.length > 0);
   assert.equal(view.emptyState, undefined);
   const ids = [
     view.leadRecommendation!.mealId,
@@ -255,4 +269,17 @@ test("10. generated reasons are non-empty human-readable strings", () => {
     assert.ok(reason.trim().length > 0);
     assert.notEqual(reason, view.leadRecommendation!.mealId);
   }
+});
+
+test("11. sparse concierge explanations avoid unsupported strong claims", () => {
+  const meals = [
+    meal({ id: "bare", mealName: "Bare dinner" }),
+    meal({ id: "bare2", mealName: "Second bare dinner" })
+  ];
+
+  const view = getDinnerConciergeViewModel({ meals, generatedAt: weeknightAt });
+  const details = view.leadRecommendation!.explanation.details.join(" ");
+
+  assert.match(details, /cautious|limited/i);
+  assert.doesNotMatch(details, /strong fit|worked well|family loved/i);
 });

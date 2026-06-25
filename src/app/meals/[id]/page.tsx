@@ -46,6 +46,24 @@ function formatValue(value: number | null, unit: string) {
   return unit === "/100" ? `${rounded}${unit}` : `${rounded} ${unit}`;
 }
 
+function formatLabel(value: string | null | undefined) {
+  if (!value) {
+    return "Unknown";
+  }
+
+  return value
+    .split(/[-_\s]+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatProteinDensity(value: number | null) {
+  if (value === null) return null;
+  if (value >= 5) return "High";
+  if (value >= 3) return "Moderate";
+  return "Low";
+}
+
 function EmptyText({ children }: { children: string }) {
   return <p className="text-sm leading-6 text-muted-foreground">{children}</p>;
 }
@@ -264,6 +282,147 @@ export default async function MealDetailPage({
           </CardContent>
         </Card>
       ) : null}
+
+      <details className="rounded-md border bg-card p-4">
+        <summary className="cursor-pointer font-medium">Meal Insights</summary>
+        <div className="mt-4 space-y-5 border-t pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryItem
+              label="Insight confidence"
+              value={formatLabel(detail.intelligence.confidence)}
+            />
+            <SummaryItem
+              label="Preparation complexity"
+              value={formatLabel(detail.intelligence.preparationComplexity)}
+            />
+            <SummaryItem
+              label="Active cooking time"
+              value={
+                detail.intelligence.activeCookingTimeMinutes
+                  ? `${detail.intelligence.activeCookingTimeMinutes} minutes`
+                  : null
+              }
+            />
+            <SummaryItem
+              label="Cleanup effort"
+              value={formatLabel(detail.intelligence.cleanupEffort)}
+            />
+            <SummaryItem
+              label="Estimated cost"
+              value={formatLabel(detail.intelligence.estimatedCost)}
+            />
+            <SummaryItem
+              label="Weeknight fit"
+              value={formatLabel(detail.intelligence.weeknightSuitability)}
+            />
+            <SummaryItem
+              label="Meal prep fit"
+              value={formatLabel(detail.intelligence.mealPrepSuitability)}
+            />
+            <SummaryItem
+              label="Freezer fit"
+              value={formatLabel(detail.intelligence.freezerSuitability)}
+            />
+            <SummaryItem
+              label="Leftover quality"
+              value={formatLabel(detail.intelligence.leftoverQuality)}
+            />
+            <SummaryItem
+              label="Family friendliness"
+              value={formatLabel(detail.intelligence.familyFriendliness)}
+            />
+            <SummaryItem
+              label="Kid friendliness"
+              value={formatLabel(detail.intelligence.kidFriendliness)}
+            />
+            <SummaryItem
+              label="Special occasion fit"
+              value={formatLabel(detail.intelligence.specialOccasionSuitability)}
+            />
+            <SummaryItem
+              label="Vegetable density"
+              value={formatLabel(detail.intelligence.vegetableDensity)}
+            />
+            <SummaryItem
+              label="Cooking method"
+              value={formatLabel(detail.intelligence.cookingMethod)}
+            />
+            <SummaryItem
+              label="Primary protein"
+              value={formatLabel(detail.intelligence.primaryProtein)}
+            />
+            <SummaryItem
+              label="Spice level"
+              value={formatLabel(detail.intelligence.spiceLevel)}
+            />
+            <SummaryItem
+              label="Protein density"
+              value={formatProteinDensity(detail.intelligence.proteinDensity)}
+            />
+          </div>
+
+          {detail.intelligence.nutritionHighlights.length > 0 ? (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Nutrition highlights</h3>
+              <div className="flex flex-wrap gap-2">
+                {detail.intelligence.nutritionHighlights.map((highlight) => (
+                  <Badge key={highlight}>{highlight}</Badge>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Tags and season</h3>
+              <div className="flex flex-wrap gap-2">
+                {[...detail.intelligence.dietaryTags, ...detail.intelligence.seasonalSuitability].slice(0, 8).map((tag) => (
+                  <Badge className="bg-muted text-muted-foreground" key={tag}>
+                    {formatLabel(tag)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Evidence used</h3>
+              <div className="flex flex-wrap gap-2">
+                {detail.intelligence.evidence.slice(0, 6).map((item) => (
+                  <Badge className="bg-muted text-muted-foreground" key={item}>
+                    {formatLabel(item)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Similar meals</h3>
+              {detail.intelligence.similarMeals.length > 0 ? (
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {detail.intelligence.similarMeals.slice(0, 3).map((item) => (
+                    <li key={item.mealId}>
+                      {item.mealName}: {item.reasons.slice(0, 2).join(", ")}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyText>No close saved-meal matches yet.</EmptyText>
+              )}
+            </div>
+          </div>
+
+          {detail.intelligence.ingredientOverlap.length > 0 ? (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Ingredient overlap</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {detail.intelligence.ingredientOverlap.slice(0, 3).map((item) => (
+                  <li key={item.mealId}>
+                    {item.mealName}: {item.sharedIngredients.slice(0, 4).join(", ")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      </details>
 
       <Card>
         <CardHeader>

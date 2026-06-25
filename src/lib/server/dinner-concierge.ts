@@ -111,9 +111,20 @@ export function mapMealSummaryToConciergeMeal(
     fatG: summary.fatG,
     fiberG: summary.fiberG,
     qualityScore: summary.qualityScore,
+    proteinLevel: summary.proteinLevel,
+    satietyLevel: summary.satietyLevel,
+    bloodSugarImpact: summary.bloodSugarImpact,
+    effortLevel: summary.effortLevel,
+    notes: summary.notes,
+    ingredientsText: summary.ingredientsText,
+    instructionsText: summary.instructionsText,
+    metabolicScore: summary.metabolicScore,
+    proteinScore: summary.proteinScore,
+    fiberScore: summary.fiberScore,
+    satietyScoreNumeric: summary.satietyScoreNumeric,
+    bloodSugarRiskScore: summary.bloodSugarRiskScore,
     imageUrl: summary.imageUrl ?? null,
     estimatedMinutes: null,
-    effortLevel: summary.effortLevel,
     tags: deriveTags(summary)
   };
 }

@@ -11,6 +11,7 @@ import type {
   RecommendationScoreBreakdown,
   TodayMealCategory
 } from "@/src/lib/domain/recommendations/types";
+import { buildMealIntelligence } from "@/src/lib/domain/meal-intelligence";
 import {
   countMealRepeats,
   countNutritionFields,
@@ -27,19 +28,21 @@ export interface ScoreRecommendationInput {
   context?: RecommendationContext;
 }
 
-function clamp(value: number, min: number, max: number) {
+function clamp(value: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
 }
 
 export function computeSchedulingScore(meal: RecommendationMeal) {
+  const intelligence =
+    meal.intelligence ?? buildMealIntelligence(meal, [meal], null);
   let score = 0;
 
   if (typeof meal.qualityScore === "number") {
-    score += clamp(meal.qualityScore, 0, 100) * 0.4;
+    score += clamp(meal.qualityScore, 0, 100) * 0.25;
   }
 
   if (meal.familyApproved) {
-    score += 24;
+    score += 14;
   }
 
   if (meal.weeknightFriendly) {
@@ -51,8 +54,41 @@ export function computeSchedulingScore(meal: RecommendationMeal) {
   }
 
   score += countNutritionFields(meal) * 3;
+  score += intelligence.recommendationSignals.fit * 0.25;
 
   return score;
+}
+
+export function computeIntelligenceScore(
+  meal: RecommendationMeal,
+  category: TodayMealCategory
+) {
+  const intelligence =
+    meal.intelligence ?? buildMealIntelligence(meal, [meal], null);
+  const signals = intelligence.recommendationSignals;
+  let score =
+    signals.fit * 0.35 +
+    signals.nutrition * 0.25 +
+    signals.family * 0.2 +
+    signals.convenience * 0.15 +
+    signals.variety * 0.05;
+
+  if (category === "Dinner") {
+    if (intelligence.weeknightSuitability === "excellent") score += 10;
+    if (intelligence.mealPrepSuitability === "excellent") score += 4;
+  }
+
+  if (intelligence.preparationComplexity === "high") score -= category === "Dinner" ? 16 : 8;
+  if (intelligence.cleanupEffort === "high") score -= 4;
+
+  const confidenceCap =
+    intelligence.confidence === "low"
+      ? 38
+      : intelligence.confidence === "medium"
+        ? 68
+        : 100;
+
+  return Math.round(clamp(score, 0, confidenceCap));
 }
 
 export function computePreferenceScore(
@@ -169,6 +205,7 @@ export function scoreRecommendation(
   const context =
     input.context ?? deriveRecommendationContext(input.generatedAt);
   const schedulingScore = computeSchedulingScore(input.meal);
+  const intelligenceScore = computeIntelligenceScore(input.meal, input.category);
   // Chip feedback already feeds the base preference fields, so it owns the
   // feedback term via getFeedbackScoreAdjustment; running computePreferenceScore
   // as well would double-count loved/disliked signals. Legacy summaries keep
@@ -193,6 +230,7 @@ export function scoreRecommendation(
   );
   const totalScore =
     schedulingScore +
+    intelligenceScore +
     preferenceScore +
     recencyScore +
     varietyPenalty +
@@ -203,6 +241,7 @@ export function scoreRecommendation(
     recencyScore,
     varietyPenalty,
     schedulingScore,
+    intelligenceScore,
     feedbackAdjustment,
     totalScore
   };
@@ -214,6 +253,8 @@ export function generateRecommendationExplanation(
 ): RecommendationExplanation {
   const details: string[] = [];
   const feedback = input.feedbackSummary;
+  const intelligence =
+    input.meal.intelligence ?? buildMealIntelligence(input.meal, input.meals, feedback);
 
   if (feedback && feedback.totalEvents > 0) {
     if (scoreBreakdown.preferenceScore > 0) {
@@ -241,10 +282,20 @@ export function generateRecommendationExplanation(
     details.push("This adds variety because it has not repeated too often lately.");
   }
 
-  if (scoreBreakdown.schedulingScore > 0) {
-    details.push("This saved meal has useful quality or planning signals.");
+  const hasNutritionHighlight = intelligence.nutritionHighlights.some((highlight) =>
+    /protein|fiber|vegetable|quality/i.test(highlight)
+  );
+
+  if (intelligence.confidence === "low") {
+    details.push("Meal intelligence is cautious because saved details are limited.");
+  } else if (hasNutritionHighlight && scoreBreakdown.intelligenceScore >= 45) {
+    details.push("Meal intelligence notes stronger protein, fiber, or quality signals.");
+  } else if (scoreBreakdown.intelligenceScore >= 70) {
+    details.push("Meal intelligence sees a strong fit for tonight.");
+  } else if (scoreBreakdown.intelligenceScore >= 45) {
+    details.push("Meal intelligence sees a reasonable fit for tonight.");
   } else {
-    details.push("Saved meal details are limited, so this is a lighter recommendation.");
+    details.push("Meal intelligence has limited fit signals for tonight.");
   }
 
   const headline =
@@ -254,6 +305,6 @@ export function generateRecommendationExplanation(
 
   return {
     headline,
-    details
+    details: Array.from(new Set(details))
   };
 }

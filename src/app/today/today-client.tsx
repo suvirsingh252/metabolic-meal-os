@@ -81,7 +81,19 @@ function mapMealSummary(meal: MealSummary): RecommendationMeal {
     carbohydratesG: meal.carbohydratesG,
     fatG: meal.fatG,
     fiberG: meal.fiberG,
-    qualityScore: meal.qualityScore
+    qualityScore: meal.qualityScore,
+    proteinLevel: meal.proteinLevel,
+    satietyLevel: meal.satietyLevel,
+    bloodSugarImpact: meal.bloodSugarImpact,
+    effortLevel: meal.effortLevel,
+    notes: meal.notes,
+    ingredientsText: meal.ingredientsText,
+    instructionsText: meal.instructionsText,
+    metabolicScore: meal.metabolicScore,
+    proteinScore: meal.proteinScore,
+    fiberScore: meal.fiberScore,
+    satietyScoreNumeric: meal.satietyScoreNumeric,
+    bloodSugarRiskScore: meal.bloodSugarRiskScore
   };
 }
 

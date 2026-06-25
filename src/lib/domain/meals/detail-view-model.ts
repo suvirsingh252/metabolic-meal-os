@@ -13,6 +13,10 @@ import {
   buildMealCookbook,
   type MealCookbook
 } from "@/src/lib/domain/meals/cookbook";
+import {
+  buildMealIntelligence,
+  type MealIntelligence
+} from "@/src/lib/domain/meal-intelligence";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 
 export interface MealDetailNutritionItem {
@@ -49,6 +53,7 @@ export interface MealDetailViewModel {
   nutritionProvenance: string | null;
   hasNutritionData: boolean;
   mealOsSummary: MealOsSummaryViewModel;
+  intelligence: MealIntelligence;
   cookbook: MealCookbook;
 }
 
@@ -77,7 +82,19 @@ function mapMealToRecommendationMeal(meal: MealSummary): RecommendationMeal {
     carbohydratesG: meal.carbohydratesG,
     fatG: meal.fatG,
     fiberG: meal.fiberG,
-    qualityScore: meal.qualityScore
+    qualityScore: meal.qualityScore,
+    proteinLevel: meal.proteinLevel,
+    satietyLevel: meal.satietyLevel,
+    bloodSugarImpact: meal.bloodSugarImpact,
+    effortLevel: meal.effortLevel,
+    notes: meal.notes,
+    ingredientsText: meal.ingredientsText,
+    instructionsText: meal.instructionsText,
+    metabolicScore: meal.metabolicScore,
+    proteinScore: meal.proteinScore,
+    fiberScore: meal.fiberScore,
+    satietyScoreNumeric: meal.satietyScoreNumeric,
+    bloodSugarRiskScore: meal.bloodSugarRiskScore
   };
 }
 
@@ -329,6 +346,11 @@ export function buildMealDetailViewModel(
   );
   const nutritionItems = buildNutritionItems(meal);
   const feedbackReasons = buildFeedbackReasons(feedbackSummary);
+  const intelligence = buildMealIntelligence(
+    meal,
+    meals,
+    feedbackSummary.totalEvents > 0 ? feedbackSummary : null
+  );
 
   return {
     meal,
@@ -347,6 +369,7 @@ export function buildMealDetailViewModel(
       feedbackReasons,
       feedbackSummary
     ),
+    intelligence,
     cookbook: buildMealCookbook(meal, feedbackSummary)
   };
 }

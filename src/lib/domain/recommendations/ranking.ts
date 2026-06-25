@@ -19,6 +19,7 @@ import type {
   RecommendationMeal,
   TodayMealCategory
 } from "@/src/lib/domain/recommendations/types";
+import { buildMealIntelligence } from "@/src/lib/domain/meal-intelligence";
 
 export interface RankRecommendationOptions {
   generatedAt: string;
@@ -78,8 +79,14 @@ export function rankRecommendationsForCategory(
   return candidates
     .map((meal) => {
       const feedbackSummary = options.feedbackByMealId?.[meal.id] ?? null;
+      const mealWithIntelligence: RecommendationMeal = {
+        ...meal,
+        intelligence:
+          meal.intelligence ??
+          buildMealIntelligence(meal, meals, feedbackSummary)
+      };
       const scoreBreakdown = scoreRecommendation({
-        meal,
+        meal: mealWithIntelligence,
         meals,
         category,
         generatedAt: options.generatedAt,
@@ -98,7 +105,7 @@ export function rankRecommendationsForCategory(
       ];
       const explanation = generateRecommendationExplanation(
         {
-          meal,
+          meal: mealWithIntelligence,
           meals,
           category,
           generatedAt: options.generatedAt,
@@ -107,14 +114,14 @@ export function rankRecommendationsForCategory(
         scoreBreakdown
       );
       const confidence = getConfidence(
-        meal,
+        mealWithIntelligence,
         candidates.length,
         reasons,
         feedbackSummary
       );
 
       return {
-        meal,
+        meal: mealWithIntelligence,
         feedbackSummary,
         category,
         score: scoreBreakdown.totalScore,

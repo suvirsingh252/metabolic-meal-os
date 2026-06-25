@@ -305,6 +305,7 @@ function LeadCard({
   isRefreshing: boolean;
 }) {
   const reasonLine = recommendation.reasons.slice(0, 2).join(" · ");
+  const explanationDetails = recommendation.explanation.details.slice(0, 3);
 
   return (
     <Card className="overflow-hidden bg-primary text-primary-foreground">
@@ -331,6 +332,18 @@ function LeadCard({
         {reasonLine ? (
           <p className="text-base leading-7 text-primary-foreground/80">{reasonLine}</p>
         ) : null}
+        <div className="rounded-md bg-background/10 p-4">
+          <p className="text-sm font-semibold text-accent">
+            {recommendation.explanation.headline}
+          </p>
+          {explanationDetails.length > 0 ? (
+            <ul className="mt-2 space-y-1.5 text-sm leading-6 text-primary-foreground/80">
+              {explanationDetails.map((detail) => (
+                <li key={detail}>{detail}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
         <MetaBadges recommendation={recommendation} />
         <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
           <a href={getMealDetailPath(recommendation.mealId)}>
@@ -351,6 +364,7 @@ function AlternateCard({
   label?: string;
 }) {
   const reasonLine = recommendation.reasons.slice(0, 1).join(" · ");
+  const explanationLine = recommendation.explanation.details[0] ?? null;
 
   return (
     <a
@@ -371,6 +385,9 @@ function AlternateCard({
       <h3 className="font-semibold leading-tight">{recommendation.name}</h3>
       {reasonLine ? (
         <p className="text-sm text-muted-foreground">{reasonLine}</p>
+      ) : null}
+      {explanationLine ? (
+        <p className="text-xs leading-5 text-muted-foreground">{explanationLine}</p>
       ) : null}
       <MetaBadges recommendation={recommendation} compact />
       </div>

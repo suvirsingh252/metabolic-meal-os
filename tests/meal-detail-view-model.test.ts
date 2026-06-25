@@ -102,6 +102,8 @@ test("buildMealDetailViewModel returns a detail model for a saved meal", () => {
   assert.equal(detail?.cookbook.hasOriginalRecipe, true);
   assert.equal(detail?.cookbook.originalRecipeUrl, "https://example.com/chana");
   assert.equal(detail?.mealOsSummary.nutritionConfidence, "Estimated");
+  assert.equal(detail?.intelligence.primaryProtein, "chana");
+  assert.equal(detail?.intelligence.weeknightSuitability, "good");
   assert.equal(
     detail?.nutritionItems.find((item) => item.id === "protein")?.value,
     28

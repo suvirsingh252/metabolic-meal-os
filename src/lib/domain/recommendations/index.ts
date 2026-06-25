@@ -5,3 +5,4 @@ export * from "@/src/lib/domain/recommendations/scoring";
 export * from "@/src/lib/domain/recommendations/today-view-model";
 export * from "@/src/lib/domain/recommendations/types";
 export * from "@/src/lib/domain/recommendations/variety";
+export * from "@/src/lib/domain/meal-intelligence";

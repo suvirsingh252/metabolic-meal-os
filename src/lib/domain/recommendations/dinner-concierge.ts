@@ -8,6 +8,7 @@ import {
 import { rankRecommendationsForCategory } from "@/src/lib/domain/recommendations/ranking";
 import type {
   MealRecommendation,
+  RecommendationExplanation,
   RecommendationMeal,
   RecommendationScoreBreakdown
 } from "@/src/lib/domain/recommendations/types";
@@ -54,6 +55,7 @@ export interface DinnerConciergeRecommendation {
   refinementScore: number;
   scoreBreakdown: RecommendationScoreBreakdown;
   reasons: string[];
+  explanation: RecommendationExplanation;
   badges: string[];
 }
 
@@ -349,6 +351,7 @@ function toRecommendation(
     refinementScore,
     scoreBreakdown: ranked.scoreBreakdown,
     reasons,
+    explanation: ranked.explanation,
     badges: buildBadges(meal, effortMinutes(meal))
   };
 }

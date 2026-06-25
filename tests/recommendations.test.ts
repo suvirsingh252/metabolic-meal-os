@@ -29,7 +29,20 @@ function meal(overrides: Partial<RecommendationMeal>): RecommendationMeal {
     carbohydratesG: overrides.carbohydratesG ?? null,
     fatG: overrides.fatG ?? null,
     fiberG: overrides.fiberG ?? null,
-    qualityScore: overrides.qualityScore ?? null
+    qualityScore: overrides.qualityScore ?? null,
+    proteinLevel: overrides.proteinLevel ?? null,
+    satietyLevel: overrides.satietyLevel ?? null,
+    bloodSugarImpact: overrides.bloodSugarImpact ?? null,
+    effortLevel: overrides.effortLevel ?? null,
+    notes: overrides.notes ?? null,
+    ingredientsText: overrides.ingredientsText ?? null,
+    instructionsText: overrides.instructionsText ?? null,
+    metabolicScore: overrides.metabolicScore ?? null,
+    proteinScore: overrides.proteinScore ?? null,
+    fiberScore: overrides.fiberScore ?? null,
+    satietyScoreNumeric: overrides.satietyScoreNumeric ?? null,
+    bloodSugarRiskScore: overrides.bloodSugarRiskScore ?? null,
+    intelligence: overrides.intelligence
   };
 }
 
@@ -406,6 +419,116 @@ test("explanations include preference, recency, variety, and scheduling componen
     )
   );
   assert.ok(
-    explanation.details.some((detail) => detail.includes("saved meal"))
+    explanation.details.some((detail) => detail.includes("Meal intelligence"))
+  );
+});
+
+test("sparse meal intelligence is bounded, deterministic, and cautious in copy", () => {
+  const dinner = meal({
+    id: "sparse",
+    mealName: "Sparse dinner",
+    qualityScore: null
+  });
+  const firstScore = scoreRecommendation({
+    meal: dinner,
+    meals: [dinner],
+    category: "Dinner",
+    generatedAt,
+    feedbackSummary: null
+  });
+  const secondScore = scoreRecommendation({
+    meal: dinner,
+    meals: [dinner],
+    category: "Dinner",
+    generatedAt,
+    feedbackSummary: null
+  });
+  const explanation = generateRecommendationExplanation(
+    {
+      meal: dinner,
+      meals: [dinner],
+      category: "Dinner",
+      generatedAt,
+      feedbackSummary: null
+    },
+    firstScore
+  );
+
+  assert.deepEqual(firstScore, secondScore);
+  assert.ok(firstScore.intelligenceScore <= 38);
+  assert.ok(
+    explanation.details.some((detail) => detail.includes("cautious"))
+  );
+  assert.ok(!explanation.details.some((detail) => detail.includes("strong fit")));
+});
+
+test("high-complexity meals are penalized for weeknight dinner ranking", () => {
+  const simple = meal({
+    id: "simple",
+    mealName: "Simple lentil bowls",
+    qualityScore: 74,
+    weeknightFriendly: true,
+    ingredientsText: ["lentils", "spinach", "rice"].join("\n"),
+    instructionsText: "Simmer lentils for 20 minutes in one pot.",
+    proteinG: 24,
+    fiberG: 11,
+    calories: 560
+  });
+  const complex = meal({
+    id: "complex",
+    mealName: "Marinated roast dinner",
+    qualityScore: 92,
+    effortLevel: "High",
+    ingredientsText: ["chicken", "potatoes", "greens"].join("\n"),
+    instructionsText:
+      "Marinate overnight. Sear chicken. Roast potatoes. Bake greens. Make sauce. Rest and carve.",
+    proteinG: 35,
+    fiberG: 6,
+    calories: 690
+  });
+  const ranked = rankRecommendationsForCategory([complex, simple], "Dinner", {
+    generatedAt
+  });
+
+  assert.equal(ranked[0]?.meal.id, "simple");
+  assert.ok(
+    ranked.find((item) => item.meal.id === "complex")!.scoreBreakdown
+      .intelligenceScore <
+      ranked.find((item) => item.meal.id === "simple")!.scoreBreakdown
+        .intelligenceScore
+  );
+});
+
+test("high-protein meals get nutrition-specific intelligence explanation", () => {
+  const dinner = meal({
+    id: "protein",
+    mealName: "Chicken quinoa bowls",
+    qualityScore: 84,
+    ingredientsText: ["chicken", "quinoa", "broccoli"].join("\n"),
+    instructionsText: "Grill chicken and assemble bowls.",
+    proteinG: 38,
+    fiberG: 9,
+    calories: 640
+  });
+  const score = scoreRecommendation({
+    meal: dinner,
+    meals: [dinner],
+    category: "Dinner",
+    generatedAt,
+    feedbackSummary: null
+  });
+  const explanation = generateRecommendationExplanation(
+    {
+      meal: dinner,
+      meals: [dinner],
+      category: "Dinner",
+      generatedAt,
+      feedbackSummary: null
+    },
+    score
+  );
+
+  assert.ok(
+    explanation.details.some((detail) => /protein|fiber|quality/i.test(detail))
   );
 });
