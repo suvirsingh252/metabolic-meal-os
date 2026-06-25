@@ -234,7 +234,12 @@ export default async function MealDetailPage({
         title={meal.mealName}
       />
 
-      <MealImageUpload mealId={meal.id} />
+      <MealImageUpload
+        hasImage={Boolean(heroImageUrl)}
+        imageSource={meal.imageSource}
+        imageStatus={meal.imageStatus}
+        mealId={meal.id}
+      />
 
       <MealDetailActions
         initialFeedbackSummary={feedbackSummary}

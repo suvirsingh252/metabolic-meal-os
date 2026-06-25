@@ -8,18 +8,13 @@
  * Notion metadata/cover, and refreshes the Postgres mirror row.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { basicRecipeParserAdapter } from "@/src/lib/integrations/recipe-parser";
 import {
-  buildAiRecipeImageMetadata,
-  buildOriginalRecipeImageMetadata,
-  buildRecipeImagePrompt,
-  type RecipeImageContext
-} from "@/src/lib/images/recipe-image-pipeline";
-import { updateMealImageMetadata } from "@/src/lib/images/meal-image-persistence";
+  planMealImageResolution,
+  resolveMealImageForMeal,
+  shouldResolveMealImage
+} from "@/src/lib/images/meal-image-resolver";
 import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
-import type { MealImageMetadata } from "@/src/lib/types/meal";
-import type { RecipeIngredient } from "@/src/lib/types/recipe";
 
 function loadEnvLocal() {
   if (!existsSync(".env.local")) {
@@ -80,118 +75,16 @@ function parseArgs(argv: string[]) {
   return args;
 }
 
-function hasUsableImage(meal: MealSummary) {
-  return Boolean(meal.imageUrl && meal.imageStatus === "ready");
-}
-
 function shouldSkipMeal(meal: MealSummary) {
   if (meal.imageSource === "manual") {
     return "manual image";
   }
 
-  if (hasUsableImage(meal)) {
+  if (!shouldResolveMealImage(meal)) {
     return "already has image";
   }
 
   return null;
-}
-
-function parseIngredientLines(meal: MealSummary): RecipeIngredient[] {
-  const text = meal.ingredientsText ?? "";
-
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^[-*]\s*/, "").trim())
-    .filter(Boolean)
-    .slice(0, 60)
-    .map((rawText) => ({ rawText }));
-}
-
-function parseInstructionLines(meal: MealSummary) {
-  const text = meal.instructionsText ?? "";
-
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^\d+[.)]\s*/, "").trim())
-    .filter(Boolean)
-    .slice(0, 40);
-}
-
-function buildContext(
-  meal: MealSummary,
-  originalImageUrl: string | null
-): RecipeImageContext {
-  return {
-    title: meal.mealName,
-    cuisine: meal.cuisine,
-    ingredients: parseIngredientLines(meal),
-    instructions: parseInstructionLines(meal),
-    dietaryTags: [
-      meal.mealType ?? "",
-      meal.proteinLevel ? `${meal.proteinLevel} protein` : "",
-      meal.weeknightFriendly ? "weeknight friendly" : "",
-      meal.comfortMeal ? "comfort meal" : ""
-    ].filter(Boolean),
-    platingContext: meal.optimizedVersion ?? meal.notes,
-    sourceName: meal.sourceName,
-    sourceUrl: meal.sourceUrl,
-    originalImageUrl
-  };
-}
-
-async function findOriginalImageUrl(meal: MealSummary) {
-  if (meal.imageOriginalUrl) {
-    return meal.imageOriginalUrl;
-  }
-
-  if (!meal.sourceUrl) {
-    return null;
-  }
-
-  const parsed = await basicRecipeParserAdapter.parseFromUrl(meal.sourceUrl);
-
-  return parsed.image?.url ?? parsed.canonicalRecipe?.image?.url ?? null;
-}
-
-async function buildImageMetadataForMeal(
-  meal: MealSummary
-): Promise<{ metadata: MealImageMetadata; strategy: "original" | "ai" }> {
-  const originalImageUrl = await findOriginalImageUrl(meal);
-
-  if (originalImageUrl) {
-    const original = await buildOriginalRecipeImageMetadata(
-      buildContext(meal, originalImageUrl)
-    );
-
-    if (original) {
-      return { metadata: original, strategy: "original" };
-    }
-  }
-
-  const ai = await buildAiRecipeImageMetadata(buildContext(meal, null));
-
-  return { metadata: ai, strategy: "ai" };
-}
-
-async function planImageMetadataForMeal(meal: MealSummary) {
-  const originalImageUrl = await findOriginalImageUrl(meal).catch((error) => {
-    console.warn(`  Original image lookup failed: ${String(error)}`);
-    return null;
-  });
-
-  if (originalImageUrl) {
-    return {
-      strategy: "original" as const,
-      prompt: null,
-      originalImageUrl
-    };
-  }
-
-  return {
-    strategy: "ai" as const,
-    prompt: buildRecipeImagePrompt(buildContext(meal, null)),
-    originalImageUrl: null
-  };
 }
 
 async function main() {
@@ -223,7 +116,7 @@ async function main() {
 
     try {
       if (!args.write) {
-        const plan = await planImageMetadataForMeal(meal);
+        const plan = await planMealImageResolution(meal);
         console.log(
           plan.strategy === "original"
             ? `  Would copy original image: ${plan.originalImageUrl}`
@@ -232,8 +125,7 @@ async function main() {
         continue;
       }
 
-      const { metadata, strategy } = await buildImageMetadataForMeal(meal);
-      await updateMealImageMetadata(meal, metadata);
+      const { metadata, strategy } = await resolveMealImageForMeal(meal);
       updated += 1;
       console.log(
         `  Updated via ${strategy}: ${metadata.imageStatus}${

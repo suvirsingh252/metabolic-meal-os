@@ -12,9 +12,29 @@ import {
 import type { MealImageMetadata } from "@/src/lib/types/meal";
 
 type PageProperties = NonNullable<UpdatePageParameters["properties"]>;
+const RICH_TEXT_BLOCK_LIMIT = 2000;
+const RICH_TEXT_MAX_BLOCKS = 100;
 
 function richText(content: string) {
   return { rich_text: [{ text: { content } }] };
+}
+
+function richTextChunks(content: string) {
+  const chunks: Array<{ text: { content: string } }> = [];
+
+  for (
+    let offset = 0;
+    offset < content.length && chunks.length < RICH_TEXT_MAX_BLOCKS;
+    offset += RICH_TEXT_BLOCK_LIMIT
+  ) {
+    chunks.push({
+      text: { content: content.slice(offset, offset + RICH_TEXT_BLOCK_LIMIT) }
+    });
+  }
+
+  return {
+    rich_text: chunks.length > 0 ? chunks : [{ text: { content: "" } }]
+  };
 }
 
 function select(name: string) {
@@ -151,6 +171,64 @@ export function buildImageNotionProperties(
   return properties;
 }
 
+function formatImageMetadataSection(metadata: MealImageMetadata) {
+  return [
+    "Image Metadata:",
+    metadata.imageUrl ? `Image URL: ${metadata.imageUrl}` : null,
+    metadata.imageSource ? `Image Source: ${metadata.imageSource}` : null,
+    metadata.imageOriginalUrl
+      ? `Original Image URL: ${metadata.imageOriginalUrl}`
+      : null,
+    metadata.imageAttribution
+      ? `Image Attribution: ${metadata.imageAttribution}`
+      : null,
+    metadata.imageStatus ? `Image Status: ${metadata.imageStatus}` : null,
+    metadata.imageLastUpdated
+      ? `Image Last Updated: ${metadata.imageLastUpdated}`
+      : null,
+    metadata.imagePrompt ? `Image Prompt: ${metadata.imagePrompt}` : null
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function mergeImageMetadataIntoNotes(
+  notes: string | null,
+  metadata: MealImageMetadata
+) {
+  const section = formatImageMetadataSection(metadata);
+  const base = notes?.trim() ?? "";
+  const imageSectionPattern =
+    /(^|\n\n)Image Metadata:\n[\s\S]*?(?=\n\nAnalysis Framework v2 Summary:|\n\nEvidence-Aware v3 Summary:|$)/;
+
+  if (!base) {
+    return section;
+  }
+
+  if (imageSectionPattern.test(base)) {
+    return base.replace(imageSectionPattern, `$1${section}`);
+  }
+
+  return `${base}\n\n${section}`;
+}
+
+function applyNotesFallback(
+  properties: PageProperties,
+  schemaProperties: Record<string, unknown>,
+  meal: MealSummary,
+  metadata: MealImageMetadata
+) {
+  const notesField = findProperty(schemaProperties, ["Notes"], ["rich_text"]);
+
+  if (!notesField) {
+    return;
+  }
+
+  properties[notesField[0]] = richTextChunks(
+    mergeImageMetadataIntoNotes(meal.notes, metadata)
+  );
+}
+
 function imageCover(metadata: MealImageMetadata) {
   if (
     !metadata.imageUrl ||
@@ -199,11 +277,10 @@ export async function updateMealImageMetadata(
       "Meals database did not return a queryable data source."
     )
   });
-  const properties = buildImageNotionProperties(
-    getPropertyRecord(dataSource),
-    metadata
-  );
+  const schemaProperties = getPropertyRecord(dataSource);
+  const properties = buildImageNotionProperties(schemaProperties, metadata);
   const cover = imageCover(metadata);
+  applyNotesFallback(properties, schemaProperties, meal, metadata);
 
   if (cover || Object.keys(properties).length > 0) {
     await notion.pages.update({
@@ -216,11 +293,18 @@ export async function updateMealImageMetadata(
   const household = getConfiguredHouseholdMetadata();
   const updatedMeal = mergeMealImageMetadata(meal, metadata);
 
-  await upsertMirrorMealFromSummary({
-    householdId: household.householdId,
-    createdBy: household.createdBy,
-    meal: updatedMeal
-  });
+  try {
+    await upsertMirrorMealFromSummary({
+      householdId: household.householdId,
+      createdBy: household.createdBy,
+      meal: updatedMeal
+    });
+  } catch (error) {
+    console.warn(
+      `[recipe-images] Postgres mirror image metadata update failed for ${meal.id}`,
+      error
+    );
+  }
 
   return updatedMeal;
 }
