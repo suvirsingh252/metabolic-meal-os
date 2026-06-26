@@ -305,7 +305,7 @@ function LeadCard({
   isRefreshing: boolean;
 }) {
   const reasonLine = recommendation.reasons.slice(0, 2).join(" · ");
-  const explanationDetails = recommendation.explanation.details.slice(0, 3);
+  const explanationDetails = recommendation.explanation.details.slice(0, 2);
 
   return (
     <Card className="overflow-hidden bg-primary text-primary-foreground">

@@ -1,6 +1,7 @@
 import { parseRecipeIngredientText } from "@/src/lib/ingredients";
 
 export interface GroceryIngredientNormalization {
+  alternativeNames: string[];
   canonicalName: string;
   key: string;
   rawName: string;
@@ -38,8 +39,11 @@ const aliasByName = new Map<string, string>([
   ["cloves garlic", "garlic"],
   ["fresh ginger", "ginger"],
   ["ginger root", "ginger"],
-  ["ground beef or lamb", "lean beef or lamb"],
-  ["lean ground beef or lamb", "lean beef or lamb"],
+  ["ground beef or lamb", "lean beef"],
+  ["lean beef or lamb", "lean beef"],
+  ["lean beef or tofu", "lean beef"],
+  ["lean ground beef or lamb", "lean beef"],
+  ["lean ground beef or tofu", "lean beef"],
   ["corn tortillas", "corn tortilla"],
   ["flour tortillas", "flour tortilla"]
 ]);
@@ -69,6 +73,7 @@ const descriptors = new Set([
 const groceryIngredientPhrases = [
   "buffalo chicken breast",
   "lean beef or lamb",
+  "lean beef or tofu",
   "boneless skinless chicken thighs",
   "boneless skinless chicken thigh",
   "chicken thighs",
@@ -84,6 +89,7 @@ const groceryIngredientPhrases = [
   "ground beef",
   "beef",
   "lamb",
+  "tofu",
   "broccoli",
   "garlic cloves",
   "garlic clove",
@@ -301,6 +307,22 @@ function applyAliases(value: string) {
   return aliasByName.get(withoutDescriptors) ?? withoutDescriptors;
 }
 
+function getAlternativeNames(value: string, canonicalName: string) {
+  if (!/\bor\b/i.test(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .split(/\s+or\s+/i)
+        .map((part) => applyAliases(removeSoftDescriptors(cleanShoppingNotes(part))))
+        .map((part) => singularizeForKey(part))
+        .filter((part) => part && part !== canonicalName)
+    )
+  );
+}
+
 export function normalizeGroceryIngredient(
   value: string
 ): GroceryIngredientNormalization | null {
@@ -314,6 +336,7 @@ export function normalizeGroceryIngredient(
   }
 
   return {
+    alternativeNames: getAlternativeNames(cleaned, canonicalName),
     canonicalName,
     key,
     rawName

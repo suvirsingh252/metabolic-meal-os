@@ -57,6 +57,7 @@ function sectionItems(list: ReturnType<typeof generateGroceryList>, category: st
 
 test("grocery normalization removes quantities and applies aliases", () => {
   assert.deepEqual(normalizeGroceryIngredient("1 red onion"), {
+    alternativeNames: [],
     canonicalName: "red onion",
     key: "red onion",
     rawName: "1 red onion"
@@ -74,7 +75,7 @@ test("grocery normalization removes quantities and applies aliases", () => {
   assert.equal(normalizeGroceryIngredient("garlic cloves")?.canonicalName, "garlic");
   assert.equal(
     normalizeGroceryIngredient("Lean ground beef or lamb")?.canonicalName,
-    "lean beef or lamb"
+    "lean beef"
   );
 });
 
@@ -230,7 +231,15 @@ test("kafta grocery generation separates protein, produce, spices, and pantry", 
   assert.equal(list.itemCount, 12);
   assert.deepEqual(
     sectionItems(list, "Protein").map((item) => item.name),
-    ["lean beef or lamb"]
+    ["lean beef"]
+  );
+  assert.deepEqual(sectionItems(list, "Protein")[0]?.alternativeNames, ["lamb"]);
+  assert.deepEqual(sectionItems(list, "Protein")[0]?.rawIngredients, [
+    "lean beef or lamb parsley onion garlic allspice cumin cinnamon tahini lemon cucumber tomato lettuce"
+  ]);
+  assert.deepEqual(
+    sectionItems(list, "Protein")[0]?.sourceMealNames,
+    ["Beef Kafta with Tahini Salad"]
   );
   assert.deepEqual(
     sectionItems(list, "Produce").map((item) => item.name),
@@ -244,6 +253,40 @@ test("kafta grocery generation separates protein, produce, spices, and pantry", 
     sectionItems(list, "Pantry").map((item) => item.name),
     ["tahini"]
   );
+});
+
+test("grocery alternatives collapse to a primary item while preserving alternatives", () => {
+  const list = generateGroceryList({
+    meals: [
+      meal({
+        id: "protein-a",
+        mealName: "Bowls A",
+        ingredientsText: ["lean beef", "lean beef or lamb"].join("\n")
+      }),
+      meal({
+        id: "protein-b",
+        mealName: "Bowls B",
+        ingredientsText: "lean beef or tofu"
+      })
+    ],
+    mealIds: ["protein-a", "protein-b"]
+  });
+
+  const proteinItems = sectionItems(list, "Protein");
+
+  assert.equal(list.itemCount, 1);
+  assert.deepEqual(
+    proteinItems.map((item) => item.name),
+    ["lean beef"]
+  );
+  assert.deepEqual(proteinItems[0]?.alternativeNames, ["lamb", "tofu"]);
+  assert.deepEqual(proteinItems[0]?.sourceMealIds, ["protein-a", "protein-b"]);
+  assert.deepEqual(proteinItems[0]?.rawIngredients, [
+    "lean beef",
+    "lean beef or lamb",
+    "lean beef or tofu"
+  ]);
+  assert.equal(proteinItems[0]?.category, "Protein");
 });
 
 test("grocery generation strips shopping-irrelevant notes", () => {

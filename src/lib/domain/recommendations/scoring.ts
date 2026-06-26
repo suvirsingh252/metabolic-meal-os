@@ -265,15 +265,15 @@ export function generateRecommendationExplanation(
       details.push("Household feedback is neutral for this meal.");
     }
   } else {
-    details.push("No household feedback yet, so preference starts neutral.");
+    details.push("No household feedback has been logged for this meal yet.");
   }
 
   if (scoreBreakdown.recencyScore > 0) {
-    details.push("Recency helps because this meal has not appeared lately.");
+    details.push("You have not had this one lately.");
   } else if (scoreBreakdown.recencyScore < 0) {
-    details.push("Recency lowers the score to avoid repeating it too soon.");
+    details.push("You had this recently, so Hearth is cautious about repeating it.");
   } else {
-    details.push("Recency is neutral for this meal.");
+    details.push("Timing is neutral for this meal.");
   }
 
   if (scoreBreakdown.varietyPenalty < 0) {
@@ -287,21 +287,21 @@ export function generateRecommendationExplanation(
   );
 
   if (intelligence.confidence === "low") {
-    details.push("Meal intelligence is cautious because saved details are limited.");
+    details.push("Saved details are limited, so Hearth is keeping the guidance light.");
   } else if (hasNutritionHighlight && scoreBreakdown.intelligenceScore >= 45) {
-    details.push("Meal intelligence notes stronger protein, fiber, or quality signals.");
+    details.push("It has stronger protein, fiber, or quality signals.");
   } else if (scoreBreakdown.intelligenceScore >= 70) {
-    details.push("Meal intelligence sees a strong fit for tonight.");
+    details.push("It looks like a strong fit for tonight.");
   } else if (scoreBreakdown.intelligenceScore >= 45) {
-    details.push("Meal intelligence sees a reasonable fit for tonight.");
+    details.push("It looks like a reasonable fit for tonight.");
   } else {
-    details.push("Meal intelligence has limited fit signals for tonight.");
+    details.push("Hearth has limited fit signals for tonight.");
   }
 
   const headline =
     feedback && feedback.totalEvents > 0
       ? "Chosen from saved meals plus household feedback."
-      : "Chosen from saved meal metadata while feedback is sparse.";
+      : "Chosen from your saved meals.";
 
   return {
     headline,

@@ -14,6 +14,7 @@ import {
 export interface GroceryItem {
   id: string;
   name: string;
+  alternativeNames: string[];
   category: GroceryCategory;
   sourceMealIds: string[];
   sourceMealNames: string[];
@@ -105,12 +106,19 @@ export function generateGroceryList(input: GroceryGenerationInput): GroceryList 
             existing.rawIngredients.push(candidate.rawName);
           }
 
+          for (const alternativeName of normalized.alternativeNames) {
+            if (!existing.alternativeNames.includes(alternativeName)) {
+              existing.alternativeNames.push(alternativeName);
+            }
+          }
+
           continue;
         }
 
         itemByKey.set(mapKey, {
           id: stableItemId(category, mapKey),
           name: normalized.canonicalName,
+          alternativeNames: normalized.alternativeNames,
           category,
           sourceMealIds: [meal.id],
           sourceMealNames: [meal.mealName],

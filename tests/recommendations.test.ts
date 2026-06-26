@@ -412,14 +412,26 @@ test("explanations include preference, recency, variety, and scheduling componen
 
   assert.equal(explanation.details.length, 4);
   assert.ok(explanation.details.some((detail) => detail.includes("household")));
-  assert.ok(explanation.details.some((detail) => detail.includes("Recency")));
+  assert.ok(
+    explanation.details.some(
+      (detail) =>
+        detail.includes("lately") ||
+        detail.includes("recently") ||
+        detail.includes("Timing")
+    )
+  );
   assert.ok(
     explanation.details.some(
       (detail) => detail.includes("variety") || detail.includes("repeated")
     )
   );
   assert.ok(
-    explanation.details.some((detail) => detail.includes("Meal intelligence"))
+    explanation.details.some(
+      (detail) =>
+        detail.includes("protein") ||
+        detail.includes("reasonable fit") ||
+        detail.includes("strong fit")
+    )
   );
 });
 
@@ -456,9 +468,7 @@ test("sparse meal intelligence is bounded, deterministic, and cautious in copy",
 
   assert.deepEqual(firstScore, secondScore);
   assert.ok(firstScore.intelligenceScore <= 38);
-  assert.ok(
-    explanation.details.some((detail) => detail.includes("cautious"))
-  );
+  assert.ok(explanation.details.some((detail) => detail.includes("limited")));
   assert.ok(!explanation.details.some((detail) => detail.includes("strong fit")));
 });
 

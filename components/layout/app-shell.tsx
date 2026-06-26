@@ -68,14 +68,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[0.7rem] text-muted-foreground",
+                "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[0.68rem] leading-none text-muted-foreground",
                 active && "text-primary"
               )}
               href={item.href}
               key={item.href}
             >
               <Icon className="h-5 w-5" />
-              <span className="max-w-full truncate">{item.label}</span>
+              <span className="max-w-full whitespace-nowrap">{item.label}</span>
             </Link>
           );
         })}

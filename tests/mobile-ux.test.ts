@@ -60,5 +60,49 @@ test("mobile rendering keeps navigation usable and prevents horizontal overflow"
   assert.match(shell, /fixed inset-x-0 bottom-0/);
   assert.match(shell, /pathname === "\/today"/);
   assert.match(shell, /pb-\[env\(safe-area-inset-bottom\)\]/);
+  assert.match(shell, /whitespace-nowrap/);
+  assert.doesNotMatch(shell, /<span className="max-w-full truncate">/);
   assert.match(globals, /overflow-x-hidden/);
+});
+
+test("mobile nav labels are short enough for iPhone width", () => {
+  const navigation = source("lib/navigation.ts");
+
+  for (const label of [
+    "Tonight",
+    "Insights",
+    "Planner",
+    "Shop",
+    "Analyze",
+    "Meals",
+    "Notes",
+    "More"
+  ]) {
+    assert.match(navigation, new RegExp(`label: "${label}"`));
+  }
+
+  assert.doesNotMatch(navigation, /label: "Grocery"/);
+  assert.doesNotMatch(navigation, /label: "Feedback"/);
+  assert.doesNotMatch(navigation, /label: "Settings"/);
+});
+
+test("meal image fallback renders a branded placeholder instead of a blank icon panel", () => {
+  const mealImage = source("src/components/meal-image.tsx");
+
+  assert.match(mealImage, /Hearth meal/);
+  assert.match(mealImage, /Image coming soon/);
+  assert.match(mealImage, /bg-\[linear-gradient/);
+  assert.match(mealImage, /getSafeImageUrl\(imageUrl\)/);
+});
+
+test("tonight recommendation copy stays concise and avoids debug language", () => {
+  const today = source("src/app/today/today-client.tsx");
+  const scoring = source("src/lib/domain/recommendations/scoring.ts");
+
+  assert.match(today, /uniqueReasons\.slice\(0, 3\)/);
+  assert.match(today, /Why this meal\?/);
+  assert.doesNotMatch(scoring, /saved meal metadata/);
+  assert.doesNotMatch(scoring, /feedback is sparse/);
+  assert.doesNotMatch(scoring, /preference starts neutral/);
+  assert.doesNotMatch(scoring, /lowers the score/);
 });

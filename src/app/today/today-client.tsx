@@ -795,14 +795,14 @@ function getTodayFeedbackSavedMessage(sentiment: "ate" | "loved") {
 }
 
 function getVisibleRecommendationReasons(recommendation: MealRecommendation) {
-  const reasons = [
-    ...recommendation.reasons,
-    ...(recommendation.explanation?.details ?? [])
-  ];
+  const reasons =
+    recommendation.reasons.length > 0
+      ? recommendation.reasons
+      : recommendation.explanation?.details ?? [];
   const plainReasons = reasons.map(toHouseholdRecommendationReason);
   const uniqueReasons = Array.from(new Set(plainReasons)).filter(Boolean);
 
-  return uniqueReasons.slice(0, 4);
+  return uniqueReasons.slice(0, 3);
 }
 
 function toHouseholdRecommendationReason(reason: string) {

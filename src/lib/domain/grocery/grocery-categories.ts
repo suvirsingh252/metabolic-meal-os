@@ -38,7 +38,7 @@ const exactCategoryByIngredient = new Map<string, GroceryCategory>([
   ["flour", "Pantry"],
   ["greek yogurt", "Dairy"],
   ["lamb", "Protein"],
-  ["lean beef or lamb", "Protein"],
+  ["lean beef", "Protein"],
   ["milk", "Dairy"],
   ["olive oil", "Pantry"],
   ["oyster sauce", "Pantry"],

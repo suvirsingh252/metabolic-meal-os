@@ -34,7 +34,7 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/grocery",
-    label: "Grocery",
+    label: "Shop",
     icon: ShoppingCart
   },
   {
@@ -49,12 +49,12 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/feedback",
-    label: "Feedback",
+    label: "Notes",
     icon: MessageSquare
   },
   {
     href: "/settings",
-    label: "Settings",
+    label: "More",
     icon: Settings
   }
 ];
