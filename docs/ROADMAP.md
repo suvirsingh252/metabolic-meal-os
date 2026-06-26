@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-26 (Beta 2 closeout runbook/hygiene slice)
+Last updated: 2026-06-26 (Beta 2 production/mobile QA readiness slice)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -140,6 +140,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
   operations caveat.
 - [x] Close the Beta 2 runbook/hygiene slice: supported migration runbook,
   `db:check`/docs alignment, and generated artifact cleanup.
+- [x] Create the Beta 2 production/mobile QA checklist:
+  `docs/BETA_2_FINAL_QA.md`.
 - [x] Deploy the Phase 8 grocery planning milestone and verify production database migrations.
 - [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.

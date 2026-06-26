@@ -10,6 +10,23 @@ and who has it now.
 ---
 
 ### 2026-06-26 — Codex → user
+- Task: Beta 2 production/mobile QA readiness slice
+- State: Done, pending user review/commit approval
+- Changed: created `docs/BETA_2_FINAL_QA.md` as the production/mobile QA
+  checklist and smoke coverage tracker; updated handoff/roadmap pointers to the
+  QA tracker. No app behavior, schema migration, Notion-to-Postgres migration,
+  recipe import work, or Beta 3 feature work was started.
+- Verified: `npm run lint` passed; `npm run typecheck` passed; `npm test`
+  passed (492/492); `npm run build` passed. `npm run smoke:prod` was skipped
+  because `SMOKE_BASE_URL` is not set. Write-producing smoke was not run because
+  it creates disposable Notion records and lacks automatic cleanup.
+- Open / next: execute the physical iPhone Safari checklist, then close
+  write-flow verification and Notion relation/schema verification with explicit
+  production evidence and cleanup notes. Beta 3 remains blocked until those
+  gates pass.
+- Tree owner now: user
+
+### 2026-06-26 — Codex → user
 - Task: Beta 2 closeout runbook/hygiene slice
 - State: Done, pending user review/commit approval
 - Changed: added `docs/DB_MIGRATION_RUNBOOK.md`, aligned `db:check` with the

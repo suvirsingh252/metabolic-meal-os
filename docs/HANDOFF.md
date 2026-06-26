@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-26 (Beta 2 closeout runbook/hygiene slice)
+Last updated: 2026-06-26 (Beta 2 production/mobile QA readiness slice)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -44,9 +44,12 @@ Supported migration process:
 
 Remaining Beta 2 closeout gates before any Beta 3 feature work:
 - Migration runbook and repo hygiene: closed by the 2026-06-26 closeout slice.
-- Mobile QA: not closed.
-- Write-flow verification: not closed.
-- Notion relation/schema verification: not closed.
+- Production/mobile QA checklist: created in `docs/BETA_2_FINAL_QA.md`.
+- Mobile QA: not closed; physical iPhone Safari pass still required.
+- Write-flow verification: not closed; write-producing smoke creates
+  disposable Notion records and requires explicit operator approval plus cleanup.
+- Notion relation/schema verification: not closed; production schema diagnostics
+  must be reviewed.
 
 Recommendation boundary:
 - Do not begin Beta 3 feature work until the remaining Beta 2 closeout gates

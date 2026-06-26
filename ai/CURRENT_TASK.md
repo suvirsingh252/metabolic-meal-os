@@ -14,6 +14,7 @@ When there is no active task, leave the section above replaced with:
 > **No active task.** The working tree is unowned. Create a packet from
 > `ai/TASK_PACKET_TEMPLATE.md` before editing.
 
-Current recommendation after this closeout slice:
-finish mobile QA, write-flow verification, and Notion relation/schema
-verification before any Beta 3 feature work.
+Current recommendation after the 2026-06-26 production/mobile QA readiness
+slice: execute the `docs/BETA_2_FINAL_QA.md` physical iPhone Safari checklist,
+then close write-flow verification and Notion relation/schema verification
+before any Beta 3 feature work.
