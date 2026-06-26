@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
+Last updated: 2026-06-26 (Planner V2 production closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`. This file is the concise technical architecture reference.
 
@@ -44,7 +44,7 @@ Backend work is implemented through App Router API routes:
 - `src/app/api/notion/save-ingredients/route.ts`
 - `src/app/api/notion/log-feedback/route.ts`
 - `src/app/api/planner/route.ts` — Weekly Planner v1.1
-- `src/app/api/weekly-plan/route.ts` — Phase 8B Postgres weekly dinner plan
+- `src/app/api/weekly-plan/route.ts` — Planner V2 Postgres weekly meal plan
 - `src/app/api/weekly-plan/grocery/route.ts` — grocery generation from the weekly plan
 - `src/app/api/grocery-lists/route.ts` — grocery history and ad hoc grocery generation
 - `src/app/api/grocery-lists/[id]/route.ts` — saved grocery list retrieval and checklist updates
@@ -256,17 +256,26 @@ Deferred systems:
   persistence, units, and serving assumptions are stronger.
 - The current feedback-backed adjustment persistence is schema-neutral; a later migration can promote marked notes into a dedicated Family Adjustments relation without changing the cookbook UI contract.
 
-Weekly Planner:
+Weekly Planner V2:
 1. `/planner` renders `src/app/planner/planner-client.tsx`.
 2. Legacy Notion planner support remains documented in historical Beta 6
-   sections, but Phase 8B's household dinner-planning workflow uses Postgres via
+   sections, but the production household planning workflow uses Postgres via
    `GET /api/weekly-plan` and `POST /api/weekly-plan`.
-3. The Phase 8B planner persists one dinner meal per Monday-Sunday day for the
-   current week in `weekly_dinner_plans`.
-4. Saved meal options still come from the existing saved meal archive.
-5. `POST /api/weekly-plan/grocery` gathers planned meals and generates or
+3. Planner V2 persists Lunch and Dinner independently for every Monday-Sunday
+   day in `weekly_dinner_plans`.
+4. `weekly_dinner_plans.meal_slot` defaults older rows to `Dinner`; the unique
+   planner key is `household_id`, `week_start_date`, `day_of_week`, and
+   `meal_slot`.
+5. Saved meal options, meal images, nutrition metadata, family feedback,
+   cuisine, prep time, and meal intelligence are reused from the existing saved
+   meal archive and domain modules.
+6. Suggestions are computed as read-model data in the weekly plan response; they
+   do not mutate the plan until the user selects one and saves.
+7. The weekly plan response includes mobile-friendly day/slot view models,
+   insight cards, balance alerts, and shopping preview categories.
+8. `POST /api/weekly-plan/grocery` gathers planned meals and generates or
    regenerates one consolidated grocery list through the grocery engine.
-6. Regeneration updates the active weekly grocery list and preserves completed
+9. Regeneration updates the active weekly grocery list and preserves completed
    checklist state where normalized ingredient names still match.
 
 Grocery Engine and Shopping Workflow:
@@ -427,10 +436,10 @@ Tenancy:
 
 ## Postgres / Drizzle Layer (Phase 1 Foundation)
 
-Added 2026-06-13. Updated 2026-06-25: Notion remains the active source of truth
+Added 2026-06-13. Updated 2026-06-26: Notion remains the active source of truth
 for the saved meal archive, feedback, and ingredient enrichment. Postgres is now
-active for Phase 8 grocery lists, grocery checklist items, and weekly dinner
-plans.
+active for Phase 8 grocery lists, grocery checklist items, and Planner V2 Lunch
+/ Dinner weekly meal plans.
 
 ### Infrastructure
 
@@ -454,6 +463,9 @@ Key design decisions:
 - Numeric scores use `numeric` (not `float`) to preserve exact decimal values.
 - `meal_date` is a `date` column (not timestamp) to match Notion's date-type property.
 - `created_at` and `updated_at` are `timestamptz` with server-side defaults; `updated_at` must be touched on every UPDATE.
+- `weekly_dinner_plans.meal_slot` is required, defaults to `Dinner` for older
+  rows, and participates in the unique index so Lunch and Dinner for the same
+  day persist independently.
 
 ### Scripts
 
@@ -468,11 +480,23 @@ Key design decisions:
 3. Never hand-edit migration SQL after generating.
 4. `drizzle/` directory is committed — migration history is source-controlled.
 
+Operational caveat after Planner V2:
+- Local `npm run db:check` and `npm run db:migrate` fail without a real local
+  `DATABASE_URL`.
+- `vercel env pull` and `vercel env run -e production` may show encrypted
+  sensitive environment values as empty locally even when the production runtime
+  can read them.
+- Future migrations need either restored local database credentials or a secure
+  CI/runtime migration path.
+- Temporary runtime migration routes are an emergency-only recovery mechanism
+  and must not become the standard migration process.
+
 ### Phase roadmap
 
 - **Phase 1:** Infrastructure only. Drizzle schema, migration file, DB client.
-- **Phase 8 grocery/planning slice:** Postgres is production-active for grocery
-  history, checklist item state, and weekly dinner plans.
+- **Phase 8 / Planner V2 grocery-planning slice:** Postgres is
+  production-active for grocery history, checklist item state, and Lunch/Dinner
+  weekly meal plans.
 - **Phase 2:** Shadow writes to `meals` from `POST /api/notion/save-meal` (non-blocking try-catch). Run backfill script.
 - **Phase 3:** Dual-read behind `POSTGRES_SOURCE_ENABLED` feature flag. Validate row counts match Notion.
 - **Phase 4:** Postgres primary for meals reads/writes. Notion kept as archive. Migrate feedback, planner, ingredients.
@@ -482,14 +506,14 @@ Key design decisions:
 Current source of truth:
 - Notion databases for saved meals, feedback, ingredient enrichment, and legacy
   planner history.
-- Postgres for Phase 8 weekly dinner plans, grocery list metadata, and grocery
-  checklist items.
+- Postgres for Planner V2 Lunch/Dinner weekly plans, grocery list metadata, and
+  grocery checklist items.
 
 Actively used entities:
 - Meals.
 - Ingredients.
 - Meal Feedback.
-- Weekly Dinner Plans.
+- Weekly Meal Plans (`weekly_dinner_plans`).
 - Grocery Lists.
 - Grocery List Items.
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-25 (Visual Cookbook v1 hardening)
+Last updated: 2026-06-26 (Planner V2 production closeout)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -124,9 +124,20 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Apply and verify Phase 8 production database migrations through `drizzle/0002_grocery_lists.sql` and `drizzle/0003_fearless_big_bertha.sql`; production smoke passed for `/planner`, `/grocery`, saved grocery lists, checklist refresh persistence, and `/grocery?meal=<real-meal-id>`.
 - [x] Complete Visual Cookbook v1: recipe image metadata, Vercel Blob/local image storage, original recipe image extraction, AI fallback generation, manual upload override, MealImage rendering across cookbook surfaces, and Notion/Postgres image metadata projection.
 - [x] Harden Visual Cookbook v1: recipe analysis/save now records pending image metadata instead of blocking on slow image work, image candidate scoring rejects common logos/favicons/tiny/tracking images, AI image prompts include recipe context, and `npm run images:backfill` can fill missing images for existing meals.
+- [x] Complete Planner V2 (`471ce34`): `/planner` is now the central weekly
+  planning workflow with Monday-Sunday Lunch and Dinner slots, independent
+  same-day slot persistence, Meal Intelligence suggestions with explanations,
+  replace/clear/duplicate/suggest controls, drag/drop support, weekly insights,
+  balance alerts, and shopping preview.
+- [x] Apply and verify Planner V2 production migration
+  `drizzle/0005_lucky_ego.sql`; production `/api/weekly-plan` returns `200`,
+  Lunch and Dinner persist independently, and planner smoke passed at
+  `https://metabolic-meal-os.vercel.app`.
 
 ## Current Sprint
 
+- [x] Close out Planner V2 production readiness and document the migration
+  operations caveat.
 - [x] Deploy the Phase 8 grocery planning milestone and verify production database migrations.
 - [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
@@ -142,10 +153,12 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
 - [x] Verify `/planner` against production data after Phase 8B deployment and migration.
 - [ ] Run an on-device iPhone Safari Beta 4 pass for `/today`, `/analyze`, `/meals`, `/planner`, `/dashboard`, `/feedback`, `/settings`, and representative `/meals/[id]`.
+- [ ] Define a supported database migration runbook before the next schema
+  change: local credentials restoration or a secure CI/runtime migration path.
 
 ## Next Up
 
-- [ ] **Phase 8C (recommended next slice) — Dinner Concierge -> Weekly Planner Integration:** let a committed Dinner Concierge choice flow naturally into the current weekly plan and then into grocery generation. Reuse the existing planner and grocery engine; do not add AI planning, pantry, quantity math, or retailer integrations in this slice.
+- [ ] **Phase 8C (recommended next slice) — Dinner Concierge -> Planner V2 Integration:** let a committed Dinner Concierge choice flow naturally into the current weekly plan and then into grocery generation. Reuse Planner V2 and the existing grocery engine; do not add pantry, quantity math, or retailer integrations in this slice.
 - [ ] **Postgres Phase 2 — Shadow writes:** add a non-blocking Postgres shadow write to `POST /api/notion/save-meal` after Notion write succeeds. Run `scripts/backfill-meals-to-postgres.ts` (to be written) against the live meal archive. Validate row counts before enabling reads.
 - [ ] **Beta 6.6 (recommended next slice) — URL Recovery / Guided Intake Fallback v1:** improve blocked or script-rendered URL recovery with clearer guided paste/caption fallback while preserving source-URL re-attachment. Keep it a small reliability/UX slice — no Notion schema changes, no new AI calls. A first step already exists, committed locally as `ce7dc0d` but not yet pushed (`getUrlRecoveryCopy` in `src/app/analyze/components/status-banner.tsx` + `tests/analyze-guided-recovery.test.ts`). Domain-specific learning and a richer parser dependency stay deferred unless the tradeoff proves worth it.
 - [ ] Persistent Intelligence Snapshot v2: preserve more exact Analyze fields with a deliberate schema/storage plan once the compact Meal OS Summary proves useful.
@@ -179,7 +192,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [x] Weekly dinner planning foundation.
 - [x] Shopping list generation.
 - [x] Grocery history and persisted shopping checklist state.
-- [ ] AI-assisted weekly planning suggestions.
+- [x] AI-assisted weekly planning suggestions.
 - [ ] Meal templates.
 - [ ] Multiple recipe images per meal.
 - [ ] Cooking step images and household user photos.
@@ -225,3 +238,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Legacy nutrition and quality backfill is read-time only; no Notion write-back migration exists yet.
 - [ ] Free-text nutrition estimation and serving controls are deliberately narrow, coarse, and beta-grade; they should not be treated as clinical-grade nutrition science.
 - [ ] Browser/device visual coverage is still manual; add lightweight visual regression or scripted mobile checks if the UI surface grows.
+- [ ] Database migration operations need a supported path. Local
+  `npm run db:check` and `npm run db:migrate` require a real `DATABASE_URL`;
+  Vercel CLI env pulls may show encrypted sensitive values as empty. Do not use
+  temporary runtime migration routes as the normal process.

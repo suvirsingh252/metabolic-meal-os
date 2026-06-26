@@ -1,6 +1,45 @@
 # Architectural Decisions
 
-Last updated: 2026-06-25 (Visual Cookbook v1 hardening)
+Last updated: 2026-06-26 (Planner V2 production closeout)
+
+## 2026-06-26 — Planner V2 Is The Central Weekly Workflow, Backed By Postgres
+
+Decision: Promote `/planner` from a dinner-list workflow into Planner V2: a
+Monday-Sunday Lunch and Dinner planner backed by `weekly_dinner_plans`, with
+Meal Intelligence suggestions, weekly insights, balance alerts, and a shopping
+preview. Planner V2 is production deployed at commit
+`471ce34257305d02cbc5dfd2d76d4dd8113c7621` on
+`https://metabolic-meal-os.vercel.app`; migration `drizzle/0005_lucky_ego.sql`
+is applied and `/api/weekly-plan` returns `200`.
+
+Reasoning:
+- Planning is now the central household workflow connecting saved meals,
+  intelligence, weekly variety, and grocery prep.
+- Existing assets should be reused rather than duplicated: saved meals, meal
+  images, cuisine, prep time, nutrition, family feedback, meal history, grocery
+  generation, and Meal Intelligence.
+- Lunch and Dinner must persist independently for the same day, so
+  `meal_slot` belongs in the Postgres unique key with household, week, and day.
+- Suggestions are recommendations until selected; generating suggestions must
+  not mutate the weekly plan.
+
+Implementation:
+- `weekly_dinner_plans.meal_slot` defaults older rows to `Dinner`.
+- The unique planner index is
+  `household_id, week_start_date, day_of_week, meal_slot`.
+- Planner smoke verified Monday-Sunday display, Lunch/Dinner slots, independent
+  same-day persistence, duplicate, clear, suggestion explanation, real meal
+  image rendering, shopping preview, and weekly insights.
+
+Operations boundary:
+- Local `npm run db:check` and `npm run db:migrate` fail without a real local
+  `DATABASE_URL`.
+- Vercel CLI env pulls may show encrypted sensitive values as empty locally even
+  when production runtime has them.
+- Future migrations need restored local database credentials or a secure
+  CI/runtime migration path.
+- Temporary runtime migration routes must not be used as the normal migration
+  process.
 
 ## 2026-06-25 — Visual Cookbook Images Are Deferred Work With Blob-First Storage
 
@@ -76,7 +115,7 @@ Boundaries:
   planning, or AI ingredient matching was added.
 - Regeneration preserves completed items only when normalized ingredient names
   still match.
-- Recommended next slice: Dinner Concierge -> Weekly Planner Integration.
+- Recommended next slice: Dinner Concierge -> Planner V2 Integration.
 
 ## 2026-06-13 — Beta 6.5 Nutrition Reliability Uses Ingredient Estimates Before Manual Entry
 

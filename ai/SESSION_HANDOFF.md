@@ -9,6 +9,29 @@ and who has it now.
 
 ---
 
+### 2026-06-26 01:15 — Codex → user
+- Task: Planner V2 production closeout and migration operations documentation
+- State: Done
+- Changed: documented Planner V2 production readiness and the database
+  migration operations gap in project docs. No product features were added.
+- Production status: commit
+  `471ce34257305d02cbc5dfd2d76d4dd8113c7621` is deployed at
+  `https://metabolic-meal-os.vercel.app`; migration
+  `drizzle/0005_lucky_ego.sql` is applied; `/api/weekly-plan` returns `200`;
+  `/planner` smoke passed with Monday-Sunday Lunch/Dinner slots, independent
+  same-day persistence, suggestions, image rendering, shopping preview, and
+  weekly insights.
+- Operations caveat: local `npm run db:check` and `npm run db:migrate` require
+  a real local `DATABASE_URL`; Vercel env pulls may show encrypted sensitive
+  values as empty; future migrations need restored local DB credentials or a
+  secure CI/runtime migration path. Temporary runtime migration routes are not
+  the normal process.
+- Verified: `npm run lint`, `npm run typecheck`, `npm test` (492/492), and
+  `npm run build` all passed.
+- Open / next: define the migration runbook before the next schema change, then
+  continue Dinner Concierge -> Planner V2 Integration.
+- Tree owner now: user
+
 ## Entry template
 
 ```

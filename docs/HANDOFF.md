@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-25 (Visual Cookbook v1 hardening)
+Last updated: 2026-06-26 (Planner V2 production closeout)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -8,7 +8,42 @@ For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`,
 
 Metabolic Meal OS is a production-oriented MVP Next.js app for household meal optimization. It remains a private/beta household tool, not a publicly hardened multi-tenant product.
 
-### Current QA Status (2026-06-25 Phase 8 Grocery Planning)
+### Current QA Status (2026-06-26 Planner V2 Production)
+
+Production state:
+- Current production commit: `471ce34257305d02cbc5dfd2d76d4dd8113c7621`.
+- Current production URL: `https://metabolic-meal-os.vercel.app`.
+- Planner V2 is committed, pushed, deployed, migrated, and smoke-tested in
+  production.
+- Production database migration `drizzle/0005_lucky_ego.sql` has been applied.
+- `/api/weekly-plan` returns `200` in production.
+
+Planner V2 production verification completed:
+- `/planner` loads the current Monday-Sunday weekly planner.
+- Lunch and Dinner slots are both rendered for each day.
+- Lunch and Dinner persist independently for the same day.
+- Intelligent suggestions render with explanation copy.
+- Duplicate, clear, and native select replacement flows were smoke-tested.
+- Meal image rendering was verified with a stored Vercel Blob-backed meal image.
+- Shopping preview renders the stable category set: Produce, Protein, Dairy,
+  Pantry, and Spices.
+- Weekly insights render.
+- Mobile smoke at 390px showed no page-level horizontal overflow.
+
+Migration operations caveat:
+- Local `npm run db:check` and `npm run db:migrate` still fail unless the local
+  shell or `.env.local` has a real `DATABASE_URL`.
+- `vercel env pull` and `vercel env run -e production` may show encrypted
+  sensitive values as empty locally even when production runtime has them.
+- Future migrations need either restored local database credentials or a secure
+  CI/runtime migration path.
+- Temporary runtime migration routes were used only as an emergency recovery
+  path for Planner V2 and must not become the normal migration process.
+
+Recommended next operations slice:
+- Define the supported migration runbook before the next database migration.
+
+### Prior QA Status (2026-06-25 Phase 8 Grocery Planning)
 
 Production state:
 - Current production commit: `5fe91983e32f175971a22db74033566da1050f71`.
@@ -28,9 +63,9 @@ Production verification completed:
 - No missing-table or missing-column production errors were observed.
 
 Recommended next product slice:
-- Dinner Concierge -> Weekly Planner Integration. Reuse the existing planner and
-  grocery engine so a selected dinner can flow into the current week and then
-  into grocery generation.
+- Dinner Concierge -> Planner V2 Integration. Reuse Planner V2 and the grocery
+  engine so a selected dinner can flow into the current week and then into
+  grocery generation.
 
 Visual Cookbook v1 current state:
 - Recipe image metadata is implemented across the meal model, Postgres mirror,
@@ -105,8 +140,9 @@ Production verified:
   `optional`, `as needed`, and retailer annotations, normalizes common aliases,
   and categorizes ingredients into Produce, Protein, Dairy, Bakery, Frozen,
   Pantry, Spices, Condiments, Beverages, or Other.
-- Weekly Planner is production-active: `/planner` persists one selected dinner
-  per day for the current week in Postgres and can generate a consolidated
+- Planner V2 is production-active: `/planner` persists Lunch and Dinner slots
+  independently for each Monday-Sunday day in Postgres, renders Meal
+  Intelligence suggestions with explanations, and can generate a consolidated
   grocery list from the planned meals.
 - Grocery history and persisted checklist state are production-active:
   generated lists can be reopened, item completion survives refresh/browser
@@ -185,7 +221,7 @@ Implemented:
 Not implemented yet:
 - Full user-account authentication and household RBAC. Beta token/private-mode guardrails are implemented.
 - Dedicated per-meal structured ingredient persistence beyond parsed cookbook display and normalized suggestions.
-- AI-generated weekly planning, drag-and-drop planning, and meal-slot-specific recommendation generation.
+- Full pantry-aware, quantity-aware, or retailer-aware weekly planning.
 - Meal template workflows.
 - Service worker/offline PWA support.
 - Full settings persistence UI.
@@ -233,7 +269,7 @@ Current household workflow architecture:
 
 ```text
 Dinner Concierge
-  -> Weekly Planner
+  -> Planner V2
   -> Grocery Engine
   -> Persisted Grocery Lists
   -> Shopping Workflow
@@ -254,8 +290,9 @@ Code organization:
 - `src/lib/domain/meal`: shared meal validation.
 - `src/lib/domain/grocery`: deterministic grocery generation, ingredient
   normalization, grocery category mapping, and checklist-state helpers.
-- `src/lib/domain/weekly-planning.ts`: current-week dinner planning and grocery
-  orchestration rules.
+- `src/lib/domain/weekly-planning.ts`: Planner V2 week construction,
+  Lunch/Dinner slot validation, recommendation shaping, insights, balance
+  alerts, shopping preview, and grocery orchestration rules.
 - `src/lib/domain/nutrition`: canonical nutrition snapshot/provenance types, validation, and the small free-text calories/protein/fiber estimator.
 - `src/lib/domain/analytics`: dashboard view-model, aggregation, insight, target-progress, and meal-quality scoring logic.
 - `src/lib/domain/recommendations`: Today ranking, component scoring, explanation generation, reason badges, variety helpers, and Today view-model construction.
@@ -293,10 +330,11 @@ Pages:
 - `/analyze`: paste recipe text or URL, call analysis API with staged loading copy, review a household-first summary, request optional optimization prompts (More Protein, Healthier, Kid-Friendly, Budget), edit progressively disclosed details, and save the meal.
 - `/meals`: fetch and display saved meals with Meal OS wording and internal detail links.
 - `/meals/[id]`: family cookbook detail with quick cooking actions, `How We Make It`, ingredients, mobile cooking instructions, original recipe access, nutrition, advanced details, and a weekly planning-context badge (Planned/Cooked/Skipped for this week, or "Not planned this week") when the planner is configured. Add to Planner deep-links to `/planner?meal=<id>`.
-- `/planner`: Phase 8B current-week dinner planner backed by Postgres for the
-  grocery workflow; one selected dinner per day, generate/regenerate weekly
-  grocery list from the plan. It still accepts `?meal=<id>` to preselect a meal
-  from Meal Detail/Cook Again flows.
+- `/planner`: Planner V2 current-week planning surface backed by Postgres for
+  Lunch and Dinner slots, Meal Intelligence suggestions, insights, balance
+  alerts, shopping preview, and generate/regenerate weekly grocery list from the
+  plan. It still accepts `?meal=<id>` to preselect a meal from Meal Detail/Cook
+  Again flows.
 - `/grocery`: grocery list generation, recent grocery history, saved list
   reopening, and persisted shopping checklist. Supports `/grocery?meal=<id>`
   for single-meal deep links and `/grocery?list=<id>` for saved lists.
@@ -307,12 +345,13 @@ Pages:
 ## Current API Endpoints
 
 - `GET /api/weekly-plan`
-  - Loads the current persisted weekly dinner plan from Postgres.
-  - Returns one optional meal selection per Monday-Sunday day.
+  - Loads the current persisted weekly plan from Postgres.
+  - Returns Monday-Sunday Lunch and Dinner slots, suggestions, insights, balance
+    alerts, and shopping preview.
 
 - `POST /api/weekly-plan`
-  - Persists current-week dinner selections.
-  - Validates day/date and saved meal IDs before writing.
+  - Persists current-week Lunch and Dinner selections independently.
+  - Validates day/date, meal slot, and saved meal IDs before writing.
 
 - `POST /api/weekly-plan/grocery`
   - Generates or regenerates the consolidated grocery list for the current

@@ -14,5 +14,6 @@ When there is no active task, leave the section above replaced with:
 > **No active task.** The working tree is unowned. Create a packet from
 > `ai/TASK_PACKET_TEMPLATE.md` before editing.
 
-Current recommendation after the 2026-06-25 Phase 8 closeout:
-Dinner Concierge -> Weekly Planner Integration.
+Current recommendation after the 2026-06-26 Planner V2 closeout:
+define a supported database migration runbook before the next schema change,
+then continue with Dinner Concierge -> Planner V2 Integration.
