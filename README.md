@@ -105,6 +105,19 @@ npm run dev
 
 The app uses server-side OpenAI and Notion integrations. Keep all provider secrets in `.env.local` locally and in Vercel Project Settings for production.
 
+## Current Closeout Gates
+
+Beta 2 closeout is not complete until these gates are closed:
+
+- Supported database migration runbook.
+- Mobile QA.
+- Write-flow verification.
+- Notion relation/schema verification.
+
+Beta 3 feature work must not start until those gates pass. Current verified
+state and future recommendations are tracked separately in `docs/HANDOFF.md`
+and `docs/ROADMAP.md`.
+
 ## Environment
 
 Create a local environment file from the example:
@@ -115,9 +128,31 @@ cp .env.example .env.local
 
 Add your OpenAI API key to `OPENAI_API_KEY` in `.env.local`. Add your Notion integration secret to `NOTION_API_KEY`.
 
+For database checks and migrations, `DATABASE_URL` must come from the target
+Postgres environment. Use `.env.local` or an exported shell value for local
+operations, and use the verified production connection string from the database
+provider or Vercel Project Settings before production migrations.
+
 The Notion database IDs come from each Notion database URL. Open the Meals, Ingredients, Feedback, Meal Plan, Weekly Plans, and Meal Templates databases in Notion, copy each database URL, and use the long ID in the URL for the matching `NOTION_*_DATABASE_ID` value.
 
 Do not commit `.env.local` or any real API keys. Secrets must stay server-side and must not use the `NEXT_PUBLIC_` prefix.
+
+## Database Migrations
+
+The supported migration process is documented in
+`docs/DB_MIGRATION_RUNBOOK.md`.
+
+Normal flow:
+
+```bash
+npm run db:check
+npm run db:migrate
+npm run db:check
+```
+
+`db:check` verifies database connectivity, expected public tables, and Drizzle
+migration state using metadata only. Temporary runtime migration routes are
+emergency-only and are not the normal process.
 
 ## Vercel Deployment
 
@@ -130,6 +165,7 @@ Do not commit `.env.local` or any real API keys. Secrets must stay server-side a
 Required Vercel environment variables:
 
 - `OPENAI_API_KEY`
+- `BLOB_READ_WRITE_TOKEN` — required for durable Visual Cookbook image storage in Vercel Blob
 - `NOTION_API_KEY`
 - `NOTION_MEALS_DATABASE_ID`
 - `NOTION_INGREDIENTS_DATABASE_ID`
@@ -142,6 +178,17 @@ Required Vercel environment variables:
 - `ALLOW_UNAUTHENTICATED` — set to `false` for private production; `true` is an explicit trusted family/beta open mode
 - `IOS_SHORTCUT_TOKEN` — **required for iPhone intake**; secret token for the iPhone Share Sheet Shortcut (Beta 3.6)
 - `NOTION_MEAL_INTAKE_DATABASE_ID` — optional; enables intake persistence (Beta 3.6)
+
+Visual Cookbook production image storage requires a Vercel Blob store connected
+to both Preview and Production. Create/link it with:
+
+```bash
+vercel blob create-store metabolic-meal-os-recipe-images --access public --environment production --environment preview --yes
+```
+
+This creates a public Blob store, links it to the Vercel project, and adds
+`BLOB_READ_WRITE_TOKEN` for the selected environments. After changing Blob or
+environment configuration, redeploy before verifying image upload/resolve flows.
 
 ## Authentication
 
@@ -165,6 +212,7 @@ Deployment checklist:
 - `IOS_SHORTCUT_TOKEN` set to a long random secret in Vercel production.
 - `ALLOW_UNAUTHENTICATED=false` in Vercel production.
 - OpenAI API key configured.
+- Vercel Blob store linked and `BLOB_READ_WRITE_TOKEN` configured for Preview and Production.
 - Notion API key configured.
 - All Notion database IDs configured.
 - Meals and Feedback databases shared with the Notion integration.

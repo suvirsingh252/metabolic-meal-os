@@ -14,6 +14,6 @@ When there is no active task, leave the section above replaced with:
 > **No active task.** The working tree is unowned. Create a packet from
 > `ai/TASK_PACKET_TEMPLATE.md` before editing.
 
-Current recommendation after the 2026-06-26 Planner V2 closeout:
-define a supported database migration runbook before the next schema change,
-then continue with Dinner Concierge -> Planner V2 Integration.
+Current recommendation after this closeout slice:
+finish mobile QA, write-flow verification, and Notion relation/schema
+verification before any Beta 3 feature work.

@@ -9,6 +9,22 @@ and who has it now.
 
 ---
 
+### 2026-06-26 — Codex → user
+- Task: Beta 2 closeout runbook/hygiene slice
+- State: Done, pending user review/commit approval
+- Changed: added `docs/DB_MIGRATION_RUNBOOK.md`, aligned `db:check` with the
+  runbook, fixed DB npm scripts for the local Node version, ignored and removed
+  generated local `public/uploads/` and `tmp/` artifacts, and reconciled docs
+  around Beta 2/Beta 3 gates. No app behavior, schema migration,
+  Notion-to-Postgres migration, or recipe import work was started.
+- Verified: `npm run lint` passed; `npm run typecheck` passed; `npm test`
+  passed (492/492); `npm run build` passed. `npm run db:check` was skipped
+  because no `DATABASE_URL` is present in the shell or `.env.local`.
+- Open / next: remaining Beta 2 closeout gates are mobile QA, write-flow
+  verification, and Notion relation/schema verification. Beta 3 feature work
+  remains blocked until those gates pass.
+- Tree owner now: user
+
 ### 2026-06-26 01:15 — Codex → user
 - Task: Planner V2 production closeout and migration operations documentation
 - State: Done
@@ -86,6 +102,19 @@ and who has it now.
 - Open / next: deploy and smoke-test feedback from the homepage against a real
   Notion-backed meal whose Postgres mirror row is absent. No auth, billing,
   native wrapper, grocery, or Postgres-primary migration work was started.
+- Tree owner now: user
+
+### 2026-06-13 — Claude Code → user
+- Task: Builder-os read-only audit + salvage plan
+- State: Done (reference only)
+- Changed: added `ai/BUILDER_OS_SALVAGE_PLAN.md`. No code/prompt text copied;
+  Builder-os was not modified; nothing installed, built, or committed.
+- Verified: read-only audit of `/Volumes/Mac Mini - Extended/Projects/Builder-os`
+  (frozen at commit `b94a1e7`, 2026-05-01). No Tablewise gate needed (docs only).
+- Open / next: Builder-os is a **reference-only salvage source** — archive the
+  app, do not revive. Future salvage is phased (S1 prompt templates → S2 task
+  packet Stop Condition → S3 path-safety → S4 cost logging), each a separate
+  approved packet. Nothing started.
 - Tree owner now: user
 
 ### 2026-06-13 — Claude Code → user

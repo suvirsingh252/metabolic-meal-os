@@ -1,27 +1,34 @@
 # Known Issues
 
-Last updated: 2026-06-25 (Phase 8 grocery planning milestone closeout)
+Last updated: 2026-06-26 (Beta 2 closeout runbook/hygiene slice)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md`, then review this file for active blockers and risks.
 
-## Current QA Status (2026-06-25)
+## Current Verified State (2026-06-26)
 
-Phase 8A Grocery Engine, Phase 8A.1 Ingredient Intelligence Hardening, and
-Phase 8B Weekly Meal Planning are deployed at
-`https://metabolic-meal-os.vercel.app` on production commit
-`5fe91983e32f175971a22db74033566da1050f71`. Production migrations through
-`drizzle/0003_fearless_big_bertha.sql` have been applied and verified. Browser
-smoke passed for `/planner`, `/grocery`, saved grocery-list reopening,
-persisted checklist state after refresh, and `/grocery?meal=<real-meal-id>`.
-No missing-table or missing-column errors were observed.
+Planner V2 is deployed at `https://metabolic-meal-os.vercel.app` on production
+commit `471ce34257305d02cbc5dfd2d76d4dd8113c7621`. Production migration
+`drizzle/0005_lucky_ego.sql` has been applied. `/api/weekly-plan` returns `200`,
+and Planner V2 production smoke passed for Monday-Sunday Lunch/Dinner slots,
+independent same-day persistence, suggestions, image rendering, shopping
+preview, weekly insights, and 390px mobile overflow.
 
-Earlier validation gate was green on `main`: `npm run typecheck`,
-`npm run lint`, `npm test`, and `npm run build` passed during the relevant
-feature commits.
+`docs/DB_MIGRATION_RUNBOOK.md` is the supported database migration process.
+Temporary runtime migration routes are emergency-only and are not the normal
+process.
 
 ## Critical
 
 - No active critical issues.
+
+## Beta 2 Closeout Gates
+
+- [x] Supported database migration runbook exists:
+  `docs/DB_MIGRATION_RUNBOOK.md`.
+- [ ] Mobile QA is not closed.
+- [ ] Write-flow verification is not closed.
+- [ ] Notion relation/schema verification is not closed.
+- [ ] Beta 3 feature work must not start until all gates above pass.
 
 ## Bugs
 

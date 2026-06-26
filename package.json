@@ -11,7 +11,7 @@
     "smoke:prod": "tsx scripts/smoke-test.ts",
     "smoke:prod:writes": "tsx scripts/smoke-test-writes.ts",
     "smoke:analyze-reliability": "tsx scripts/analyze-reliability-smoke.ts",
-    "db:check": "node --env-file-if-exists=.env.local --import tsx scripts/check-db.ts",
+    "db:check": "node scripts/load-env-and-run.mjs tsx scripts/check-db.ts",
     "audit:backfill": "node --env-file-if-exists=.env.local --import tsx scripts/audit-backfill.ts",
     "audit:as-needed-ingredients": "tsx scripts/audit-as-needed-ingredients.ts",
     "backfill:ingredients:dry-run": "tsx scripts/dry-run-ingredient-backfill.ts",
@@ -19,7 +19,7 @@
     "backfill:ingredients:apply": "tsx scripts/apply-ingredient-backfill.ts",
     "images:backfill": "tsx scripts/backfill-recipe-images.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/.bin/drizzle-kit migrate"
+    "db:migrate": "node scripts/load-env-and-run.mjs drizzle-kit migrate"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

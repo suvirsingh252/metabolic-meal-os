@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-26 (Planner V2 production closeout)
+Last updated: 2026-06-26 (Beta 2 closeout runbook/hygiene slice)
 
 For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this roadmap.
 
@@ -138,6 +138,8 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 
 - [x] Close out Planner V2 production readiness and document the migration
   operations caveat.
+- [x] Close the Beta 2 runbook/hygiene slice: supported migration runbook,
+  `db:check`/docs alignment, and generated artifact cleanup.
 - [x] Deploy the Phase 8 grocery planning milestone and verify production database migrations.
 - [x] Improve trust and quality for ingredient intelligence.
 - [ ] Review FoodData Central matching quality on a larger household ingredient set.
@@ -153,12 +155,19 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Test iPhone Safari Add to Home Screen flow on live URL.
 - [x] Verify `/planner` against production data after Phase 8B deployment and migration.
 - [ ] Run an on-device iPhone Safari Beta 4 pass for `/today`, `/analyze`, `/meals`, `/planner`, `/dashboard`, `/feedback`, `/settings`, and representative `/meals/[id]`.
-- [ ] Define a supported database migration runbook before the next schema
-  change: local credentials restoration or a secure CI/runtime migration path.
+- [ ] Finish remaining Beta 2 closeout gates before any Beta 3 feature work:
+  mobile QA, write-flow verification, and Notion relation/schema verification.
 
 ## Next Up
 
-- [ ] **Phase 8C (recommended next slice) — Dinner Concierge -> Planner V2 Integration:** let a committed Dinner Concierge choice flow naturally into the current weekly plan and then into grocery generation. Reuse Planner V2 and the existing grocery engine; do not add pantry, quantity math, or retailer integrations in this slice.
+- [ ] **Beta 3 gate:** do not start Beta 3 feature work until the Beta 2
+  closeout gates pass: supported migration runbook, mobile QA, write-flow
+  verification, and Notion relation/schema verification.
+- [ ] **Phase 8C (recommended future slice, blocked by the Beta 3 gate) —
+  Dinner Concierge -> Planner V2 Integration:** let a committed Dinner
+  Concierge choice flow naturally into the current weekly plan and then into
+  grocery generation. Reuse Planner V2 and the existing grocery engine; do not
+  add pantry, quantity math, or retailer integrations in this slice.
 - [ ] **Postgres Phase 2 — Shadow writes:** add a non-blocking Postgres shadow write to `POST /api/notion/save-meal` after Notion write succeeds. Run `scripts/backfill-meals-to-postgres.ts` (to be written) against the live meal archive. Validate row counts before enabling reads.
 - [ ] **Beta 6.6 (recommended next slice) — URL Recovery / Guided Intake Fallback v1:** improve blocked or script-rendered URL recovery with clearer guided paste/caption fallback while preserving source-URL re-attachment. Keep it a small reliability/UX slice — no Notion schema changes, no new AI calls. A first step already exists, committed locally as `ce7dc0d` but not yet pushed (`getUrlRecoveryCopy` in `src/app/analyze/components/status-banner.tsx` + `tests/analyze-guided-recovery.test.ts`). Domain-specific learning and a richer parser dependency stay deferred unless the tradeoff proves worth it.
 - [ ] Persistent Intelligence Snapshot v2: preserve more exact Analyze fields with a deliberate schema/storage plan once the compact Meal OS Summary proves useful.
@@ -238,7 +247,7 @@ For a brand-new PM/chat, start with `docs/PM_HANDOVER.md` before using this road
 - [ ] Legacy nutrition and quality backfill is read-time only; no Notion write-back migration exists yet.
 - [ ] Free-text nutrition estimation and serving controls are deliberately narrow, coarse, and beta-grade; they should not be treated as clinical-grade nutrition science.
 - [ ] Browser/device visual coverage is still manual; add lightweight visual regression or scripted mobile checks if the UI surface grows.
-- [ ] Database migration operations need a supported path. Local
-  `npm run db:check` and `npm run db:migrate` require a real `DATABASE_URL`;
-  Vercel CLI env pulls may show encrypted sensitive values as empty. Do not use
-  temporary runtime migration routes as the normal process.
+- [ ] Database migration operations must continue following
+  `docs/DB_MIGRATION_RUNBOOK.md`. `DATABASE_URL` must target the intended
+  database; Vercel CLI env pulls may show encrypted sensitive values as empty.
+  Temporary runtime migration routes are emergency-only.

@@ -214,7 +214,11 @@ storage before display.
 
 Storage:
 - Production storage is Vercel Blob through `@vercel/blob`; set
-  `BLOB_READ_WRITE_TOKEN` in Vercel.
+  `BLOB_READ_WRITE_TOKEN` in Vercel for both Preview and Production.
+- Create/link the store with
+  `vercel blob create-store metabolic-meal-os-recipe-images --access public --environment production --environment preview --yes`.
+  The store must be public because meal pages render the stored image URL
+  directly.
 - Local development falls back to `public/uploads/recipe-images`.
 - OpenAI image generation uses the existing `OPENAI_API_KEY`; no separate env
   var is required, but AI image generation has additional latency and cost.
@@ -469,27 +473,30 @@ Key design decisions:
 
 ### Scripts
 
-- `npm run db:check` — `scripts/check-db.ts`: connectivity probe, lists public tables. Reads no app data.
+- `npm run db:check` — `scripts/check-db.ts`: metadata-only verification for
+  connectivity, expected public tables, and Drizzle migration state. Reads no
+  app data.
 - `npm run db:generate` — generate a migration from `src/lib/db/schema.ts`.
 - `npm run db:migrate` — apply pending migrations to the live database.
 
 ### Migration policy
 
-1. Schema changes: edit `src/lib/db/schema.ts`, then `npm run db:generate`.
-2. Apply: `npm run db:migrate` (uses `DATABASE_URL`).
-3. Never hand-edit migration SQL after generating.
-4. `drizzle/` directory is committed — migration history is source-controlled.
+Supported operator process: `docs/DB_MIGRATION_RUNBOOK.md`.
 
-Operational caveat after Planner V2:
-- Local `npm run db:check` and `npm run db:migrate` fail without a real local
-  `DATABASE_URL`.
-- `vercel env pull` and `vercel env run -e production` may show encrypted
-  sensitive environment values as empty locally even when the production runtime
-  can read them.
-- Future migrations need either restored local database credentials or a secure
-  CI/runtime migration path.
-- Temporary runtime migration routes are an emergency-only recovery mechanism
-  and must not become the standard migration process.
+1. Schema changes: edit `src/lib/db/schema.ts`, then `npm run db:generate`.
+2. Review generated SQL in `drizzle/`.
+3. Check the target database: `npm run db:check`.
+4. Apply: `npm run db:migrate` (uses the target `DATABASE_URL`).
+5. Verify: `npm run db:check`.
+6. Never hand-edit migration SQL after generating.
+7. `drizzle/` directory is committed — migration history is source-controlled.
+
+Production boundary:
+- `DATABASE_URL` must be the verified direct connection string for the target
+  database.
+- Vercel CLI env pulls may show encrypted sensitive values as empty locally.
+- Temporary runtime migration routes are emergency-only and not the standard
+  migration process.
 
 ### Phase roadmap
 

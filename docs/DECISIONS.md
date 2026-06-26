@@ -1,6 +1,32 @@
 # Architectural Decisions
 
-Last updated: 2026-06-26 (Planner V2 production closeout)
+Last updated: 2026-06-26 (Beta 2 closeout runbook/hygiene slice)
+
+## 2026-06-26 — Database Migrations Use A Supported Operator Runbook
+
+Decision: Use `docs/DB_MIGRATION_RUNBOOK.md` as the single supported process
+for Postgres/Drizzle migrations. `npm run db:check` now verifies target
+connectivity, expected public tables, and Drizzle migration state using metadata
+only. The normal path is `npm run db:check`, `npm run db:migrate`, then
+`npm run db:check` again.
+
+Reasoning:
+- Planner V2 exposed an operations gap: production could run with
+  `DATABASE_URL`, while local Vercel env pulls could show sensitive values as
+  empty.
+- The script and docs needed to agree so operators can distinguish a missing
+  credential, an unmigrated database, and a branch/history mismatch.
+- Metadata-only verification is enough for migration closeout without reading
+  or mutating application data.
+
+Boundaries:
+- This does not start a Notion-to-Postgres migration.
+- This does not add a schema migration or change app runtime behavior.
+- Temporary runtime migration routes are emergency-only recovery tools, not the
+  standard process.
+- Beta 3 feature work remains blocked until Beta 2 closeout gates pass:
+  migration runbook, mobile QA, write-flow verification, and Notion
+  relation/schema verification.
 
 ## 2026-06-26 — Planner V2 Is The Central Weekly Workflow, Backed By Postgres
 
@@ -32,14 +58,13 @@ Implementation:
   image rendering, shopping preview, and weekly insights.
 
 Operations boundary:
-- Local `npm run db:check` and `npm run db:migrate` fail without a real local
-  `DATABASE_URL`.
+- `docs/DB_MIGRATION_RUNBOOK.md` is now the supported migration process.
+- `DATABASE_URL` must be set to the intended target database before running
+  `npm run db:check` or `npm run db:migrate`.
 - Vercel CLI env pulls may show encrypted sensitive values as empty locally even
   when production runtime has them.
-- Future migrations need restored local database credentials or a secure
-  CI/runtime migration path.
-- Temporary runtime migration routes must not be used as the normal migration
-  process.
+- Temporary runtime migration routes are emergency-only and must not be used as
+  the normal migration process.
 
 ## 2026-06-25 — Visual Cookbook Images Are Deferred Work With Blob-First Storage
 

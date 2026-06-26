@@ -1,6 +1,6 @@
 # Metabolic Meal OS Handoff
 
-Last updated: 2026-06-26 (Planner V2 production closeout)
+Last updated: 2026-06-26 (Beta 2 closeout runbook/hygiene slice)
 
 For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`, then read this file, `docs/ROADMAP.md`, `docs/KNOWN_ISSUES.md`, and `docs/NOTION_SCHEMA_CHECKLIST.md`. This remains the detailed engineering resume document for future Codex sessions. Keep it current.
 
@@ -8,7 +8,7 @@ For a brand-new PM/chat with no prior context, start with `docs/PM_HANDOVER.md`,
 
 Metabolic Meal OS is a production-oriented MVP Next.js app for household meal optimization. It remains a private/beta household tool, not a publicly hardened multi-tenant product.
 
-### Current QA Status (2026-06-26 Planner V2 Production)
+### Current Verified State (2026-06-26 Planner V2 Production)
 
 Production state:
 - Current production commit: `471ce34257305d02cbc5dfd2d76d4dd8113c7621`.
@@ -30,18 +30,28 @@ Planner V2 production verification completed:
 - Weekly insights render.
 - Mobile smoke at 390px showed no page-level horizontal overflow.
 
-Migration operations caveat:
-- Local `npm run db:check` and `npm run db:migrate` still fail unless the local
-  shell or `.env.local` has a real `DATABASE_URL`.
-- `vercel env pull` and `vercel env run -e production` may show encrypted
-  sensitive values as empty locally even when production runtime has them.
-- Future migrations need either restored local database credentials or a secure
-  CI/runtime migration path.
-- Temporary runtime migration routes were used only as an emergency recovery
-  path for Planner V2 and must not become the normal migration process.
+Supported migration process:
+- `docs/DB_MIGRATION_RUNBOOK.md` is now the source of truth for database
+  migration operations.
+- `DATABASE_URL` must come from the target database environment before running
+  `npm run db:check` or `npm run db:migrate`.
+- Normal flow: `npm run db:check`, `npm run db:migrate`, then
+  `npm run db:check` again.
+- `npm run db:check` verifies connection metadata, expected public tables, and
+  Drizzle migration state. It does not read or write app data.
+- Temporary runtime migration routes are emergency-only and are not the normal
+  migration process.
 
-Recommended next operations slice:
-- Define the supported migration runbook before the next database migration.
+Remaining Beta 2 closeout gates before any Beta 3 feature work:
+- Migration runbook and repo hygiene: closed by the 2026-06-26 closeout slice.
+- Mobile QA: not closed.
+- Write-flow verification: not closed.
+- Notion relation/schema verification: not closed.
+
+Recommendation boundary:
+- Do not begin Beta 3 feature work until the remaining Beta 2 closeout gates
+  pass.
+- Do not start a Notion-to-Postgres migration as part of this closeout.
 
 ### Prior QA Status (2026-06-25 Phase 8 Grocery Planning)
 
@@ -81,6 +91,10 @@ Visual Cookbook v1 current state:
 - Required production image storage env var: `BLOB_READ_WRITE_TOKEN`. Without
   it, image storage falls back to `public/uploads/recipe-images`, which is useful
   locally but not durable across Vercel deployments.
+- Vercel Blob setup command:
+  `vercel blob create-store metabolic-meal-os-recipe-images --access public --environment production --environment preview --yes`.
+  This links the store and provisions `BLOB_READ_WRITE_TOKEN` for Preview and
+  Production; redeploy after changing the store or env configuration.
 - AI image generation uses the existing `OPENAI_API_KEY`; if it is absent or
   image generation fails, meals keep graceful placeholder/pending/failed states.
 - Manual uploads are handled by `/api/meals/[id]/image` and always win.
@@ -533,6 +547,7 @@ Do not deploy automatically from Codex. When Suvir is ready:
 3. Push from the local machine when ready.
 4. In Vercel, confirm required environment variables are present:
    - `OPENAI_API_KEY`
+   - `BLOB_READ_WRITE_TOKEN` (Vercel Blob, Preview and Production)
    - `FDC_API_KEY`
    - `NOTION_API_KEY`
    - `NOTION_MEALS_DATABASE_ID`
