@@ -12,8 +12,8 @@ export default async function PlannerPage({
     <div className="space-y-6">
       <PageHeader
         eyebrow="Weekly Planner"
-        title="Meal plan"
-        description="Plan this week's meals from saved meals."
+        title="Weekly meal plan"
+        description="Plan lunches and dinners with saved meals, household intelligence, and a grocery preview."
       />
       <PlannerClient preselectedMealId={meal ?? null} />
     </div>

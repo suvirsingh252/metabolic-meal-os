@@ -197,6 +197,7 @@ export const weeklyDinnerPlans = pgTable(
     householdId: text("household_id").notNull(),
     weekStartDate: date("week_start_date").notNull(),
     dayOfWeek: text("day_of_week").notNull(),
+    mealSlot: text("meal_slot").notNull().default("Dinner"),
     mealId: text("meal_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -211,8 +212,8 @@ export const weeklyDinnerPlans = pgTable(
       table.weekStartDate
     ),
     householdWeekDayIdx: uniqueIndex(
-      "weekly_dinner_plans_household_week_day_idx"
-    ).on(table.householdId, table.weekStartDate, table.dayOfWeek)
+      "weekly_dinner_plans_household_week_day_slot_idx"
+    ).on(table.householdId, table.weekStartDate, table.dayOfWeek, table.mealSlot)
   })
 );
 

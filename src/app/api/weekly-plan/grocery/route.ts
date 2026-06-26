@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     if (mealIds.length === 0) {
       return NextResponse.json(
-        { error: "Plan at least one dinner before generating groceries." },
+        { error: "Plan at least one meal before generating groceries." },
         { status: 400 }
       );
     }

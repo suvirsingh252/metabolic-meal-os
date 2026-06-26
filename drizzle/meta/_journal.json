@@ -36,6 +36,13 @@
       "when": 1782362864837,
       "tag": "0004_perpetual_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782443356100,
+      "tag": "0005_lucky_ego",
+      "breakpoints": true
     }
   ]
 }

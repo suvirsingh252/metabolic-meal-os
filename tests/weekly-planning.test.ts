@@ -69,20 +69,33 @@ test("weekly dinner selections validate days, clear empty meals, and reject dupl
   assert.deepEqual(
     validateWeeklyDinnerSelections([
       { dayOfWeek: "Monday", mealId: chickenMealId },
-      { dayOfWeek: "Tuesday", mealId: "" }
+      { dayOfWeek: "Tuesday", mealSlot: "Lunch", mealId: "" }
     ]),
     [
-      { dayOfWeek: "Monday", mealId: chickenMealId },
-      { dayOfWeek: "Tuesday", mealId: null }
+      { dayOfWeek: "Monday", mealSlot: "Dinner", mealId: chickenMealId },
+      { dayOfWeek: "Tuesday", mealSlot: "Lunch", mealId: null }
     ]
   );
   assert.throws(
     () =>
       validateWeeklyDinnerSelections([
-        { dayOfWeek: "Monday", mealId: chickenMealId },
-        { dayOfWeek: "Monday", mealId: pastaMealId }
+        { dayOfWeek: "Monday", mealSlot: "Dinner", mealId: chickenMealId },
+        { dayOfWeek: "Monday", mealSlot: "Dinner", mealId: pastaMealId }
       ]),
     /once/
+  );
+  assert.throws(
+    () =>
+      validateWeeklyDinnerSelections([
+        { dayOfWeek: "Monday", mealSlot: "Breakfast", mealId: chickenMealId }
+      ]),
+    /Lunch or Dinner/
+  );
+  assert.deepEqual(
+    validateWeeklyDinnerSelections([
+      { dayOfWeek: "Friday", mealSlot: "", mealId: pastaMealId }
+    ]),
+    [{ dayOfWeek: "Friday", mealSlot: "Dinner", mealId: pastaMealId }]
   );
 });
 
@@ -95,8 +108,8 @@ test("weekly plan view model restores persisted selections and active grocery pr
       meal({ id: pastaMealId, mealName: "Pasta" })
     ],
     selections: [
-      { dayOfWeek: "Monday", mealId: chickenMealId },
-      { dayOfWeek: "Wednesday", mealId: pastaMealId }
+      { dayOfWeek: "Monday", mealSlot: "Dinner", mealId: chickenMealId },
+      { dayOfWeek: "Wednesday", mealSlot: "Lunch", mealId: pastaMealId }
     ],
     activeGroceryList: {
       id: "list-1",
@@ -108,10 +121,120 @@ test("weekly plan view model restores persisted selections and active grocery pr
     }
   });
 
-  assert.equal(viewModel.days[0]?.meal?.mealName, "Chicken Bowls");
-  assert.equal(viewModel.days[2]?.meal?.mealName, "Pasta");
+  assert.equal(viewModel.days[0]?.slots[1]?.meal?.mealName, "Chicken Bowls");
+  assert.equal(viewModel.days[2]?.slots[0]?.meal?.mealName, "Pasta");
   assert.deepEqual(viewModel.plannedMealIds, [chickenMealId, pastaMealId]);
   assert.equal(viewModel.activeGroceryList?.completionPercentage, 40);
+  assert.equal(viewModel.days[0]?.slots.length, 2);
+  assert.ok(viewModel.weeklyInsights.some((insight) => insight.label === "Cuisines"));
+  assert.deepEqual(
+    viewModel.shoppingPreview.map((section) => section.category),
+    ["Produce", "Protein", "Dairy", "Pantry", "Spices"]
+  );
+});
+
+test("weekly plan keeps same-day Lunch and Dinner independent", () => {
+  const week = getCurrentDinnerPlanWeek(new Date("2026-06-24T12:00:00.000Z"));
+  const viewModel = buildWeeklyDinnerPlanViewModel({
+    ...week,
+    meals: [
+      meal({
+        id: chickenMealId,
+        mealName: "Chicken Bowls",
+        mealType: "Lunch"
+      }),
+      meal({ id: pastaMealId, mealName: "Pasta", mealType: "Dinner" })
+    ],
+    selections: [
+      { dayOfWeek: "Monday", mealSlot: "Lunch", mealId: chickenMealId },
+      { dayOfWeek: "Monday", mealSlot: "Dinner", mealId: pastaMealId }
+    ]
+  });
+  const monday = viewModel.days[0];
+
+  assert.equal(monday?.slots[0]?.mealSlot, "Lunch");
+  assert.equal(monday?.slots[0]?.meal?.mealName, "Chicken Bowls");
+  assert.equal(monday?.slots[1]?.mealSlot, "Dinner");
+  assert.equal(monday?.slots[1]?.meal?.mealName, "Pasta");
+});
+
+test("shopping preview supports partial weeks without false quantity detail", () => {
+  const week = getCurrentDinnerPlanWeek(new Date("2026-06-24T12:00:00.000Z"));
+  const viewModel = buildWeeklyDinnerPlanViewModel({
+    ...week,
+    meals: [
+      meal({
+        id: chickenMealId,
+        mealName: "Chicken Bowls",
+        mealType: "Dinner",
+        ingredientsText: "2 cups rice\n1 lb chicken thighs\ncucumber"
+      })
+    ],
+    selections: [
+      { dayOfWeek: "Thursday", mealSlot: "Dinner", mealId: chickenMealId }
+    ]
+  });
+
+  assert.deepEqual(
+    viewModel.shoppingPreview.map((section) => section.category),
+    ["Produce", "Protein", "Dairy", "Pantry", "Spices"]
+  );
+  assert.deepEqual(
+    viewModel.shoppingPreview.find((section) => section.category === "Protein")
+      ?.items,
+    ["chicken thighs"]
+  );
+  assert.deepEqual(
+    viewModel.shoppingPreview.find((section) => section.category === "Pantry")
+      ?.items,
+    ["rice"]
+  );
+});
+
+test("weekly planner suggestions avoid planned meals and explain why", () => {
+  const week = getCurrentDinnerPlanWeek(new Date("2026-06-24T12:00:00.000Z"));
+  const fishMealId = "11111111-1111-1111-1111-111111111111";
+  const viewModel = buildWeeklyDinnerPlanViewModel({
+    ...week,
+    generatedAt: "2026-06-24T12:00:00.000Z",
+    meals: [
+      meal({
+        id: chickenMealId,
+        mealName: "Chicken Bowls",
+        mealType: "Dinner",
+        familyApproved: true,
+        weeknightFriendly: true,
+        ingredientsText: "chicken\nrice\nbroccoli",
+        proteinG: 32,
+        calories: 520
+      }),
+      meal({
+        id: fishMealId,
+        mealName: "Fish Tacos",
+        mealType: "Dinner",
+        cuisine: "Mexican",
+        familyApproved: true,
+        weeknightFriendly: true,
+        ingredientsText: "fish\ncabbage\ntortillas",
+        proteinG: 28,
+        calories: 480
+      })
+    ],
+    selections: [
+      { dayOfWeek: "Monday", mealSlot: "Dinner", mealId: chickenMealId }
+    ]
+  });
+  const tuesdayDinner = viewModel.days[1]?.slots.find(
+    (slot) => slot.mealSlot === "Dinner"
+  );
+
+  assert.equal(tuesdayDinner?.suggestions[0]?.mealId, fishMealId);
+  assert.match(tuesdayDinner?.suggestions[0]?.explanation ?? "", /Chosen/);
+  assert.ok(
+    viewModel.balanceAlerts.some((alert) =>
+      /balance|protein|vegetables|complex|cook/i.test(alert.title)
+    )
+  );
 });
 
 test("weekly grocery generation consolidates planned dinners through the grocery engine", () => {

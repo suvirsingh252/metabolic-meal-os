@@ -12,6 +12,7 @@ import {
   getCurrentDinnerPlanWeek,
   validateWeeklyDinnerSelections
 } from "@/src/lib/domain/weekly-planning";
+import { queryMealFeedbackSummaries } from "@/src/lib/notion/feedback-summary";
 import { queryAllMealSummaries } from "@/src/lib/notion/meals-query";
 import {
   guardApiRequest,
@@ -27,7 +28,7 @@ interface WeeklyPlanRequestBody {
 async function buildPlanResponse() {
   const { householdId } = getConfiguredHouseholdMetadata();
   const week = getCurrentDinnerPlanWeek();
-  const [{ meals }, selections, activeGroceryList] = await Promise.all([
+  const [{ meals }, selections, activeGroceryList, feedbackByMealIdResult] = await Promise.all([
     queryAllMealSummaries(),
     queryWeeklyDinnerPlan({
       householdId,
@@ -36,6 +37,10 @@ async function buildPlanResponse() {
     queryActiveWeeklyGroceryList({
       householdId,
       weekStartDate: week.weekStartDate
+    }),
+    queryMealFeedbackSummaries({ pageSize: 100 }).catch((error) => {
+      console.warn("Weekly planner feedback summary unavailable", error);
+      return {};
     })
   ]);
 
@@ -43,7 +48,8 @@ async function buildPlanResponse() {
     ...week,
     selections,
     meals,
-    activeGroceryList
+    activeGroceryList,
+    feedbackByMealId: feedbackByMealIdResult
   });
 }
 

@@ -2,9 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { getDbClient, type DbClient } from "@/src/lib/db/client";
 import { weeklyDinnerPlans } from "@/src/lib/db/schema";
 import type {
-  DinnerPlanDay,
   PersistedWeeklyDinnerSelection,
   WeeklyDinnerSelection
+} from "@/src/lib/domain/weekly-planning";
+import {
+  isDinnerPlanDay,
+  isWeeklyMealSlot
 } from "@/src/lib/domain/weekly-planning";
 
 export async function queryWeeklyDinnerPlan(input: {
@@ -23,10 +26,19 @@ export async function queryWeeklyDinnerPlan(input: {
       )
     );
 
-  return rows.map((row) => ({
-    dayOfWeek: row.dayOfWeek as DinnerPlanDay,
-    mealId: row.mealId
-  }));
+  return rows.flatMap((row) => {
+    if (!isDinnerPlanDay(row.dayOfWeek)) {
+      return [];
+    }
+
+    return [
+      {
+        dayOfWeek: row.dayOfWeek,
+        mealSlot: isWeeklyMealSlot(row.mealSlot) ? row.mealSlot : "Dinner",
+        mealId: row.mealId
+      }
+    ];
+  });
 }
 
 export async function saveWeeklyDinnerPlan(input: {
@@ -36,9 +48,16 @@ export async function saveWeeklyDinnerPlan(input: {
   db?: DbClient;
 }): Promise<PersistedWeeklyDinnerSelection[]> {
   const db = input.db ?? getDbClient();
-  const selected = input.selections.filter(
-    (selection): selection is { dayOfWeek: DinnerPlanDay; mealId: string } =>
-      Boolean(selection.mealId)
+  const selected = input.selections.flatMap((selection) =>
+    selection.mealId
+      ? [
+          {
+            dayOfWeek: selection.dayOfWeek,
+            mealSlot: selection.mealSlot,
+            mealId: selection.mealId
+          }
+        ]
+      : []
   );
 
   await db
@@ -56,6 +75,7 @@ export async function saveWeeklyDinnerPlan(input: {
         householdId: input.householdId,
         weekStartDate: input.weekStartDate,
         dayOfWeek: selection.dayOfWeek,
+        mealSlot: selection.mealSlot,
         mealId: selection.mealId
       }))
     );
