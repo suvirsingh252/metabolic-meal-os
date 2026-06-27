@@ -12,6 +12,12 @@ import type { FeedbackChipEvent } from "@/src/lib/domain/feedback";
 
 const generatedAt = "2026-06-16T12:00:00.000Z";
 
+function value<T>(overrides: Partial<MealSummary>, key: keyof MealSummary, fallback: T) {
+  return Object.prototype.hasOwnProperty.call(overrides, key)
+    ? (overrides[key] as T)
+    : fallback;
+}
+
 function mealSummary(overrides: Partial<MealSummary>): MealSummary {
   return {
     id: overrides.id ?? "meal",
@@ -20,8 +26,8 @@ function mealSummary(overrides: Partial<MealSummary>): MealSummary {
     createdAt: overrides.createdAt ?? "2026-04-01T12:00:00.000Z",
     sourceUrl: overrides.sourceUrl ?? null,
     sourceName: overrides.sourceName ?? null,
-    cuisine: overrides.cuisine ?? null,
-    mealType: overrides.mealType ?? "Dinner",
+    cuisine: value(overrides, "cuisine", "Indian"),
+    mealType: value(overrides, "mealType", "Dinner"),
     proteinLevel: overrides.proteinLevel ?? null,
     satietyLevel: overrides.satietyLevel ?? null,
     bloodSugarImpact: overrides.bloodSugarImpact ?? null,
@@ -31,13 +37,17 @@ function mealSummary(overrides: Partial<MealSummary>): MealSummary {
     comfortMeal: overrides.comfortMeal ?? false,
     optimizedVersion: overrides.optimizedVersion ?? null,
     notes: overrides.notes ?? null,
-    ingredientsText: overrides.ingredientsText ?? null,
+    ingredientsText: value(
+      overrides,
+      "ingredientsText",
+      "1 cup chickpeas\n1 cup tomatoes\n1 tbsp olive oil"
+    ),
     instructionsText: overrides.instructionsText ?? null,
-    calories: overrides.calories ?? null,
-    proteinG: overrides.proteinG ?? null,
-    carbohydratesG: overrides.carbohydratesG ?? null,
-    fatG: overrides.fatG ?? null,
-    fiberG: overrides.fiberG ?? null,
+    calories: value(overrides, "calories", 520),
+    proteinG: value(overrides, "proteinG", 28),
+    carbohydratesG: value(overrides, "carbohydratesG", 58),
+    fatG: value(overrides, "fatG", 18),
+    fiberG: value(overrides, "fiberG", 10),
     sodiumMg: overrides.sodiumMg ?? null,
     sugarG: overrides.sugarG ?? null,
     nutritionConfidence: overrides.nutritionConfidence ?? null,
@@ -50,7 +60,8 @@ function mealSummary(overrides: Partial<MealSummary>): MealSummary {
     energyDensityScore: overrides.energyDensityScore ?? null,
     processingScore: overrides.processingScore ?? null,
     satietyScoreNumeric: overrides.satietyScoreNumeric ?? null,
-    bloodSugarRiskScore: overrides.bloodSugarRiskScore ?? null
+    bloodSugarRiskScore: overrides.bloodSugarRiskScore ?? null,
+    imageUrl: value(overrides, "imageUrl", "https://example.com/meal.jpg")
   };
 }
 
@@ -82,7 +93,8 @@ test("meal mapping: fills metadata gaps null-safely and derives tags", () => {
       id: "a",
       cuisine: "Mediterranean",
       effortLevel: "Low",
-      comfortMeal: true
+      comfortMeal: true,
+      imageUrl: null
     })
   );
 

@@ -14,24 +14,34 @@ import {
 const weeknightAt = "2026-06-16T12:00:00.000Z";
 const weekendAt = "2026-06-20T12:00:00.000Z";
 
+function value<T>(
+  overrides: Partial<DinnerConciergeMeal>,
+  key: keyof DinnerConciergeMeal,
+  fallback: T
+) {
+  return Object.prototype.hasOwnProperty.call(overrides, key)
+    ? (overrides[key] as T)
+    : fallback;
+}
+
 function meal(overrides: Partial<DinnerConciergeMeal>): DinnerConciergeMeal {
   return {
     id: overrides.id ?? "meal",
     url: overrides.url ?? "https://notion.so/meal",
     mealName: overrides.mealName ?? overrides.id ?? "Meal",
     createdAt: overrides.createdAt ?? "2026-04-01T12:00:00.000Z",
-    cuisine: overrides.cuisine ?? null,
-    mealType: overrides.mealType ?? "Dinner",
+    cuisine: value(overrides, "cuisine", "Indian"),
+    mealType: value(overrides, "mealType", "Dinner"),
     familyApproved: overrides.familyApproved ?? false,
     weeknightFriendly: overrides.weeknightFriendly ?? false,
     comfortMeal: overrides.comfortMeal ?? false,
-    calories: overrides.calories ?? null,
-    proteinG: overrides.proteinG ?? null,
-    carbohydratesG: overrides.carbohydratesG ?? null,
-    fatG: overrides.fatG ?? null,
-    fiberG: overrides.fiberG ?? null,
+    calories: value(overrides, "calories", 520),
+    proteinG: value(overrides, "proteinG", 28),
+    carbohydratesG: value(overrides, "carbohydratesG", 58),
+    fatG: value(overrides, "fatG", 18),
+    fiberG: value(overrides, "fiberG", 10),
     qualityScore: overrides.qualityScore ?? null,
-    imageUrl: overrides.imageUrl,
+    imageUrl: value(overrides, "imageUrl", "https://example.com/meal.jpg"),
     estimatedMinutes: overrides.estimatedMinutes,
     effortLevel: overrides.effortLevel,
     tags: overrides.tags,
@@ -39,7 +49,11 @@ function meal(overrides: Partial<DinnerConciergeMeal>): DinnerConciergeMeal {
     satietyLevel: overrides.satietyLevel,
     bloodSugarImpact: overrides.bloodSugarImpact,
     notes: overrides.notes,
-    ingredientsText: overrides.ingredientsText,
+    ingredientsText: value(
+      overrides,
+      "ingredientsText",
+      "1 cup chickpeas\n1 cup tomatoes\n1 tbsp olive oil"
+    ),
     instructionsText: overrides.instructionsText,
     metabolicScore: overrides.metabolicScore,
     proteinScore: overrides.proteinScore,
@@ -234,19 +248,28 @@ test("8. fresh ideas avoid strongly negative meals when alternatives exist", () 
   assert.ok(!freshIds.includes("bad"));
 });
 
-test("9. missing image/cuisine/time metadata does not crash", () => {
+test("9. missing demo metadata excludes meals without crashing", () => {
   const meals = [
-    meal({ id: "bare", mealName: "Mystery dinner", qualityScore: 72 }),
-    meal({ id: "bare2", mealName: "Another dinner", qualityScore: 70 })
+    meal({
+      id: "bare",
+      mealName: "Mystery dinner",
+      qualityScore: 72,
+      imageUrl: null,
+      cuisine: null
+    }),
+    meal({
+      id: "bare2",
+      mealName: "Another dinner",
+      qualityScore: 70,
+      imageUrl: null,
+      cuisine: null
+    })
   ];
 
   const view = getDinnerConciergeViewModel({ meals, generatedAt: weeknightAt });
 
-  assert.ok(view.leadRecommendation);
-  assert.equal(view.leadRecommendation!.imageUrl, null);
-  assert.equal(view.leadRecommendation!.cuisine, null);
-  assert.equal(view.leadRecommendation!.estimatedMinutes, null);
-  assert.ok(Array.isArray(view.leadRecommendation!.badges));
+  assert.equal(view.leadRecommendation, null);
+  assert.equal(view.emptyState?.title, "No dinner picks tonight");
 });
 
 test("10. generated reasons are non-empty human-readable strings", () => {
@@ -271,15 +294,26 @@ test("10. generated reasons are non-empty human-readable strings", () => {
   }
 });
 
-test("11. sparse concierge explanations avoid unsupported strong claims", () => {
+test("11. sparse meals are excluded from concierge recommendations", () => {
   const meals = [
-    meal({ id: "bare", mealName: "Bare dinner" }),
-    meal({ id: "bare2", mealName: "Second bare dinner" })
+    meal({
+      id: "bare",
+      mealName: "Bare dinner",
+      imageUrl: null,
+      cuisine: null,
+      ingredientsText: null
+    }),
+    meal({
+      id: "bare2",
+      mealName: "Second bare dinner",
+      imageUrl: null,
+      cuisine: null,
+      ingredientsText: null
+    })
   ];
 
   const view = getDinnerConciergeViewModel({ meals, generatedAt: weeknightAt });
-  const details = view.leadRecommendation!.explanation.details.join(" ");
 
-  assert.match(details, /cautious|limited/i);
-  assert.doesNotMatch(details, /strong fit|worked well|family loved/i);
+  assert.equal(view.leadRecommendation, null);
+  assert.equal(view.alternates.length, 0);
 });

@@ -6,6 +6,7 @@ import {
   type RecommendationContext
 } from "@/src/lib/domain/feedback";
 import { rankRecommendationsForCategory } from "@/src/lib/domain/recommendations/ranking";
+import { isDemoReadyRecommendationMeal } from "@/src/lib/domain/recommendations/demo-readiness";
 import type {
   MealRecommendation,
   RecommendationExplanation,
@@ -445,9 +446,7 @@ function buildFreshIdeas(
     .map(({ entry }) => toRecommendation(entry.ranked, entry.meal, state));
 }
 
-function buildEmptyState(
-  totalMeals: number
-): DinnerConciergeEmptyState {
+function buildEmptyState(totalMeals: number): DinnerConciergeEmptyState {
   if (totalMeals === 0) {
     return {
       title: "No saved dinners yet",
@@ -471,9 +470,10 @@ export function getDinnerConciergeViewModel(
   const generatedAt = input.generatedAt ?? new Date().toISOString();
   const state = normalizeRefinementState(input.refinements);
   const context = buildContext(generatedAt, state);
-  const mealsById = new Map(input.meals.map((meal) => [meal.id, meal]));
+  const recommendationMeals = input.meals.filter(isDemoReadyRecommendationMeal);
+  const mealsById = new Map(recommendationMeals.map((meal) => [meal.id, meal]));
 
-  const ranked = rankRecommendationsForCategory(input.meals, "Dinner", {
+  const ranked = rankRecommendationsForCategory(recommendationMeals, "Dinner", {
     generatedAt,
     feedbackByMealId: input.feedbackByMealId,
     context

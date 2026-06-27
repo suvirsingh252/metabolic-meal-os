@@ -4,6 +4,7 @@ import {
   getSuggestionForCategory,
   rankRecommendationsForCategory
 } from "@/src/lib/domain/recommendations/ranking";
+import { isDemoReadyRecommendationMeal } from "@/src/lib/domain/recommendations/demo-readiness";
 import {
   countMealRepeats,
   countNutritionFields,
@@ -166,12 +167,13 @@ export function buildTodayViewModel(
   } = {}
 ): TodayViewModel {
   const generatedAt = options.generatedAt ?? new Date().toISOString();
+  const recommendationMeals = meals.filter(isDemoReadyRecommendationMeal);
   const suggestions: TodayViewModel["suggestions"] = {};
   const selectedMealIds: string[] = [];
   const selectedMealNames: string[] = [];
 
   for (const category of todayMealCategories) {
-    const suggestion = getSuggestionForCategory(meals, category, {
+    const suggestion = getSuggestionForCategory(recommendationMeals, category, {
       generatedAt,
       excludedMealNames: selectedMealNames,
       feedbackByMealId: options.feedbackByMealId
@@ -187,11 +189,13 @@ export function buildTodayViewModel(
   return {
     generatedAt,
     suggestions,
-    freshIdeas: buildFreshIdeas(meals, selectedMealIds, generatedAt),
+    freshIdeas: buildFreshIdeas(recommendationMeals, selectedMealIds, generatedAt),
     healthSnapshot: buildHealthSnapshot(meals, generatedAt),
     emptyState:
       meals.length === 0
         ? "No saved meals found yet. Today will start suggesting meals once the archive has enough real household data."
+        : recommendationMeals.length === 0
+          ? "Saved meals need images, metadata, ingredients, and nutrition before they appear in demo recommendations."
         : null
   };
 }

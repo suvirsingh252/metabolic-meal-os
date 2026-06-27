@@ -13,29 +13,44 @@ import type { MealFeedbackSummaryByMealId } from "@/src/lib/domain/feedback";
 
 const generatedAt = "2026-06-10T12:00:00.000Z";
 
+function value<T>(
+  overrides: Partial<RecommendationMeal>,
+  key: keyof RecommendationMeal,
+  fallback: T
+) {
+  return Object.prototype.hasOwnProperty.call(overrides, key)
+    ? (overrides[key] as T)
+    : fallback;
+}
+
 function meal(overrides: Partial<RecommendationMeal>): RecommendationMeal {
   return {
     id: overrides.id ?? "meal",
     url: overrides.url ?? "https://notion.so/meal",
     mealName: overrides.mealName ?? overrides.id ?? "Meal",
     createdAt: overrides.createdAt ?? "2026-05-01T12:00:00.000Z",
-    cuisine: overrides.cuisine ?? null,
+    imageUrl: value(overrides, "imageUrl", "https://example.com/meal.jpg"),
+    cuisine: value(overrides, "cuisine", "Indian"),
     mealType: overrides.mealType ?? "Dinner",
     familyApproved: overrides.familyApproved ?? false,
     weeknightFriendly: overrides.weeknightFriendly ?? false,
     comfortMeal: overrides.comfortMeal ?? false,
-    calories: overrides.calories ?? null,
-    proteinG: overrides.proteinG ?? null,
-    carbohydratesG: overrides.carbohydratesG ?? null,
-    fatG: overrides.fatG ?? null,
-    fiberG: overrides.fiberG ?? null,
+    calories: value(overrides, "calories", 520),
+    proteinG: value(overrides, "proteinG", 28),
+    carbohydratesG: value(overrides, "carbohydratesG", 58),
+    fatG: value(overrides, "fatG", 18),
+    fiberG: value(overrides, "fiberG", 10),
     qualityScore: overrides.qualityScore ?? null,
     proteinLevel: overrides.proteinLevel ?? null,
     satietyLevel: overrides.satietyLevel ?? null,
     bloodSugarImpact: overrides.bloodSugarImpact ?? null,
     effortLevel: overrides.effortLevel ?? null,
     notes: overrides.notes ?? null,
-    ingredientsText: overrides.ingredientsText ?? null,
+    ingredientsText: value(
+      overrides,
+      "ingredientsText",
+      "1 cup chickpeas\n1 cup tomatoes\n1 tbsp olive oil"
+    ),
     instructionsText: overrides.instructionsText ?? null,
     metabolicScore: overrides.metabolicScore ?? null,
     proteinScore: overrides.proteinScore ?? null,
@@ -439,7 +454,15 @@ test("sparse meal intelligence is bounded, deterministic, and cautious in copy",
   const dinner = meal({
     id: "sparse",
     mealName: "Sparse dinner",
-    qualityScore: null
+    qualityScore: null,
+    imageUrl: null,
+    cuisine: null,
+    ingredientsText: null,
+    calories: null,
+    proteinG: null,
+    carbohydratesG: null,
+    fatG: null,
+    fiberG: null
   });
   const firstScore = scoreRecommendation({
     meal: dinner,

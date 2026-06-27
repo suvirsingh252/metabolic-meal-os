@@ -14,6 +14,7 @@
     "db:check": "node scripts/load-env-and-run.mjs tsx scripts/check-db.ts",
     "audit:backfill": "node --env-file-if-exists=.env.local --import tsx scripts/audit-backfill.ts",
     "audit:as-needed-ingredients": "tsx scripts/audit-as-needed-ingredients.ts",
+    "investor-demo:audit": "tsx scripts/audit-investor-demo-readiness.ts",
     "backfill:ingredients:dry-run": "tsx scripts/dry-run-ingredient-backfill.ts",
     "backfill:ingredients:review": "tsx scripts/export-ingredient-backfill-review.ts",
     "backfill:ingredients:apply": "tsx scripts/apply-ingredient-backfill.ts",
