@@ -297,6 +297,84 @@ test("caption under Instagram URL improves Intake v2 confidence", async () => {
   assert.match(withCaption.nutritionEstimate?.provenance ?? "", /recipe ingredients/i);
 });
 
+test("Instagram reel caption chrome is cleaned before inline recipe parsing", async () => {
+  const prepared = await prepareRecipeForMealAnalysis(
+    {
+      recipeText: [
+        "https://www.instagram.com/reel/DZephwYOARM/?igsh=MWp5d3RsYXdsMW1pOA==",
+        "",
+        "Instagram Instagram Log In Sign Up",
+        "@socialcook Verified",
+        "Never miss a post from @socialcook",
+        "More options",
+        "One-Pan Chicken Shawarma Rice Bowls",
+        "A spoonful of @betterthanbouillon roasted chicken base makes this taste like it simmered all day. Comment Recipe and follow for more.",
+        "For the Chicken: cumin - onion powder - coriander - allspice - turmeric - pepper - salt - olive oil - garlic cloves - lemon juice",
+        "For the Rice: butter + yellow onion + basmati rice + roasted chicken base + hot water",
+        "For the Fresh Sumac Salad: red onion - cherry tomatoes - cucumber - sumac - salt - lemon juice - olive oil",
+        "For the Garlic Sauce: mayonnaise + Greek yogurt + garlic cloves + lemon juice + parsley",
+        "Instructions:",
+        "1. Season the chicken with the shawarma spices, olive oil, garlic, and lemon juice.",
+        "2. Saute onion in butter, add basmati rice, chicken base, and hot water, then cook until tender.",
+        "3. Toss the salad ingredients together and stir the garlic sauce ingredients until smooth.",
+        "4. Serve the chicken over rice with salad and sauce."
+      ].join("\n")
+    },
+    {
+      instagramMetadataLoader: async () => ({ metadata: {}, evidence: [] })
+    }
+  );
+
+  const ingredientText = prepared.ingredients
+    .map((ingredient) => ingredient.rawText.toLowerCase())
+    .join("\n");
+  const forbidden = [
+    "instagram",
+    "log in",
+    "sign up",
+    "never miss a post",
+    "verified",
+    "comment recipe",
+    "@socialcook"
+  ];
+
+  assert.equal(prepared.socialRecipeCandidate?.title, "One-Pan Chicken Shawarma Rice Bowls");
+  for (const expected of [
+    "cumin",
+    "onion powder",
+    "coriander",
+    "allspice",
+    "turmeric",
+    "pepper",
+    "salt",
+    "olive oil",
+    "garlic cloves",
+    "lemon juice",
+    "roasted chicken base",
+    "butter",
+    "yellow onion",
+    "basmati rice",
+    "hot water",
+    "red onion",
+    "cherry tomatoes",
+    "cucumber",
+    "sumac",
+    "mayonnaise",
+    "greek yogurt",
+    "parsley"
+  ]) {
+    assert.match(ingredientText, new RegExp(expected));
+  }
+
+  for (const blocked of forbidden) {
+    assert.doesNotMatch(ingredientText, new RegExp(blocked, "i"));
+  }
+
+  assert.equal(prepared.instructions.length, 4);
+  assert.match(prepared.instructions.join("\n"), /Season the chicken/);
+  assert.doesNotMatch(prepared.instructions.join("\n"), /For the Rice|Comment Recipe|Instagram|Verified/i);
+});
+
 test("Analyze view model never dead-ends for Instagram URL-only", () => {
   assert.equal(
     getAnalyzePrimaryCtaLabel({
