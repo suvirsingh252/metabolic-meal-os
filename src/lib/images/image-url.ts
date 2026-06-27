@@ -10,7 +10,7 @@ export function getSafeImageUrl(value: unknown) {
   }
 
   if (trimmed.startsWith("/uploads/recipe-images/")) {
-    return trimmed;
+    return typeof window === "undefined" ? trimmed : null;
   }
 
   try {

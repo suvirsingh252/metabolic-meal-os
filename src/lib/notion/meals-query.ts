@@ -10,6 +10,11 @@ import { getPrimaryDataSourceId, isRecord } from "@/src/lib/notion/route-helpers
 
 const MEALS_DATA_SOURCE_ERROR =
   "Meals database did not return a queryable data source.";
+const INTERNAL_VERIFICATION_MEAL_NAME_PATTERN = /^VISUAL COOKBOOK PROD VERIFY\b/i;
+
+export function isConsumerVisibleMeal(meal: Pick<MealSummary, "mealName">) {
+  return !INTERNAL_VERIFICATION_MEAL_NAME_PATTERN.test(meal.mealName.trim());
+}
 
 function getProperties(database: unknown) {
   if (isRecord(database) && isRecord(database.properties)) {
@@ -108,6 +113,7 @@ export async function queryMealSummaries(
   const meals = response.results
     .map(mapNotionPageToMealSummary)
     .filter((meal): meal is MealSummary => meal !== null)
+    .filter(isConsumerVisibleMeal)
     .filter((meal) =>
       search
         ? meal.mealName.toLowerCase().includes(search) ||

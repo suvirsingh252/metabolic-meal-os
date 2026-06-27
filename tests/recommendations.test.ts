@@ -5,6 +5,7 @@ import {
   generateRecommendationExplanation,
   generateRecommendationReasons,
   getAlternativeSuggestion,
+  isDemoReadyRecommendationMeal,
   rankRecommendationsForCategory,
   scoreRecommendation,
   type RecommendationMeal
@@ -168,6 +169,29 @@ test("today view model gracefully omits categories without explicit saved meal d
   assert.equal(today.suggestions.Breakfast, undefined);
   assert.equal(today.suggestions.Lunch, undefined);
   assert.equal(today.suggestions.Snack, undefined);
+});
+
+test("demo-ready recommendation gate allows branded image fallback", () => {
+  assert.equal(
+    isDemoReadyRecommendationMeal(
+      meal({
+        id: "fallback-image",
+        imageUrl: null
+      })
+    ),
+    true
+  );
+
+  assert.equal(
+    isDemoReadyRecommendationMeal(
+      meal({
+        id: "missing-nutrition",
+        imageUrl: null,
+        fatG: null
+      })
+    ),
+    false
+  );
 });
 
 test("empty meal archive returns a fallback state instead of invented meals", () => {

@@ -342,7 +342,11 @@ function getMealPreview(notes: string | null) {
     return null;
   }
 
-  if (/original notes|analysis framework|evidence-aware/i.test(notes)) {
+  if (
+    /original notes|analysis framework|evidence-aware|manual notion import|source preserved|verify quantities|production use/i.test(
+      notes
+    )
+  ) {
     return null;
   }
 

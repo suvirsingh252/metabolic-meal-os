@@ -57,7 +57,6 @@ export function hasCompleteRecommendationNutrition(
  */
 export function isDemoReadyRecommendationMeal(meal: RecommendationMeal) {
   return (
-    hasText(meal.imageUrl) &&
     hasText(meal.cuisine) &&
     hasText(meal.mealType) &&
     hasCompleteRecommendationIngredients(meal) &&
