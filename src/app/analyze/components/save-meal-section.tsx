@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarPlus, ExternalLink, Loader2, Sparkles } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type {
@@ -37,8 +37,11 @@ export function SaveMealSection({
       </Button>
       {saveError ? <Alert className="mt-4">{saveError}</Alert> : null}
       {savedMeal ? (
-        <div className="mt-4 rounded-2xl bg-card p-4 text-sm shadow-sm">
-          <p className="font-medium text-primary">Dinner is handled.</p>
+        <div className="hearth-fade-in mt-4 rounded-2xl bg-card p-4 text-sm shadow-sm">
+          <p className="flex items-center gap-2 font-medium text-primary">
+            <CheckCircle2 className="h-4 w-4" />
+            Added to your cookbook.
+          </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button asChild>
               <Link href={`/planner?meal=${encodeURIComponent(savedMeal.mealId)}`}>

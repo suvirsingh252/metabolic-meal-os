@@ -265,7 +265,7 @@ export function generateRecommendationExplanation(
       details.push("Household feedback is neutral for this meal.");
     }
   } else {
-    details.push("No household feedback has been logged for this meal yet.");
+    details.push("Hearth will learn from your feedback after you cook this.");
   }
 
   if (scoreBreakdown.recencyScore > 0) {

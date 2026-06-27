@@ -576,6 +576,24 @@ test("saved Ranveer Brar ingredient lines keep quantities, units, and English na
   assert.equal(formatCookbookIngredientAmount(cookbook.ingredients[5]), "to taste");
 });
 
+test("cookbook splits semicolon-separated saved ingredient text into rows", () => {
+  const cookbook = buildMealCookbook(
+    makeMealSummary({
+      ingredientsText: "1 onion, diced; 2 cloves garlic; ginger peeled julienned"
+    }),
+    emptyMealFeedbackSummary("meal-1")
+  );
+
+  assert.deepEqual(
+    cookbook.ingredients.map((ingredient) => ingredient.rawText),
+    ["1 onion, diced", "2 cloves garlic", "ginger peeled julienned"]
+  );
+  assert.deepEqual(
+    cookbook.ingredients.map((ingredient) => ingredient.name),
+    ["onion, diced", "garlic", "ginger peeled julienned"]
+  );
+});
+
 test("cookbook prefers dedicated properties over Notes sections", () => {
   const cookbook = buildMealCookbook(
     makeMealSummary({

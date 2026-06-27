@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import type { AnalyzeState } from "@/src/app/analyze/types";
 
 const loadingMessages = [
-  "Reading meal details...",
-  "Estimating household fit...",
-  "Checking nutrition signals...",
+  "Reading dinner details...",
+  "Checking household fit...",
+  "Reviewing nutrition signals...",
   "Preparing your review..."
 ];
 
@@ -39,18 +39,18 @@ export function getAnalyzePrimaryCtaLabel({
   }
 
   if (socialFallback) {
-    return "Handle this dinner";
+    return "Import recipe";
   }
 
   if (urlRecovery) {
-    return "Handle this dinner";
+    return "Import recipe";
   }
 
   if (usesBestEffortSocialIntake) {
-    return "Handle the best guess";
+    return "Import the best guess";
   }
 
-  return "Handle this dinner";
+  return "Import recipe";
 }
 
 export function MealInputPanel({
@@ -143,7 +143,7 @@ export function MealInputPanel({
                 : "Recipe, caption, or dinner idea"}
             </Label>
             <textarea
-              className="min-h-44 w-full rounded-2xl border border-input/70 bg-background/80 px-5 py-4 text-base leading-7 shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-72"
+              className="min-h-44 w-full rounded-2xl border border-input/70 bg-background/80 px-5 py-4 text-base leading-7 shadow-sm transition-shadow duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-72"
               id="recipeText"
               ref={textareaRef}
               onInput={(event) => {
@@ -165,7 +165,7 @@ export function MealInputPanel({
             <p className="text-sm leading-6 text-muted-foreground">
               {usesBestEffortSocialIntake
                 ? "A best guess is okay. Add any details you remember."
-                : `${trimmedRecipeTextLength} characters. Detailed meals can take 20-30 seconds.`}
+                : `${trimmedRecipeTextLength} characters. Detailed recipes can take 20-30 seconds.`}
             </p>
             {usesBestEffortSocialIntake ? (
               <div className="flex flex-wrap gap-2 pt-1">
@@ -227,7 +227,7 @@ export function MealInputPanel({
             </Button>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
-                Hearth is building the household answer.
+                Hearth is preparing the family version.
               </p>
             ) : null}
           </div>

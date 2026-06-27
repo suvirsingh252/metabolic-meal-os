@@ -537,7 +537,7 @@ function ConciergeActionFallback({
       </Button>
       <Button asChild variant="secondary">
         <Link href="/analyze">
-          Analyze a meal
+          Import recipe
           <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>

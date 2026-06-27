@@ -45,11 +45,11 @@ test("primary mobile routes use progressive disclosure for secondary content", (
   assert.match(mealDetail, /grid-cols-\[2\.75rem_minmax\(0,1fr\)\]/);
 });
 
-test("meal detail ingredient rows use parsed amount before As needed fallback", () => {
+test("meal detail ingredient rows show parsed amount without As needed fallback", () => {
   const mealDetail = source("src/app/meals/[id]/page.tsx");
 
   assert.match(mealDetail, /formatCookbookIngredientAmount\(ingredient\)/);
-  assert.match(mealDetail, /hasOnlyBareName \? "As needed" : ""/);
+  assert.doesNotMatch(mealDetail, /hasOnlyBareName \? "As needed" : ""/);
   assert.match(mealDetail, /title=\{ingredient\.rawText\}/);
 });
 
@@ -90,7 +90,7 @@ test("meal image fallback renders a branded placeholder instead of a blank icon 
   const mealImage = source("src/components/meal-image.tsx");
 
   assert.match(mealImage, /Hearth meal/);
-  assert.match(mealImage, /Image coming soon/);
+  assert.doesNotMatch(mealImage, /Image coming soon/);
   assert.match(mealImage, /bg-\[linear-gradient/);
   assert.match(mealImage, /getSafeImageUrl\(imageUrl\)/);
 });

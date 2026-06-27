@@ -27,7 +27,7 @@ export interface MealDetailNutritionItem {
 }
 
 export type MealOsNutritionConfidence =
-  | "Imported"
+  | "From recipe"
   | "Estimated"
   | "Manual"
   | "Unknown";
@@ -200,7 +200,7 @@ function normalizeNutritionConfidence(meal: MealSummary): MealOsNutritionConfide
     combined.includes("import") ||
     combined.includes("parsed")
   ) {
-    return "Imported";
+    return "From recipe";
   }
 
   if (
@@ -302,7 +302,7 @@ function toHouseholdWhyReason(reason: string) {
   }
 
   if (/quality|rated|nutrition/i.test(reason)) {
-    return "Higher quality saved meal.";
+    return "Good match from your saved meals.";
   }
 
   if (/repeat|popular/i.test(reason)) {
@@ -310,6 +310,30 @@ function toHouseholdWhyReason(reason: string) {
   }
 
   return reason.endsWith(".") ? reason : `${reason}.`;
+}
+
+function consumerSourceBadge(meal: MealSummary) {
+  const source = meal.nutritionSource?.trim();
+
+  if (source && !/import/i.test(source)) {
+    return source;
+  }
+
+  return meal.cuisine ?? "Saved meal";
+}
+
+function consumerNutritionProvenance(meal: MealSummary) {
+  const provenance = meal.nutritionProvenance ?? meal.nutritionSource;
+
+  if (!provenance) {
+    return null;
+  }
+
+  if (/import/i.test(provenance)) {
+    return "Recipe nutrition details saved.";
+  }
+
+  return provenance;
 }
 
 export function buildMealDetailViewModel(
@@ -355,13 +379,13 @@ export function buildMealDetailViewModel(
   return {
     meal,
     feedbackSummary,
-    sourceBadge: meal.nutritionSource ?? meal.cuisine ?? "Saved meal",
+    sourceBadge: consumerSourceBadge(meal),
     confidenceBadge: meal.nutritionConfidence,
     dateLabel: feedbackSummary.lastEatenAt ?? meal.createdAt ?? null,
     whyReasons,
     feedbackReasons,
     nutritionItems,
-    nutritionProvenance: meal.nutritionProvenance ?? meal.nutritionSource,
+    nutritionProvenance: consumerNutritionProvenance(meal),
     hasNutritionData: nutritionItems.some((item) => typeof item.value === "number"),
     mealOsSummary: buildMealOsSummary(
       meal,

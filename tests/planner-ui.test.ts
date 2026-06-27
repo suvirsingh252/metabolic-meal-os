@@ -6,7 +6,7 @@ test("planner client renders the Planner V2 weekly meal workflow", () => {
   const source = readFileSync("src/app/planner/planner-client.tsx", "utf8");
 
   assert.match(source, /plannerDays\.map/);
-  assert.match(source, /Save Plan/);
+  assert.match(source, /Save week/);
   assert.match(source, /Weekly insights/);
   assert.match(source, /Shopping preview/);
   assert.match(source, /randomSuggestion/);
@@ -16,7 +16,7 @@ test("planner client renders the Planner V2 weekly meal workflow", () => {
   assert.match(source, /Replace/);
   assert.match(source, /function clearSelection/);
   assert.match(source, /function duplicateSlot/);
-  assert.match(source, /Regenerate Grocery List/);
+  assert.match(source, /Update Shopping List/);
   assert.match(source, /\/api\/weekly-plan\/grocery/);
   assert.doesNotMatch(source, /mealSlots\.map/);
 });

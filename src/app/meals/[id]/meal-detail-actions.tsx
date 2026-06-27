@@ -53,7 +53,7 @@ const actionCopy: Record<
     wouldRepeat: false,
     notePrefix: "Ate This",
     helper: "Logged as eaten.",
-    successMessage: "Saved: logged as eaten."
+    successMessage: "Dinner noted."
   },
   loved: {
     label: "Loved It",
@@ -65,7 +65,7 @@ const actionCopy: Record<
     wouldRepeat: true,
     notePrefix: "Loved It",
     helper: "Logged as eaten, loved, and worth repeating.",
-    successMessage: "Saved: logged as eaten, loved, and worth repeating."
+    successMessage: "Saved as a favorite."
   },
   disliked: {
     label: "Did Not Like",
@@ -77,7 +77,7 @@ const actionCopy: Record<
     wouldRepeat: false,
     notePrefix: "Did Not Like",
     helper: "Logged as not liked.",
-    successMessage: "Saved: logged as not liked."
+    successMessage: "Preference saved."
   },
   repeat: {
     label: "Make This Again",
@@ -89,7 +89,7 @@ const actionCopy: Record<
     wouldRepeat: true,
     notePrefix: "Would Make Again",
     helper: "Marked as worth repeating.",
-    successMessage: "Saved: marked as worth repeating."
+    successMessage: "Added to repeat soon."
   }
 };
 const primaryActionOrder: ActionId[] = ["repeat", "ate", "loved", "disliked"];
@@ -160,6 +160,16 @@ function FeedbackStat({
   );
 }
 
+function SuccessNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="hearth-fade-in flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
+      <Check className="h-4 w-4" />
+      <span aria-hidden>✓</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 export function MealDetailActions({
   initialFeedbackSummary,
   meal
@@ -176,6 +186,7 @@ export function MealDetailActions({
   });
   const [feedbackSummary, setFeedbackSummary] = useState(initialFeedbackSummary);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const pendingAction = (Object.keys(saveState) as ActionId[]).find(
     (actionId) => saveState[actionId] === "saving"
   );
@@ -193,6 +204,7 @@ export function MealDetailActions({
 
     setSaveState((previous) => ({ ...previous, [actionId]: "saving" }));
     setMessage(null);
+    setMessageTone("success");
 
     try {
       const response = await fetch("/api/notion/log-feedback", {
@@ -214,6 +226,7 @@ export function MealDetailActions({
 
       if (!response.ok) {
         setSaveState((previous) => ({ ...previous, [actionId]: "error" }));
+        setMessageTone("error");
         setMessage(getErrorMessage(data, "Unable to save meal feedback right now."));
         return;
       }
@@ -234,13 +247,20 @@ export function MealDetailActions({
       router.refresh();
     } catch {
       setSaveState((previous) => ({ ...previous, [actionId]: "error" }));
+      setMessageTone("error");
       setMessage("Unable to reach the feedback service. Try again.");
     }
   }
 
   return (
     <div className="space-y-3">
-      {message ? <Alert>{message}</Alert> : null}
+      {message ? (
+        messageTone === "success" ? (
+          <SuccessNotice>{message}</SuccessNotice>
+        ) : (
+          <Alert>{message}</Alert>
+        )
+      ) : null}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
         {primaryActionOrder.map((actionId) => {
           const action = actionCopy[actionId];
@@ -268,13 +288,13 @@ export function MealDetailActions({
         <Button asChild variant="secondary">
           <Link href={`/planner?meal=${encodeURIComponent(meal.id)}`}>
             <CalendarPlus className="h-4 w-4" />
-            Add to Planner
+            Add to planner
           </Link>
         </Button>
         <Button asChild variant="secondary">
           <Link href={`/grocery?meal=${encodeURIComponent(meal.id)}`}>
             <ShoppingCart className="h-4 w-4" />
-            Generate Grocery List
+            Create Shopping List
           </Link>
         </Button>
       </div>
@@ -335,7 +355,7 @@ export function MealDetailActions({
               )}
             </>
           ) : (
-            <EmptyText>This meal has not been rated yet.</EmptyText>
+            <EmptyText>Rate this after dinner to improve future picks.</EmptyText>
           )}
         </CardContent>
       </Card>

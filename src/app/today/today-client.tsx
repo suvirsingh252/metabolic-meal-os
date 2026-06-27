@@ -120,6 +120,9 @@ export function TodayClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveMessageTone, setSaveMessageTone] = useState<"success" | "error">(
+    "success"
+  );
   const [undoByMealId, setUndoByMealId] = useState<
     Record<string, TodayFeedbackUndoSnapshot>
   >({});
@@ -218,6 +221,7 @@ export function TodayClient() {
 
     if (!alternative) {
       setSaveMessage(`No other saved ${category.toLowerCase()} option found yet.`);
+      setSaveMessageTone("error");
       setExcludedByCategory((previous) => ({
         ...previous,
         [category]: excludedMealIds
@@ -265,6 +269,7 @@ export function TodayClient() {
     setUndoByMealId((previous) => removeMealKey(previous, recommendation.meal.id));
     setSaveState((previous) => ({ ...previous, [stateKey]: "saving" }));
     setSaveMessage(null);
+    setSaveMessageTone("success");
 
     try {
       const response = await fetch("/api/notion/log-feedback", {
@@ -290,6 +295,7 @@ export function TodayClient() {
       if (!response.ok) {
         setSaveState((previous) => ({ ...previous, [stateKey]: "error" }));
         pendingMealIdsRef.current.delete(recommendation.meal.id);
+        setSaveMessageTone("error");
         setSaveMessage(
           getErrorMessage(data, "Unable to save meal feedback right now.")
         );
@@ -343,6 +349,7 @@ export function TodayClient() {
     } catch {
       setSaveState((previous) => ({ ...previous, [stateKey]: "error" }));
       pendingMealIdsRef.current.delete(recommendation.meal.id);
+      setSaveMessageTone("error");
       setSaveMessage("Unable to reach the feedback service. Try again.");
     }
   }
@@ -379,6 +386,7 @@ export function TodayClient() {
       )
     );
     setUndoByMealId((previous) => removeMealKey(previous, recommendation.meal.id));
+    setSaveMessageTone("success");
     setSaveMessage(
       "Undo applied in this view. The saved feedback record was kept."
     );
@@ -410,10 +418,16 @@ export function TodayClient() {
           <TodayActionFallback />
         </div>
       ) : null}
-      {saveMessage ? <Alert>{saveMessage}</Alert> : null}
+      {saveMessage ? (
+        saveMessageTone === "success" ? (
+          <TodaySuccessNotice>{saveMessage}</TodaySuccessNotice>
+        ) : (
+          <Alert>{saveMessage}</Alert>
+        )
+      ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold sm:text-xl">Daily Suggestions</h2>
+        <h2 className="text-lg font-semibold sm:text-xl">Today&apos;s picks</h2>
         {isLoading ? (
           <div className="flex items-center gap-2 rounded-md border bg-card p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -452,7 +466,7 @@ export function TodayClient() {
       {viewModel ? (
         <MobileDisclosure
           summary="Learning and secondary insights"
-          description="Household learning, fresh ideas, and health snapshot stay available without blocking today's choice."
+          description="Household learning, fresh ideas, and health notes stay available without blocking today's choice."
         >
           <div className="space-y-4">
             <HouseholdLearningStrip learning={learningStrip} />
@@ -461,7 +475,7 @@ export function TodayClient() {
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Fresh Ideas</h2>
+                  <h2 className="text-lg font-semibold">Fresh ideas</h2>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   {viewModel.freshIdeas.map((idea) => (
@@ -493,7 +507,7 @@ export function TodayClient() {
             ) : null}
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold">Health Snapshot</h2>
+              <h2 className="text-lg font-semibold">Health snapshot</h2>
               <div className="grid gap-3 md:grid-cols-3">
                 {viewModel.healthSnapshot.map((item) => (
                   <div className="rounded-md border bg-card p-4 text-sm" key={item.id}>
@@ -585,7 +599,7 @@ function TodayActionFallback() {
     <div className="flex flex-wrap gap-2">
       <Button asChild>
         <Link href="/analyze">
-          Analyze a meal
+          Import recipe
           <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>
@@ -595,6 +609,16 @@ function TodayActionFallback() {
           View saved meals
         </Link>
       </Button>
+    </div>
+  );
+}
+
+function TodaySuccessNotice({ children }: { children: ReactNode }) {
+  return (
+    <div className="hearth-fade-in flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
+      <Check className="h-4 w-4" />
+      <span aria-hidden>✓</span>
+      <span>{children}</span>
     </div>
   );
 }
@@ -789,9 +813,7 @@ function SuggestionCard({
 }
 
 function getTodayFeedbackSavedMessage(sentiment: "ate" | "loved") {
-  return sentiment === "loved"
-    ? "Saved: logged as eaten, loved, and worth repeating."
-    : "Saved: logged as eaten.";
+  return sentiment === "loved" ? "Saved as a favorite." : "Dinner noted.";
 }
 
 function getVisibleRecommendationReasons(recommendation: MealRecommendation) {
@@ -831,7 +853,7 @@ function toHouseholdRecommendationReason(reason: string) {
   }
 
   if (/quality|rated|metadata|nutrition/i.test(reason)) {
-    return "Higher quality saved meal.";
+    return "Good match from your saved meals.";
   }
 
   if (/limited saved meal signals|neutral|sparse/i.test(reason)) {

@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MealImage } from "@/src/components/meal-image";
 import { FamilyAdjustmentsEditor } from "@/src/app/meals/[id]/family-adjustments-editor";
 import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
-import { MealImageUpload } from "@/src/app/meals/[id]/meal-image-upload";
 import { formatCookbookIngredientAmount } from "@/src/lib/domain/meals/cookbook";
 import { formatPlannerContextLabel } from "@/src/lib/domain/planner";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
@@ -234,13 +233,6 @@ export default async function MealDetailPage({
         title={meal.mealName}
       />
 
-      <MealImageUpload
-        hasImage={Boolean(heroImageUrl)}
-        imageSource={meal.imageSource}
-        imageStatus={meal.imageStatus}
-        mealId={meal.id}
-      />
-
       <MealDetailActions
         initialFeedbackSummary={feedbackSummary}
         key={[
@@ -277,9 +269,7 @@ export default async function MealDetailPage({
               value={detail.mealOsSummary.familyConsideration}
             />
             <div className="space-y-1.5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Nutrition confidence
-              </p>
+              <p className="text-sm font-semibold text-muted-foreground">Nutrition</p>
               <Badge className="bg-background text-foreground">
                 {detail.mealOsSummary.nutritionConfidence}
               </Badge>
@@ -449,8 +439,7 @@ export default async function MealDetailPage({
             </ul>
           ) : (
             <EmptyText>
-              No family adjustments have been saved yet. Add the version your
-              household actually makes so it is ready next time.
+              Save your household tweaks here after cooking so this is ready next time.
             </EmptyText>
           )}
           <FamilyAdjustmentsEditor meal={meal} />
@@ -463,18 +452,15 @@ export default async function MealDetailPage({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {cookbook.ingredients.map((ingredient) => {
               const amount = formatCookbookIngredientAmount(ingredient);
-              const hasOnlyBareName =
-                ingredient.rawText.trim().toLowerCase() ===
-                ingredient.name.trim().toLowerCase();
 
               return (
                 <div
                   className="min-h-28 rounded-2xl bg-card p-4 text-base leading-6 shadow-sm"
                   key={ingredient.id}
                 >
-                  <p className="text-sm font-semibold text-accent">
-                    {amount || (hasOnlyBareName ? "As needed" : "")}
-                  </p>
+                  {amount ? (
+                    <p className="text-sm font-semibold text-accent">{amount}</p>
+                  ) : null}
                   <p className="mt-2 text-lg font-semibold leading-snug" title={ingredient.rawText}>
                     {ingredient.name}
                   </p>
@@ -578,14 +564,14 @@ export default async function MealDetailPage({
               <p className="mt-1 font-medium">
                 {feedbackSummary.totalEvents > 0
                   ? `${feedbackSummary.eatenCount} eaten · ${feedbackSummary.wouldRepeatCount} repeat`
-                  : "No feedback yet"}
+                  : "Hearth will learn after you cook this."}
               </p>
             </div>
             <div className="rounded-md border bg-background p-4">
               <p className="text-muted-foreground">Nutrition / quality</p>
               <p className="mt-1 font-medium">
                 {detail.hasNutritionData
-                  ? "Nutrition signals available"
+                  ? "Nutrition details saved"
                   : "Nutrition details limited"}
               </p>
             </div>
@@ -623,7 +609,9 @@ export default async function MealDetailPage({
                   ))}
                 </ul>
               ) : (
-                <EmptyText>No feedback-derived reasons are available yet.</EmptyText>
+                <EmptyText>
+                  Rate this after dinner to improve future picks.
+                </EmptyText>
               )}
             </div>
           </section>

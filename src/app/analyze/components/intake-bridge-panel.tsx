@@ -22,7 +22,7 @@ export function IntakeBridgePanel({ intake }: Props) {
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
       <div className="mb-2 flex items-center gap-2">
         <span className="font-medium text-amber-900 dark:text-amber-100">
-          Imported from iPhone Shortcut
+          Shared from iPhone
         </span>
         <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900 dark:text-amber-300">
           {label}
@@ -49,7 +49,7 @@ export function IntakeBridgePanel({ intake }: Props) {
 
       <p className="text-amber-700 dark:text-amber-300">
         Content is pre-filled below. Review it, then tap{" "}
-        <strong>Analyze recipe</strong> to continue.
+        <strong>Import recipe</strong> to continue.
       </p>
     </div>
   );

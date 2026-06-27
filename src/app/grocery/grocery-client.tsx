@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -122,6 +123,42 @@ function toClientOnlyPersistedList(list: GroceryList): PersistedGroceryList {
   };
 }
 
+function updateGroceryItemCompletion(
+  list: PersistedGroceryList,
+  itemId: string,
+  completed: boolean
+): PersistedGroceryList {
+  const sections = list.sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) =>
+      item.id === itemId ? { ...item, completed } : item
+    )
+  }));
+  const completedCount = sections.reduce(
+    (total, section) =>
+      total + section.items.filter((item) => item.completed).length,
+    0
+  );
+
+  return {
+    ...list,
+    completedCount,
+    completionPercentage:
+      list.itemCount > 0 ? Math.round((completedCount / list.itemCount) * 100) : 0,
+    sections
+  };
+}
+
+function SuccessNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="hearth-fade-in flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">
+      <CheckCircle2 className="h-4 w-4" />
+      <span aria-hidden>✓</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 export function GroceryClient({
   preselectedMealId = null,
   initialListId = null
@@ -142,6 +179,7 @@ export function GroceryClient({
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -160,13 +198,14 @@ export function GroceryClient({
     setIsLoadingList(true);
     setError(null);
     setWarning(null);
+    setSuccess(null);
 
     try {
       const response = await fetch(`/api/grocery-lists/${listId}`);
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        setError(getErrorMessage(data, "Unable to load grocery list."));
+        setError(getErrorMessage(data, "Unable to load shopping list."));
         return;
       }
 
@@ -249,6 +288,7 @@ export function GroceryClient({
     setIsGenerating(true);
     setError(null);
     setWarning(null);
+    setSuccess(null);
 
     try {
       const response = await fetch("/api/grocery-lists", {
@@ -261,7 +301,7 @@ export function GroceryClient({
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        setError(getErrorMessage(data, "Unable to generate grocery list."));
+        setError(getErrorMessage(data, "Unable to create shopping list."));
         return;
       }
 
@@ -269,6 +309,7 @@ export function GroceryClient({
       setWarning(result.warning ?? null);
 
       setList(result.persistedList ?? toClientOnlyPersistedList(result.list));
+      setSuccess(`Shopping list updated with ${result.list.itemCount} items.`);
 
       void loadHistory();
     } catch {
@@ -310,6 +351,12 @@ export function GroceryClient({
 
     setPendingItemId(item.id);
     setError(null);
+    setSuccess(null);
+    const previousList = list;
+    const nextCompleted = !item.completed;
+    setList((current) =>
+      current ? updateGroceryItemCompletion(current, item.id, nextCompleted) : current
+    );
 
     try {
       const response = await fetch(`/api/grocery-lists/${list.id}`, {
@@ -325,13 +372,16 @@ export function GroceryClient({
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        setError(getErrorMessage(data, "Unable to update grocery list."));
+        setList(previousList);
+        setError(getErrorMessage(data, "Unable to update shopping list."));
         return;
       }
 
       setList((data as { list: PersistedGroceryList }).list);
+      setSuccess("Shopping list updated.");
       void loadHistory();
     } catch {
+      setList(previousList);
       setError("Unable to reach the grocery service. Try again.");
     } finally {
       setPendingItemId(null);
@@ -345,7 +395,7 @@ export function GroceryClient({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Utensils className="h-4 w-4 text-accent" />
-              Meals
+              Dinners
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -358,6 +408,7 @@ export function GroceryClient({
 
             {error ? <Alert>{error}</Alert> : null}
             {warning ? <Alert>{warning}</Alert> : null}
+            {success ? <SuccessNotice>{success}</SuccessNotice> : null}
 
             <div className="flex flex-wrap gap-2">
               {selectedMeals.map((meal) => (
@@ -384,15 +435,15 @@ export function GroceryClient({
                 <ShoppingCart className="h-4 w-4" />
               )}
               {selectedMealIds.length > 1
-                ? "Generate Combined List"
-                : "Generate Grocery List"}
+                ? "Create Combined List"
+                : "Create Shopping List"}
             </Button>
 
             <div className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">
               {isLoadingMeals ? (
                 <div className="flex min-h-32 items-center justify-center gap-2 rounded-md border bg-background text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading meals...
+                  Loading dinners...
                 </div>
               ) : null}
 
@@ -437,7 +488,7 @@ export function GroceryClient({
         {history.length > 0 ? (
           <section className="rounded-md border bg-card p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="font-semibold">Recent lists</h2>
+              <h2 className="font-semibold">Recent shopping lists</h2>
               <Button onClick={loadHistory} size="sm" type="button" variant="ghost">
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -507,10 +558,10 @@ export function GroceryClient({
         ) : (
           <div className="rounded-md border bg-card p-8 text-center">
             <ShoppingCart className="mx-auto h-10 w-10 text-accent" />
-            <h2 className="mt-4 text-xl font-semibold">No grocery list yet</h2>
+            <h2 className="mt-4 text-xl font-semibold">No shopping list yet</h2>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-              Select a saved meal, or combine several meals, then generate a
-              categorized checklist.
+              Choose one dinner, or combine several, then create a categorized
+              checklist.
             </p>
             <Button
               className="mt-5"
@@ -520,7 +571,7 @@ export function GroceryClient({
               variant="secondary"
             >
               <Plus className="h-4 w-4" />
-              Generate List
+              Create List
             </Button>
           </div>
         )}

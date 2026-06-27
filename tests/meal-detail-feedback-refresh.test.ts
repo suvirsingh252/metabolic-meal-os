@@ -124,9 +124,9 @@ test("meal detail actions expose pending, success, refresh, and duplicate guards
   assert.match(source, /disabled=\{Boolean\(pendingAction\)\}/);
   assert.match(source, /if \(pendingAction\)/);
   assert.match(source, /Saving\.\.\./);
-  assert.match(source, /Saved: logged as eaten\./);
-  assert.match(source, /Saved: logged as eaten, loved, and worth repeating\./);
-  assert.match(source, /Saved: marked as worth repeating\./);
+  assert.match(source, /Dinner noted\./);
+  assert.match(source, /Saved as a favorite\./);
+  assert.match(source, /Added to repeat soon\./);
 });
 
 test("Today feedback actions expose optimistic refresh, pending labels, duplicate guards, and rollback behavior", () => {

@@ -981,7 +981,7 @@ function getNextAction(dashboard: DashboardViewModel) {
 
   if (dashboard.week.mealCount === 0) {
     return {
-      cta: "Analyze a meal",
+      cta: "Import recipe",
       description:
         "Start with one saved dinner so Hearth can learn what works for your household.",
       href: "/analyze",

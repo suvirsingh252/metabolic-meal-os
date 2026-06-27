@@ -319,7 +319,7 @@ export function PlannerClient({
       const nextPlan = data as WeeklyDinnerPlanViewModel;
       setPlan(nextPlan);
       setSelections(selectionsFromPlan(nextPlan));
-      setSuccess("Weekly plan saved.");
+      setSuccess("Planner refreshed.");
       return true;
     } catch {
       setError("Unable to reach the weekly planner service. Try again.");
@@ -347,13 +347,13 @@ export function PlannerClient({
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        setError(getErrorMessage(data, "Unable to generate grocery list."));
+        setError(getErrorMessage(data, "Unable to create shopping list."));
         return;
       }
 
       const result = data as WeeklyGroceryResponse;
       await load();
-      setSuccess(`Grocery list ready with ${result.list.itemCount} items.`);
+      setSuccess(`Shopping list updated with ${result.list.itemCount} items.`);
     } catch {
       setError("Unable to reach the grocery service. Try again.");
     } finally {
@@ -366,7 +366,7 @@ export function PlannerClient({
       <Card>
         <CardContent className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading weekly planner...
+          Loading planner...
         </CardContent>
       </Card>
     );
@@ -396,7 +396,7 @@ export function PlannerClient({
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save Plan
+              Save week
             </Button>
           </div>
         </div>
@@ -406,6 +406,7 @@ export function PlannerClient({
       {success ? (
         <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
           <CheckCircle2 className="h-4 w-4" />
+          <span aria-hidden>✓</span>
           {success}
         </div>
       ) : null}
@@ -485,7 +486,7 @@ export function PlannerClient({
       <section className="rounded-md border bg-card p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Weekly grocery list</h2>
+            <h2 className="text-lg font-semibold">Shopping list</h2>
             {plan?.activeGroceryList ? (
               <p className="text-sm text-muted-foreground">
                 {plan.activeGroceryList.completedCount} /{" "}
@@ -493,7 +494,7 @@ export function PlannerClient({
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Generate one consolidated list from the weekly plan.
+                Create one list from the weekly plan.
               </p>
             )}
           </div>
@@ -502,7 +503,7 @@ export function PlannerClient({
               <Button asChild type="button" variant="secondary">
                 <Link href={`/grocery?list=${plan.activeGroceryList.id}`}>
                   <ShoppingCart className="h-4 w-4" />
-                  Open List
+                  Open list
                 </Link>
               </Button>
             ) : null}
@@ -517,8 +518,8 @@ export function PlannerClient({
                 <ShoppingCart className="h-4 w-4" />
               )}
               {hasActiveGroceryList
-                ? "Regenerate Grocery List"
-                : "Generate Grocery List"}
+                ? "Update Shopping List"
+                : "Create Shopping List"}
             </Button>
           </div>
         </div>
@@ -743,7 +744,7 @@ function PlannerSlotCard({
           />
         ) : (
           <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-            Open slot.
+            Choose a dinner.
           </div>
         )}
 
@@ -831,7 +832,7 @@ function SuggestionPreview({
           type="button"
         >
           <Sparkles className="h-4 w-4" />
-          Use suggestion
+          Add to plan
         </Button>
       </div>
     </div>
@@ -844,7 +845,7 @@ function ShoppingPreview({ plan }: { plan: WeeklyDinnerPlanViewModel }) {
       <div>
         <h2 className="text-lg font-semibold">Shopping preview</h2>
         <p className="text-sm text-muted-foreground">
-          Merged ingredients from the saved weekly plan.
+          Ingredients from the current weekly plan.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

@@ -325,7 +325,8 @@ test("meal detail summary extracts persisted Analyze intelligence from notes", (
     detail?.mealOsSummary.optimization,
     "Add extra spinach and use less oil."
   );
-  assert.equal(detail?.mealOsSummary.nutritionConfidence, "Imported");
+  assert.equal(detail?.mealOsSummary.nutritionConfidence, "From recipe");
+  assert.equal(detail?.nutritionProvenance, "Recipe nutrition details saved.");
   assert.equal(detail?.mealOsSummary.hasContent, true);
 });
 

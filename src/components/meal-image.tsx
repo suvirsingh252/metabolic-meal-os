@@ -49,9 +49,6 @@ export function MealImage({
             <Sparkles className="h-3.5 w-3.5 text-accent" />
             Hearth meal
           </span>
-          <span className="max-w-48 text-sm font-medium leading-5 text-primary-foreground drop-shadow-sm">
-            Image coming soon
-          </span>
         </div>
       </div>
     );

@@ -21,9 +21,13 @@ const aliasByName = new Map<string, string>([
   ["cuke", "cucumber"],
   ["cukes", "cucumber"],
   ["english cucumber", "cucumber"],
+  ["bell peppers", "bell pepper"],
+  ["peppers", "bell pepper"],
+  ["red bell peppers", "red bell pepper"],
   ["red onions", "red onion"],
   ["yellow onions", "yellow onion"],
   ["white onions", "white onion"],
+  ["tomatoes", "tomato"],
   ["extra virgin olive oil", "olive oil"],
   ["evoo", "olive oil"],
   ["feta", "feta cheese"],
@@ -48,6 +52,27 @@ const aliasByName = new Map<string, string>([
   ["flour tortillas", "flour tortilla"]
 ]);
 
+const prepDescriptorTargets = new Set([
+  "bell pepper",
+  "cilantro",
+  "cucumber",
+  "garlic",
+  "ginger",
+  "green onion",
+  "green onions",
+  "herbs",
+  "mint",
+  "onion",
+  "parsley",
+  "pepper",
+  "peppers",
+  "red bell pepper",
+  "red onion",
+  "tomato",
+  "tomatoes",
+  "yellow onion"
+]);
+
 const descriptors = new Set([
   "boneless",
   "skinless",
@@ -67,6 +92,11 @@ const descriptors = new Set([
   "ripe",
   "raw",
   "cooked",
+  "cubed",
+  "cubes",
+  "cut",
+  "dice",
+  "dices",
   "optional"
 ]);
 
@@ -296,15 +326,30 @@ function removeSoftDescriptors(value: string) {
 }
 
 function applyAliases(value: string) {
-  const direct = aliasByName.get(value);
+  const descriptorStripped = stripPrepDescriptors(value);
+  const direct = aliasByName.get(descriptorStripped);
 
   if (direct) {
     return direct;
   }
 
-  const withoutDescriptors = removeSoftDescriptors(value);
+  const withoutDescriptors = removeSoftDescriptors(descriptorStripped);
 
   return aliasByName.get(withoutDescriptors) ?? withoutDescriptors;
+}
+
+function stripPrepDescriptors(value: string) {
+  const words = normalizeWhitespace(value).split(" ").filter(Boolean);
+
+  for (let length = Math.min(3, words.length); length >= 1; length -= 1) {
+    const candidate = words.slice(0, length).join(" ");
+
+    if (prepDescriptorTargets.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return value;
 }
 
 function getAlternativeNames(value: string, canonicalName: string) {

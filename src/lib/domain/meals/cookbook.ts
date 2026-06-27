@@ -158,7 +158,7 @@ function splitDedicatedFieldLines(value: string | null) {
   }
 
   return value
-    .split(/\r?\n/)
+    .split(/\r?\n|;/)
     .map(normalizeIngredientLine)
     .filter(Boolean);
 }

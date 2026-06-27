@@ -11,9 +11,9 @@ export default async function GroceryPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Grocery Engine"
-        title="Grocery list"
-        description="Turn saved meals into a categorized shopping checklist."
+        eyebrow="Shopping"
+        title="Shopping list"
+        description="Turn saved dinners into a categorized checklist."
       />
       <GroceryClient
         initialListId={list ?? null}

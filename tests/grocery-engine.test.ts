@@ -79,6 +79,49 @@ test("grocery normalization removes quantities and applies aliases", () => {
   );
 });
 
+test("grocery normalization collapses safe prep-descriptor variants", () => {
+  assert.equal(
+    normalizeGroceryIngredient("onion cut into cubes")?.canonicalName,
+    "onion"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("onion cut into dices")?.canonicalName,
+    "onion"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("ginger peeled julienned")?.canonicalName,
+    "ginger"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("garlic peeled minced")?.canonicalName,
+    "garlic"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("tomato cut into cubes")?.canonicalName,
+    "tomato"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("cucumber sliced thin")?.canonicalName,
+    "cucumber"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("red bell pepper cut into dices")?.canonicalName,
+    "red bell pepper"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("parsley finely chopped")?.canonicalName,
+    "parsley"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("turkey or beef")?.canonicalName,
+    "turkey or beef"
+  );
+  assert.equal(
+    normalizeGroceryIngredient("rice or quinoa")?.canonicalName,
+    "rice or quinoa"
+  );
+});
+
 test("grocery category mapping resolves known groups and falls back to Other", () => {
   assert.equal(resolveGroceryCategory("cucumber"), "Produce");
   assert.equal(resolveGroceryCategory("chicken thighs"), "Protein");
@@ -334,5 +377,29 @@ test("grocery generation deduplicates after note stripping and normalization", (
   assert.deepEqual(
     sectionItems(list, "Produce").map((item) => item.name),
     ["garlic"]
+  );
+});
+
+test("grocery generation deduplicates prep-descriptor variants", () => {
+  const list = generateGroceryList({
+    meals: [
+      meal({
+        id: "prep-variants",
+        ingredientsText: [
+          "ginger",
+          "ginger peeled julienned",
+          "onion",
+          "onion cut into cubes",
+          "onion cut into dices"
+        ].join("\n")
+      })
+    ],
+    mealIds: ["prep-variants"]
+  });
+
+  assert.equal(list.itemCount, 2);
+  assert.deepEqual(
+    sectionItems(list, "Produce").map((item) => item.name),
+    ["ginger", "onion"]
   );
 });
