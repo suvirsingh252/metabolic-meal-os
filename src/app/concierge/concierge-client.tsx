@@ -29,6 +29,7 @@ import {
 } from "@/src/lib/domain/recommendations";
 
 const emptyRefinements: DinnerConciergeRefinementState = {
+  cuisine: [],
   mood: [],
   time: null,
   tonight: []
@@ -38,6 +39,7 @@ const refinementGroups: {
   group: DinnerConciergeRefinementGroup;
   title: string;
 }[] = [
+  { group: "cuisine", title: "Cuisine" },
   { group: "mood", title: "Mood" },
   { group: "time", title: "Time" },
   { group: "tonight", title: "Tonight" }
@@ -46,6 +48,9 @@ const refinementGroups: {
 function buildDinnerQuery(state: DinnerConciergeRefinementState): string {
   const params = new URLSearchParams();
 
+  if (state.cuisine.length > 0) {
+    params.set("cuisine", state.cuisine.join(","));
+  }
   if (state.mood.length > 0) {
     params.set("mood", state.mood.join(","));
   }
@@ -60,7 +65,12 @@ function buildDinnerQuery(state: DinnerConciergeRefinementState): string {
 }
 
 function countActiveRefinements(state: DinnerConciergeRefinementState): number {
-  return state.mood.length + state.tonight.length + (state.time ? 1 : 0);
+  return (
+    state.cuisine.length +
+    state.mood.length +
+    state.tonight.length +
+    (state.time ? 1 : 0)
+  );
 }
 
 function toggleInList(list: string[], id: string): string[] {
@@ -114,7 +124,9 @@ export function ConciergeClient() {
 
       try {
         const query = buildDinnerQuery(state);
-        const response = await fetch(`/api/dinner${query ? `?${query}` : ""}`);
+        const response = await fetch(`/api/dinner${query ? `?${query}` : ""}`, {
+          cache: "no-store"
+        });
         const data: unknown = await response.json();
 
         if (!response.ok) {
@@ -147,6 +159,13 @@ export function ConciergeClient() {
   const alternates = viewModel?.alternates ?? [];
   const freshIdeas = viewModel?.freshIdeas ?? [];
 
+  function toggleCuisine(id: string) {
+    setRefinements((previous) => ({
+      ...previous,
+      cuisine: toggleInList(previous.cuisine, id)
+    }));
+  }
+
   function toggleMood(id: string) {
     setRefinements((previous) => ({
       ...previous,
@@ -169,6 +188,9 @@ export function ConciergeClient() {
   }
 
   function isActive(group: DinnerConciergeRefinementGroup, id: string): boolean {
+    if (group === "cuisine") {
+      return refinements.cuisine.includes(id);
+    }
     if (group === "mood") {
       return refinements.mood.includes(id);
     }
@@ -179,7 +201,9 @@ export function ConciergeClient() {
   }
 
   function handleToggle(group: DinnerConciergeRefinementGroup, id: string) {
-    if (group === "mood") {
+    if (group === "cuisine") {
+      toggleCuisine(id);
+    } else if (group === "mood") {
       toggleMood(id);
     } else if (group === "tonight") {
       toggleTonight(id);

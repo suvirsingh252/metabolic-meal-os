@@ -32,7 +32,7 @@ export interface DinnerConciergeMeal extends RecommendationMeal {
   tags?: string[];
 }
 
-export type DinnerConciergeRefinementGroup = "mood" | "time" | "tonight";
+export type DinnerConciergeRefinementGroup = "cuisine" | "mood" | "time" | "tonight";
 
 export interface DinnerConciergeRefinementOption {
   id: string;
@@ -41,6 +41,7 @@ export interface DinnerConciergeRefinementOption {
 }
 
 export interface DinnerConciergeRefinementState {
+  cuisine: string[];
   mood: string[];
   time: string | null;
   tonight: string[];
@@ -84,7 +85,16 @@ export interface DinnerConciergeInput {
 }
 
 export const dinnerConciergeRefinements: DinnerConciergeRefinementOption[] = [
-  { id: "mediterranean", label: "Mediterranean", group: "mood" },
+  { id: "indian", label: "Indian", group: "cuisine" },
+  { id: "mediterranean", label: "Mediterranean", group: "cuisine" },
+  { id: "middle-eastern", label: "Middle Eastern", group: "cuisine" },
+  { id: "thai", label: "Thai", group: "cuisine" },
+  { id: "mexican", label: "Mexican", group: "cuisine" },
+  { id: "italian", label: "Italian", group: "cuisine" },
+  { id: "chinese", label: "Chinese", group: "cuisine" },
+  { id: "japanese", label: "Japanese", group: "cuisine" },
+  { id: "korean", label: "Korean", group: "cuisine" },
+  { id: "american", label: "American", group: "cuisine" },
   { id: "comfort", label: "Comfort", group: "mood" },
   { id: "healthy-lighter", label: "Healthy/Lighter", group: "mood" },
   { id: "fresh", label: "Fresh", group: "mood" },
@@ -107,6 +117,7 @@ function normalizeRefinementState(
   refinements?: Partial<DinnerConciergeRefinementState>
 ): DinnerConciergeRefinementState {
   return {
+    cuisine: refinements?.cuisine ?? [],
     mood: refinements?.mood ?? [],
     time: refinements?.time ?? null,
     tonight: refinements?.tonight ?? []
@@ -115,6 +126,7 @@ function normalizeRefinementState(
 
 function hasRefinement(state: DinnerConciergeRefinementState, id: string) {
   return (
+    state.cuisine.includes(id) ||
     state.mood.includes(id) ||
     state.tonight.includes(id) ||
     state.time === id
@@ -125,6 +137,47 @@ function labelsFor(ids: string[]): string[] {
   return ids
     .map((id) => refinementLabelById.get(id))
     .filter((label): label is string => Boolean(label));
+}
+
+const cuisineKeywordsById: Record<string, string[]> = {
+  indian: ["indian", "masala", "dal", "dahl", "paneer", "biryani", "tikka", "chana"],
+  mediterranean: [
+    "mediterranean",
+    "greek",
+    "levant",
+    "hummus",
+    "falafel",
+    "tahini",
+    "feta",
+    "pita"
+  ],
+  "middle-eastern": [
+    "middle eastern",
+    "middle-eastern",
+    "levant",
+    "shawarma",
+    "kebab",
+    "hummus",
+    "falafel",
+    "tahini",
+    "za'atar",
+    "zaatar"
+  ],
+  thai: ["thai", "pad thai", "green curry", "red curry", "lemongrass", "coconut curry", "tom yum"],
+  mexican: ["mexican", "taco", "tacos", "enchilada", "quesadilla", "burrito", "salsa", "fajita"],
+  italian: ["italian", "pasta", "risotto", "lasagna", "gnocchi", "marinara", "parmesan"],
+  chinese: ["chinese", "sichuan", "szechuan", "stir fry", "dumpling", "lo mein", "kung pao"],
+  japanese: ["japanese", "ramen", "sushi", "teriyaki", "miso", "udon", "katsu"],
+  korean: ["korean", "kimchi", "gochujang", "bibimbap", "bulgogi", "japchae"],
+  american: ["american", "burger", "bbq", "barbecue", "mac and cheese", "meatloaf", "chili"]
+};
+
+function normalizeText(value: string): string {
+  return value.toLowerCase().replace(/[–—-]/g, " ");
+}
+
+function selectedCuisineKeywords(state: DinnerConciergeRefinementState): string[] {
+  return state.cuisine.flatMap((id) => cuisineKeywordsById[id] ?? []);
 }
 
 /**
@@ -200,10 +253,20 @@ export function computeRefinementScore(
   const minutes = effortMinutes(meal);
   const isHealthyRefine =
     hasRefinement(state, "healthy-lighter") || hasRefinement(state, "healthier");
+  const cuisineKeywords = selectedCuisineKeywords(state);
 
-  if (hasRefinement(state, "mediterranean")) {
-    if (matchesKeywords(meal, ["mediterranean", "greek", "levant", "hummus", "falafel", "tahini"])) {
-      score += 18;
+  if (cuisineKeywords.length > 0) {
+    if (matchesKeywords(meal, cuisineKeywords)) {
+      score += 36;
+    } else if (
+      meal.cuisine &&
+      state.cuisine.some((id) =>
+        cuisineKeywordsById[id]?.some((keyword) =>
+          normalizeText(meal.cuisine ?? "").includes(normalizeText(keyword))
+        )
+      )
+    ) {
+      score += 36;
     }
   }
 

@@ -107,14 +107,16 @@ test("meal mapping: fills metadata gaps null-safely and derives tags", () => {
 
 test("refinement parsing: keeps known ids per group and drops unknown ones", () => {
   const params = new URLSearchParams();
-  params.append("mood", "mediterranean,bogus");
+  params.append("cuisine", "mediterranean,thai,bogus");
+  params.append("mood", "comfort,bogus");
   params.append("tonight", "family-dinner");
   params.append("time", "under-20");
   params.append("time", "40-60");
 
   const state = parseRefinementParams(params);
 
-  assert.deepEqual(state.mood, ["mediterranean"]);
+  assert.deepEqual(state.cuisine, ["mediterranean", "thai"]);
+  assert.deepEqual(state.mood, ["comfort"]);
   assert.deepEqual(state.tonight, ["family-dinner"]);
   assert.equal(state.time, "under-20");
 });
@@ -138,6 +140,39 @@ test("refinement behavior: family dinner refinement promotes family-approved mea
   });
 
   assert.equal(view.leadRecommendation!.mealId, "family");
+});
+
+test("refinement behavior: cuisine query changes API recommendations", () => {
+  const meals = [
+    mealSummary({
+      id: "indian",
+      mealName: "Chana masala",
+      cuisine: "Indian",
+      qualityScore: 80
+    }),
+    mealSummary({
+      id: "thai",
+      mealName: "Thai green curry",
+      cuisine: "Thai",
+      qualityScore: 80
+    })
+  ];
+
+  const indian = buildDinnerConciergeViewModel({
+    meals,
+    refinements: parseRefinementParams(new URLSearchParams("cuisine=indian")),
+    generatedAt
+  });
+  const thai = buildDinnerConciergeViewModel({
+    meals,
+    refinements: parseRefinementParams(new URLSearchParams("cuisine=thai")),
+    generatedAt
+  });
+
+  assert.equal(indian.activeRefinements.cuisine[0], "indian");
+  assert.equal(thai.activeRefinements.cuisine[0], "thai");
+  assert.equal(indian.leadRecommendation!.mealId, "indian");
+  assert.equal(thai.leadRecommendation!.mealId, "thai");
 });
 
 test("feedback influence: not-worth-it chips demote a meal in recommendations", () => {

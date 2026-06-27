@@ -18,6 +18,11 @@ import type { MealSummary } from "@/src/lib/notion/meal-summary";
 const moodRefinementIds = new Set(
   dinnerConciergeRefinements.filter((option) => option.group === "mood").map((option) => option.id)
 );
+const cuisineRefinementIds = new Set(
+  dinnerConciergeRefinements
+    .filter((option) => option.group === "cuisine")
+    .map((option) => option.id)
+);
 const timeRefinementIds = new Set(
   dinnerConciergeRefinements.filter((option) => option.group === "time").map((option) => option.id)
 );
@@ -41,6 +46,9 @@ function readListParam(params: URLSearchParams, key: string): string[] {
 export function parseRefinementParams(
   params: URLSearchParams
 ): DinnerConciergeRefinementState {
+  const cuisine = readListParam(params, "cuisine").filter((id) =>
+    cuisineRefinementIds.has(id)
+  );
   const mood = readListParam(params, "mood").filter((id) => moodRefinementIds.has(id));
   const tonight = readListParam(params, "tonight").filter((id) =>
     tonightRefinementIds.has(id)
@@ -50,6 +58,7 @@ export function parseRefinementParams(
   );
 
   return {
+    cuisine: Array.from(new Set(cuisine)),
     mood: Array.from(new Set(mood)),
     time: timeCandidate ?? null,
     tonight: Array.from(new Set(tonight))

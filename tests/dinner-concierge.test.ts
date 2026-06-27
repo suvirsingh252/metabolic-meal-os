@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  computeRefinementScore,
+  dinnerConciergeRefinements,
   getDinnerConciergeViewModel,
   type DinnerConciergeMeal
 } from "@/src/lib/domain/recommendations";
@@ -189,7 +191,7 @@ test("5. Family dinner refinement prefers family-approved meals", () => {
   assert.equal(refined.leadRecommendation!.mealId, "family");
 });
 
-test("6. Cuisine/mood refinement prefers matching cuisine meals", () => {
+test("6. Cuisine refinement prefers matching cuisine meals", () => {
   const meals = [
     meal({ id: "thai", mealName: "Thai green curry", cuisine: "Thai", qualityScore: 80 }),
     meal({ id: "med", mealName: "Greek bowls", cuisine: "Mediterranean", qualityScore: 78 })
@@ -198,10 +200,101 @@ test("6. Cuisine/mood refinement prefers matching cuisine meals", () => {
   const refined = getDinnerConciergeViewModel({
     meals,
     generatedAt: weeknightAt,
-    refinements: { mood: ["mediterranean"] }
+    refinements: { cuisine: ["mediterranean"] }
   });
 
   assert.equal(refined.leadRecommendation!.mealId, "med");
+});
+
+test("6b. cuisine refinements render as first-class options outside mood", () => {
+  const cuisineOptions = dinnerConciergeRefinements.filter(
+    (option) => option.group === "cuisine"
+  );
+  const moodOptions = dinnerConciergeRefinements.filter(
+    (option) => option.group === "mood"
+  );
+
+  assert.deepEqual(
+    cuisineOptions.map((option) => option.label),
+    [
+      "Indian",
+      "Mediterranean",
+      "Middle Eastern",
+      "Thai",
+      "Mexican",
+      "Italian",
+      "Chinese",
+      "Japanese",
+      "Korean",
+      "American"
+    ]
+  );
+  assert.ok(cuisineOptions.some((option) => option.id === "mediterranean"));
+  assert.ok(!moodOptions.some((option) => option.id === "mediterranean"));
+});
+
+test("6c. selected refinements change dinner recommendations", () => {
+  const meals = [
+    meal({ id: "indian", mealName: "Chana masala", cuisine: "Indian", qualityScore: 80 }),
+    meal({
+      id: "med",
+      mealName: "Greek bowls",
+      cuisine: "Mediterranean",
+      qualityScore: 80
+    }),
+    meal({ id: "thai", mealName: "Thai green curry", cuisine: "Thai", qualityScore: 80 })
+  ];
+
+  const indian = getDinnerConciergeViewModel({
+    meals,
+    generatedAt: weeknightAt,
+    refinements: { cuisine: ["indian"] }
+  });
+  const mediterranean = getDinnerConciergeViewModel({
+    meals,
+    generatedAt: weeknightAt,
+    refinements: { cuisine: ["mediterranean"] }
+  });
+  const thai = getDinnerConciergeViewModel({
+    meals,
+    generatedAt: weeknightAt,
+    refinements: { cuisine: ["thai"] }
+  });
+
+  assert.equal(indian.leadRecommendation!.mealId, "indian");
+  assert.equal(mediterranean.leadRecommendation!.mealId, "med");
+  assert.equal(thai.leadRecommendation!.mealId, "thai");
+});
+
+test("6d. cuisine scoring impact is stronger than generic mood", () => {
+  const indianMeal = meal({
+    id: "indian",
+    mealName: "Chana masala",
+    cuisine: "Indian",
+    qualityScore: 70
+  });
+  const comfortMeal = meal({
+    id: "comfort",
+    mealName: "Cozy casserole",
+    cuisine: "American",
+    comfortMeal: true,
+    qualityScore: 70
+  });
+
+  const cuisineScore = computeRefinementScore(indianMeal, {
+    cuisine: ["indian"],
+    mood: [],
+    time: null,
+    tonight: []
+  });
+  const moodScore = computeRefinementScore(comfortMeal, {
+    cuisine: [],
+    mood: ["comfort"],
+    time: null,
+    tonight: []
+  });
+
+  assert.ok(cuisineScore > moodScore);
 });
 
 test("7. fresh ideas avoid duplicating the lead and alternates", () => {

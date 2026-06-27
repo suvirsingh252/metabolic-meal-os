@@ -11,7 +11,9 @@ test("concierge client fetches the dinner endpoint and maps refinements to query
 
   assert.match(client, /"use client"/);
   assert.match(client, /fetch\(`\/api\/dinner/);
+  assert.match(client, /cache: "no-store"/);
   assert.match(client, /function buildDinnerQuery/);
+  assert.match(client, /params\.set\("cuisine"/);
   assert.match(client, /params\.set\("mood"/);
   assert.match(client, /params\.set\("time"/);
   assert.match(client, /params\.set\("tonight"/);
@@ -43,6 +45,15 @@ test("concierge refine strip is mobile-first and accessible", () => {
   // 44px-minimum touch targets for the refine chips.
   assert.match(client, /min-h-11/);
   assert.match(client, /dinnerConciergeRefinements/);
+});
+
+test("concierge refine strip renders cuisine as its own active-count group", () => {
+  const client = source("src/app/concierge/concierge-client.tsx");
+
+  assert.match(client, /\{ group: "cuisine", title: "Cuisine" \}/);
+  assert.match(client, /state\.cuisine\.length/);
+  assert.match(client, /function toggleCuisine/);
+  assert.match(client, /refinements\.cuisine\.includes\(id\)/);
 });
 
 test("concierge does not surface raw numeric scores in the UI", () => {
