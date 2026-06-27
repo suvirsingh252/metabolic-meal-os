@@ -3,18 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { ImageUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { MealImageSource, MealImageStatus } from "@/src/lib/types/meal";
 
 export function MealImageUpload({
   hasImage,
-  imageSource,
-  imageStatus,
-  mealId
+  mealId,
+  shouldAutoResolve
 }: {
   hasImage: boolean;
-  imageSource?: MealImageSource | null;
-  imageStatus?: MealImageStatus | null;
   mealId: string;
+  shouldAutoResolve: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -26,15 +23,14 @@ export function MealImageUpload({
     if (
       hasAttemptedResolve.current ||
       hasImage ||
-      imageSource === "manual" ||
-      imageStatus === "ready"
+      !shouldAutoResolve
     ) {
       return;
     }
 
     hasAttemptedResolve.current = true;
     setIsResolving(true);
-    setMessage("Preparing image...");
+    setMessage("Generating image...");
 
     fetch(`/api/meals/${mealId}/image/resolve`, { method: "POST" })
       .then(async (response) => {
@@ -59,9 +55,21 @@ export function MealImageUpload({
           typeof data.imageUrl === "string"
             ? data.imageUrl
             : null;
+        const imageStatus =
+          typeof data === "object" &&
+          data !== null &&
+          "imageStatus" in data &&
+          typeof data.imageStatus === "string"
+            ? data.imageStatus
+            : null;
 
         if (imageUrl) {
           window.location.reload();
+          return;
+        }
+
+        if (imageStatus === "failed") {
+          setMessage("Image generation failed.");
           return;
         }
 
@@ -73,7 +81,7 @@ export function MealImageUpload({
       .finally(() => {
         setIsResolving(false);
       });
-  }, [hasImage, imageSource, imageStatus, mealId]);
+  }, [hasImage, mealId, shouldAutoResolve]);
 
   async function upload(file: File) {
     setIsUploading(true);
@@ -136,7 +144,7 @@ export function MealImageUpload({
         ) : (
           <ImageUp className="h-4 w-4" />
         )}
-        {isResolving ? "Preparing image" : "Replace image"}
+        {isResolving ? "Generating image" : "Replace image"}
       </Button>
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
     </div>

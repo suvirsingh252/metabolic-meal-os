@@ -42,11 +42,11 @@ export interface MealSummary {
   satietyScoreNumeric: number | null;
   bloodSugarRiskScore: number | null;
   imageUrl?: string | null;
-  imageSource?: MealImageSource;
+  imageSource?: MealImageSource | null;
   imageOriginalUrl?: string | null;
   imagePrompt?: string | null;
   imageAttribution?: string | null;
-  imageStatus?: MealImageStatus;
+  imageStatus?: MealImageStatus | null;
   imageLastUpdated?: string | null;
 }
 

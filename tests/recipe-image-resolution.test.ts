@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   buildRecipeImageContextFromMeal,
@@ -66,7 +67,21 @@ test("pending non-manual meal images are eligible for resolution", () => {
   );
 });
 
-test("manual or ready meal images are not auto-resolved", () => {
+test("null image url with original candidate still attempts resolution", () => {
+  assert.equal(
+    shouldResolveMealImage(
+      meal({
+        imageUrl: null,
+        imageSource: "placeholder",
+        imageOriginalUrl: "https://example.com/source.jpg",
+        imageStatus: null
+      })
+    ),
+    true
+  );
+});
+
+test("already resolved meal images are not auto-resolved", () => {
   assert.equal(
     shouldResolveMealImage(
       meal({
@@ -77,16 +92,38 @@ test("manual or ready meal images are not auto-resolved", () => {
     ),
     false
   );
+});
+
+test("manual and failed meal images are not auto-resolved", () => {
   assert.equal(
     shouldResolveMealImage(
       meal({
-        imageUrl: "https://blob.example/original.jpg",
-        imageSource: "original",
-        imageStatus: "ready"
+        imageUrl: null,
+        imageSource: "manual",
+        imageOriginalUrl: "https://example.com/manual-source.jpg",
+        imageStatus: "pending"
       })
     ),
     false
   );
+  assert.equal(
+    shouldResolveMealImage(
+      meal({
+        imageUrl: null,
+        imageSource: "ai",
+        sourceUrl: "https://example.com/recipe",
+        imageStatus: "failed"
+      })
+    ),
+    false
+  );
+});
+
+test("meal detail page mounts the image resolver trigger", () => {
+  const source = readFileSync("src/app/meals/[id]/page.tsx", "utf8");
+
+  assert.match(source, /<MealImageUpload/);
+  assert.match(source, /shouldAutoResolve=\{shouldAutoResolveImage\}/);
 });
 
 test("resolution context builds a cookbook-style AI fallback prompt", () => {

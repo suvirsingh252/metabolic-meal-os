@@ -36,7 +36,21 @@ export function shouldResolveMealImage(meal: MealSummary) {
     return false;
   }
 
-  return !(meal.imageUrl && meal.imageStatus === "ready");
+  if (meal.imageStatus === "failed") {
+    return false;
+  }
+
+  if (meal.imageUrl) {
+    return false;
+  }
+
+  return Boolean(
+    meal.imageOriginalUrl ||
+      meal.sourceUrl ||
+      meal.ingredientsText ||
+      meal.instructionsText ||
+      meal.notes
+  );
 }
 
 export function buildRecipeImageContextFromMeal(

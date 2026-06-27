@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MealImage } from "@/src/components/meal-image";
 import { FamilyAdjustmentsEditor } from "@/src/app/meals/[id]/family-adjustments-editor";
 import { MealDetailActions } from "@/src/app/meals/[id]/meal-detail-actions";
+import { MealImageUpload } from "@/src/app/meals/[id]/meal-image-upload";
 import { formatCookbookIngredientAmount } from "@/src/lib/domain/meals/cookbook";
 import { formatPlannerContextLabel } from "@/src/lib/domain/planner";
+import { shouldResolveMealImage } from "@/src/lib/images/meal-image-resolver";
 import { getMealDetail } from "@/src/lib/notion/meal-detail";
 import type { MealSummary } from "@/src/lib/notion/meal-summary";
 import { getWeeklyDinnerPlanner } from "@/src/lib/notion/meal-plan";
@@ -203,6 +205,7 @@ export default async function MealDetailPage({
   const { cookbook } = detail;
   const safeOriginalRecipeUrl = getSafeHttpUrl(cookbook.originalRecipeUrl);
   const heroImageUrl = meal.imageUrl ?? null;
+  const shouldAutoResolveImage = shouldResolveMealImage(meal);
   const heroBadges = (
     <>
       {meal.cuisine ? <Badge>{meal.cuisine}</Badge> : null}
@@ -231,6 +234,12 @@ export default async function MealDetailPage({
         description="Cook the family version, keep the original nearby, and remember what worked."
         imageUrl={heroImageUrl}
         title={meal.mealName}
+      />
+
+      <MealImageUpload
+        hasImage={Boolean(heroImageUrl)}
+        mealId={meal.id}
+        shouldAutoResolve={shouldAutoResolveImage}
       />
 
       <MealDetailActions
